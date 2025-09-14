@@ -1,0 +1,91 @@
+import pygame
+import math
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
+
+def draw_text(surface, text, x, y, font, color=(0,0,0)):
+    img = font.render(text, True, color)
+    surface.blit(img, (x, y))
+
+def draw_rounded_rect(surface, color, rect, radius=8, border=0, border_color=(0,0,0)):
+    rect = pygame.Rect(rect)
+    shape_surf = pygame.Surface(rect.size, pygame.SRCALPHA)
+    pygame.draw.rect(shape_surf, color, shape_surf.get_rect(), border_radius=radius)
+    if border > 0:
+        pygame.draw.rect(shape_surf, border_color, shape_surf.get_rect(), border, border_radius=radius)
+    surface.blit(shape_surf, rect.topleft)
+
+def draw_stats_radar(surface, stats, center, radius, font, color=(0, 120, 200, 120)):
+    labels = ["hp", "atk", "def", "spe_atk", "spe_def", "vit"]
+    values = [stats.get(l, 0) for l in labels]
+    max_stat = 255
+    normalized = [v / max_stat for v in values]
+    points = []
+    for i, val in enumerate(normalized):
+        angle = (math.pi * 2 / len(labels)) * i - math.pi/2
+        x = center[0] + math.cos(angle) * val * radius
+        y = center[1] + math.sin(angle) * val * radius
+        points.append((x, y))
+    s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    pygame.draw.polygon(s, color, points, width=0)
+    surface.blit(s, (0,0))
+    pygame.draw.polygon(surface, (0,0,0), points, width=2)
+    for i, label in enumerate(labels):
+        angle = (math.pi * 2 / len(labels)) * i - math.pi/2
+        x = center[0] + math.cos(angle) * radius
+        y = center[1] + math.sin(angle) * radius
+        pygame.draw.line(surface, (150,150,150), center, (x, y), 1)
+        draw_text(surface, label, int(x), int(y), font)
+
+def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font):
+    for y in range(SCREEN_HEIGHT):
+        c = 255 - int(y * 0.3)
+        pygame.draw.line(screen, (c, c, c), (0, y), (SCREEN_WIDTH, y))
+    draw_rounded_rect(screen, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
+    start_y = 20
+    for i in range(scroll_offset, min(scroll_offset+max_visible, len(pokemon_list))):
+        pid, name, _ = pokemon_list[i]
+        y = start_y + (i-scroll_offset)*FONT_SIZE
+        if i == selected_index:
+            draw_rounded_rect(screen, (255,230,200), (10, y-2, 180, FONT_SIZE+4), radius=6)
+        color = (0,0,0) if i != selected_index else (200,30,30)
+        draw_text(screen, f"{pid:03d} {name}", 15, y, font, color)
+    draw_rounded_rect(screen, (240,240,250), (210,20,250,250), radius=20, border=2)
+    if current_sprite:
+        rect = current_sprite.get_rect(center=(335,145))
+        screen.blit(current_sprite, rect)
+
+def draw_detail_view(screen, current_pokemon_data, current_sprite, font):
+    # Fond dégradé vertical
+    for y in range(SCREEN_HEIGHT):
+        r = 200
+        g = min(255, 200 + y // 5)
+        b = 255
+        pygame.draw.line(screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+
+    # Bandeau en haut : nom à gauche, types à droite
+    draw_rounded_rect(screen, (255,255,255), (10,10,SCREEN_WIDTH-20,50), radius=12, border=2)
+    name_fr = current_pokemon_data.get("name", {}).get("fr", "???")
+    pid = current_pokemon_data.get("pokedex_id", "?")
+    types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])]
+    draw_text(screen, f"{pid:03d} - {name_fr}", 20, 25, font, (30,30,120))
+    draw_text(screen, " / ".join(types), SCREEN_WIDTH-20-120, 25, font, (30,120,30))
+
+    if current_sprite:
+        sprite_big = pygame.transform.smoothscale(current_sprite, (200, 200))
+        rect = sprite_big.get_rect(center=(130, 130))
+        screen.blit(sprite_big, rect)
+
+    # Radar des stats à droite (sans cadre)
+    stats = current_pokemon_data.get("stats") or {}
+    if stats:
+        draw_stats_radar(screen, stats, center=(290, 130), radius=65, font=font)
+
+    # Infos complémentaires en bas
+    talents = [t.get("name", "?") for t in (current_pokemon_data.get("talents") or [])]
+    draw_rounded_rect(screen, (255,255,255), (30,210,370,40), radius=10, border=2)
+    draw_text(screen, "Talents: " + ", ".join(talents), 40, 225, font)
+
+    evol = (current_pokemon_data.get("evolution", {}) or {}).get("next") or []
+    evol_text = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict))
+    draw_rounded_rect(screen, (255,255,255), (30,260,370,40), radius=10, border=2)
+    draw_text(screen, "Évolutions: " + (evol_text if evol_text else "Aucune"), 40, 275, font)

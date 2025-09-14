@@ -1,0 +1,7 @@
+# Configuration écran & BDD
+SCREEN_WIDTH = 480
+SCREEN_HEIGHT = 320
+LIST_WIDTH = 14
+SPRITE_SIZE = 64
+FONT_SIZE = 16
+DB_PATH = "./pokedex.db"
