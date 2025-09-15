@@ -67,7 +67,8 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         rect = current_sprite.get_rect(center=(335,145))
         screen.blit(current_sprite, rect)
 
-def draw_detail_view(screen, current_pokemon_data, current_sprite, font):
+def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=True):
+    small_font = pygame.font.SysFont("Arial", FONT_SIZE - 2)
     # Fond dégradé vertical
     for y in range(SCREEN_HEIGHT):
         r = 200
@@ -77,28 +78,34 @@ def draw_detail_view(screen, current_pokemon_data, current_sprite, font):
 
     # Bandeau en haut : nom à gauche, types à droite
     draw_rounded_rect(screen, (255,255,255), (10,10,SCREEN_WIDTH-20,50), radius=12, border=2)
-    name_fr = current_pokemon_data.get("name", {}).get("fr", "???")
+    name_fr = current_pokemon_data.get("name", {}).get("fr", "???") if caught else "???"
     pid = current_pokemon_data.get("pokedex_id", "?")
-    types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])]
+    types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])] if caught else ["?"]
     draw_text(screen, f"{pid:03d} - {name_fr}", 20, 25, font, (30,30,120))
     draw_text(screen, " / ".join(types), SCREEN_WIDTH-20-120, 25, font, (30,120,30))
 
     if current_sprite:
-        sprite_big = pygame.transform.smoothscale(current_sprite, (200, 200))
-        rect = sprite_big.get_rect(center=(130, 130))
+        sprite_big = pygame.transform.smoothscale(current_sprite, (150, 150))
+        rect = sprite_big.get_rect(center=(150, 140))
         screen.blit(sprite_big, rect)
+
+    # Poids et taille à gauche du sprite
+    height = current_pokemon_data.get("height", "?") if caught else "?"
+    weight = current_pokemon_data.get("weight", "?") if caught else "?"
+    draw_text(screen, f"{height}", 20, 120, small_font, (100,100,100))
+    draw_text(screen, f"{weight}", 20, 140, small_font, (100,100,100))
 
     # Radar des stats à droite (sans cadre)
     stats = current_pokemon_data.get("stats") or {}
-    if stats:
-        draw_stats_radar(screen, stats, center=(290, 130), radius=65, font=font)
+    if stats and caught:
+        draw_stats_radar(screen, stats, center=(310, 140), radius=65, font=font)
 
     # Infos complémentaires en bas
-    talents = [t.get("name", "?") for t in (current_pokemon_data.get("talents") or [])]
-    draw_rounded_rect(screen, (255,255,255), (30,210,370,40), radius=10, border=2)
-    draw_text(screen, "Talents: " + ", ".join(talents), 40, 225, font)
+    talents = [t.get("name", "?") for t in (current_pokemon_data.get("talents") or [])] if caught else ["?"]
+    draw_rounded_rect(screen, (255,255,255), (30,230,370,40), radius=10, border=2)
+    draw_text(screen, "Talents: " + ", ".join(talents), 40, 240, font)
 
     evol = (current_pokemon_data.get("evolution", {}) or {}).get("next") or []
-    evol_text = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict))
-    draw_rounded_rect(screen, (255,255,255), (30,260,370,40), radius=10, border=2)
-    draw_text(screen, "Évolutions: " + (evol_text if evol_text else "Aucune"), 40, 275, font)
+    evol_text = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict)) if caught else "?"
+    draw_rounded_rect(screen, (255,255,255), (30,277,370,40), radius=10, border=2)
+    draw_text(screen, "Évolutions: " + (evol_text if evol_text else "Aucune"), 40, 290, font)

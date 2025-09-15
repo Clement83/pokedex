@@ -2,7 +2,7 @@ import pygame
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
 from db import get_connection, get_pokemon_list, get_pokemon_data, add_caught_column, update_pokemon_caught_status
-from sprites import load_sprite, load_pokeball_sprites
+from sprites import load_sprite, load_pokeball_sprites, apply_shadow_effect
 from ui import draw_list_view, draw_detail_view
 import catch_game
 import stabilize_game
@@ -136,21 +136,26 @@ while running:
 
     # Gestion du sprite
     sprite_file = Path(pokemon_list[selected_index][2]).name
+    caught = pokemon_list[selected_index][3]
     SPRITES_DIR = BASE_DIR / "app" / "data" / "sprites"
     sprite_path = SPRITES_DIR / sprite_file
 
     original_sprite = load_sprite(sprite_path)
     if original_sprite:
+        processed_sprite = original_sprite
+        if not caught:
+            processed_sprite = apply_shadow_effect(original_sprite)
+
         if state == "list":
-            current_sprite = pygame.transform.scale(original_sprite, (200, 200))
+            current_sprite = pygame.transform.scale(processed_sprite, (200, 200))
         elif state == "detail":
-            current_sprite = pygame.transform.smoothscale(original_sprite, (200, 200))
+            current_sprite = processed_sprite # la vue détail s'occupe du scale
 
     # Affichage
     if state == "list":
         draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font)
     elif state == "detail" and current_pokemon_data:
-        draw_detail_view(screen, current_pokemon_data, current_sprite, font)
+        draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught)
 
     pygame.display.flip()
     clock.tick(60)

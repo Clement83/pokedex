@@ -10,7 +10,6 @@ dist/
 build/
 *.log
 *.sqlite3
-*.db
 .env
 .venv/
 venv/

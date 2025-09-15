@@ -31,3 +31,16 @@ def load_pokeball_sprites(size):
         return pokeball_img, pokeball_grayscale_img
     except pygame.error:
         return None, None
+
+def apply_shadow_effect(image):
+    """Applies a shadow effect to an image, turning it into a black silhouette."""
+    if image is None:
+        return None
+    shadow_surface = image.copy()
+    w, h = image.get_size()
+    for x in range(w):
+        for y in range(h):
+            a = image.get_at((x, y))[3]
+            if a > 0:
+                shadow_surface.set_at((x, y), (0, 0, 0, a))
+    return shadow_surface
