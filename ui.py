@@ -52,15 +52,16 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         if i == selected_index:
             draw_rounded_rect(screen, (255,230,200), (10, y-2, 180, FONT_SIZE+4), radius=6)
         color = (0,0,0) if i != selected_index else (200,30,30)
-        
+
         # Afficher la pokeball
         if pokeball_img and pokeball_grayscale_img:
             if caught:
                 screen.blit(pokeball_img, (15, y))
             else:
                 screen.blit(pokeball_grayscale_img, (15, y))
-        
-        draw_text(screen, f"{pid:03d} {name}", 15 + FONT_SIZE + 5, y, font, color)
+
+        display_name = name if caught else "???"
+        draw_text(screen, f"{pid:03d} {display_name}", 15 + FONT_SIZE + 5, y, font, color)
         
     draw_rounded_rect(screen, (240,240,250), (210,20,250,250), radius=20, border=2)
     if current_sprite:

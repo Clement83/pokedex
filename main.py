@@ -15,8 +15,9 @@ import pygame.font
 font = pygame.font.SysFont("Arial", FONT_SIZE, bold=True)
 
 GENERATION_THRESHOLDS = {
-    1: {'max_id': 150, 'unlock_count': 0}, # Gen 1 (excluding Mew)
-    2: {'max_id': 251, 'unlock_count': 50}, # Unlock Gen 2 after catching 50 Pokémon
+    1: {'max_id': 149, 'unlock_count': 0}, # Gen 1 (excluding Mew and Mewtwo)
+    1: {'max_id': 150, 'unlock_count': 50}, # Gen 1 (Adding Mewtwo)
+    2: {'max_id': 251, 'unlock_count': 75}, # Unlock Gen 2 after catching 75 Pokémon
     3: {'max_id': 386, 'unlock_count': 150}, # Unlock Gen 3 after catching 150 Pokémon
     4: {'max_id': 493, 'unlock_count': 300}, # Unlock Gen 4 after catching 300 Pokémon
     5: {'max_id': 649, 'unlock_count': 500}, # Unlock Gen 5 after catching 500 Pokémon
@@ -48,7 +49,7 @@ pokeball_img_large, _ = load_pokeball_sprites(50)
 selected_index = 0
 state = "list"  # list, detail
 scroll_offset = 0
-max_visible = (SCREEN_HEIGHT - 20) // FONT_SIZE
+max_visible = (SCREEN_HEIGHT - 20)
 current_pokemon_data = None
 current_sprite = None
 BASE_DIR = Path.cwd()
@@ -81,6 +82,20 @@ while running:
                     key_up_pressed = True
                     up_press_time = now
                     last_scroll_time = now
+                elif event.key == pygame.K_LEFT:
+                    # Scroll -50
+                    old_index = selected_index
+                    selected_index = max(0, selected_index - 50)
+                    # Ajuster le scroll_offset pour garder l'élément visible
+                    if selected_index < scroll_offset:
+                        scroll_offset = selected_index
+                elif event.key == pygame.K_RIGHT:
+                    # Scroll +50
+                    old_index = selected_index
+                    selected_index = min(len(pokemon_list) - 1, selected_index + 50)
+                    # Ajuster le scroll_offset pour garder l'élément visible
+                    if selected_index - scroll_offset >= max_visible:
+                        scroll_offset = selected_index - max_visible + 1
                 elif event.key == pygame.K_RETURN:
                     pid = pokemon_list[selected_index][0]
                     current_pokemon_data = get_pokemon_data(conn, pid)
@@ -99,8 +114,9 @@ while running:
                             if stabilize_result == "caught":
                                 update_pokemon_caught_status(conn, pokedex_id, True)
                                 caught_count = get_caught_pokemon_count(conn)
+                                mew_unlocked_now = mew_is_unlocked(conn)
                                 # Check for Mew unlock
-                                if caught_count >= MEW_UNLOCK_COUNT and current_max_pokedex_id < 151:
+                                if mew_unlocked_now:
                                     current_max_pokedex_id = 151
                                     print("Mew déverrouillé !")
 
