@@ -14,3 +14,20 @@ def load_sprite(path):
             print(f"[ERREUR] Impossible de charger {path} : {e}")
             return None
     return sprite_cache[path]
+
+def load_pokeball_sprites(size):
+    BASE_DIR = Path.cwd()
+    POKEBALL_PATH = BASE_DIR / "app" / "data" / "assets" / "pokeball.png"
+    try:
+        pokeball_img = pygame.image.load(POKEBALL_PATH)
+        pokeball_img = pygame.transform.scale(pokeball_img, (size, size))
+        pokeball_grayscale_img = pokeball_img.copy()
+        # Convertir en niveaux de gris
+        for x in range(pokeball_grayscale_img.get_width()):
+            for y in range(pokeball_grayscale_img.get_height()):
+                r, g, b, a = pokeball_grayscale_img.get_at((x, y))
+                gray = int(0.299 * r + 0.587 * g + 0.114 * b)
+                pokeball_grayscale_img.set_at((x, y), (gray, gray, gray, a))
+        return pokeball_img, pokeball_grayscale_img
+    except pygame.error:
+        return None, None

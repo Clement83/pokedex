@@ -1,6 +1,10 @@
 import pygame
 import math
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
+from sprites import load_pokeball_sprites
+
+# Charger les sprites de la pokeball
+pokeball_img, pokeball_grayscale_img = load_pokeball_sprites(FONT_SIZE)
 
 def draw_text(surface, text, x, y, font, color=(0,0,0)):
     img = font.render(text, True, color)
@@ -43,12 +47,21 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
     draw_rounded_rect(screen, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
     start_y = 20
     for i in range(scroll_offset, min(scroll_offset+max_visible, len(pokemon_list))):
-        pid, name, _ = pokemon_list[i]
+        pid, name, _, caught = pokemon_list[i]
         y = start_y + (i-scroll_offset)*FONT_SIZE
         if i == selected_index:
             draw_rounded_rect(screen, (255,230,200), (10, y-2, 180, FONT_SIZE+4), radius=6)
         color = (0,0,0) if i != selected_index else (200,30,30)
-        draw_text(screen, f"{pid:03d} {name}", 15, y, font, color)
+        
+        # Afficher la pokeball
+        if pokeball_img and pokeball_grayscale_img:
+            if caught:
+                screen.blit(pokeball_img, (15, y))
+            else:
+                screen.blit(pokeball_grayscale_img, (15, y))
+        
+        draw_text(screen, f"{pid:03d} {name}", 15 + FONT_SIZE + 5, y, font, color)
+        
     draw_rounded_rect(screen, (240,240,250), (210,20,250,250), radius=20, border=2)
     if current_sprite:
         rect = current_sprite.get_rect(center=(335,145))
