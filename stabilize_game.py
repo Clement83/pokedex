@@ -130,7 +130,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
     timing_hits = 0
     lives = 3
     bar_cursor_x = 0
-    bar_cursor_speed = 5
+    bar_cursor_speed = 3
     
     shake_angle = 0
     shake_offset = 0
@@ -138,7 +138,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
     shake_magnitude = 5
 
     def new_green_zone():
-        green_zone_width = 50
+        green_zone_width = 100
         green_zone_x = random.randint(0, SCREEN_WIDTH - green_zone_width)
         return pygame.Rect(green_zone_x, SCREEN_HEIGHT - 30, green_zone_width, 20)
 

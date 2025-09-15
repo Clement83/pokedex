@@ -121,13 +121,12 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
                 points.append((int(pos[0]), int(pos[1])))
             if len(points) > 1:
                 pygame.draw.lines(screen, (255,0,0), False, points, 2)
-            # UI
-            font.render(f"Angle: {angle}°", True, (0,0,0))
-            screen.blit(font.render(f"Angle: {angle}°", True, (0,0,0)), (20, 20))
-            font.render(f"Puissance: {power}", True, (0,0,0))
-            screen.blit(font.render(f"Puissance: {power}", True, (0,0,0)), (20, 50))
-            font.render(f"Essais restants: {max_attempts-attempts}", True, (0,0,0))
-            screen.blit(font.render(f"Essais restants: {max_attempts-attempts}", True, (0,0,0)), (20, 80))
+            # UI - Affichage des essais restants avec des pokeballs
+            if pokeball_sprite:
+                remaining_attempts = max_attempts - attempts
+                pokeball_width = pokeball_sprite.get_width()
+                for i in range(remaining_attempts):
+                    screen.blit(pokeball_sprite, (10 + i * (pokeball_width + 5), 10))
             pygame.display.flip()
             clock.tick(60)
         # Animation du lancer
