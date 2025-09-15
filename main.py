@@ -1,7 +1,7 @@
 import pygame
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
-from db import get_connection, get_pokemon_list, get_pokemon_data, add_caught_column, update_pokemon_caught_status
+from db import get_connection, get_pokemon_list, get_pokemon_data, add_caught_column, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked
 from sprites import load_sprite, load_pokeball_sprites, apply_shadow_effect
 from ui import draw_list_view, draw_detail_view
 import catch_game
@@ -14,11 +14,32 @@ clock = pygame.time.Clock()
 import pygame.font
 font = pygame.font.SysFont("Arial", FONT_SIZE, bold=True)
 
+GENERATION_THRESHOLDS = {
+    1: {'max_id': 150, 'unlock_count': 0}, # Gen 1 (excluding Mew)
+    2: {'max_id': 251, 'unlock_count': 50}, # Unlock Gen 2 after catching 50 Pokémon
+    3: {'max_id': 386, 'unlock_count': 150}, # Unlock Gen 3 after catching 150 Pokémon
+    4: {'max_id': 493, 'unlock_count': 300}, # Unlock Gen 4 after catching 300 Pokémon
+    5: {'max_id': 649, 'unlock_count': 500}, # Unlock Gen 5 after catching 500 Pokémon
+    6: {'max_id': 721, 'unlock_count': 700}, # Unlock Gen 6 after catching 700 Pokémon
+    7: {'max_id': 809, 'unlock_count': 800}, # Unlock Gen 7 after catching 800 Pokémon
+    8: {'max_id': 1500, 'unlock_count': 900}, # Unlock Gen 8 after catching 900 Pokémon
+}
+
 # Ajout de la colonne 'caught' si elle n'existe pas
 add_caught_column()
 
 conn = get_connection()
-pokemon_list = get_pokemon_list(conn)
+caught_count_at_startup = get_caught_pokemon_count(conn)
+mew_unlocked_at_startup = mew_is_unlocked(conn)
+
+current_max_pokedex_id = GENERATION_THRESHOLDS[1]['max_id'] # Start with Gen 1 (excluding Mew)
+
+# Unlock generations based on caught count
+for gen, data in GENERATION_THRESHOLDS.items():
+    if caught_count_at_startup >= data['unlock_count'] and current_max_pokedex_id < data['max_id']:
+        current_max_pokedex_id = data['max_id']
+
+pokemon_list = get_pokemon_list(conn, current_max_pokedex_id, include_mew=mew_unlocked_at_startup)
 
 # Charger les sprites de la pokeball
 pokeball_img_small, _ = load_pokeball_sprites(30)
@@ -77,7 +98,19 @@ while running:
                             stabilize_result = stabilize_game.run(screen, font, pokeball_img_large)
                             if stabilize_result == "caught":
                                 update_pokemon_caught_status(conn, pokedex_id, True)
-                                pokemon_list = get_pokemon_list(conn)
+                                caught_count = get_caught_pokemon_count(conn)
+                                # Check for Mew unlock
+                                if caught_count >= MEW_UNLOCK_COUNT and current_max_pokedex_id < 151:
+                                    current_max_pokedex_id = 151
+                                    print("Mew déverrouillé !")
+
+                                # Check for other generation unlocks
+                                for gen, data in GENERATION_THRESHOLDS.items():
+                                    if caught_count >= data['unlock_count'] and current_max_pokedex_id < data['max_id']:
+                                        current_max_pokedex_id = data['max_id']
+                                        print(f"Génération {gen} déverrouillée !")
+                                        break
+                                pokemon_list = get_pokemon_list(conn, current_max_pokedex_id)
                                 current_pokemon_data = get_pokemon_data(conn, pokedex_id)
                                 if current_pokemon_data:
                                     state = "detail"
@@ -87,7 +120,10 @@ while running:
                             running = False
                     else: # Si déjà attrapé, on le relâche
                         update_pokemon_caught_status(conn, pokedex_id, False)
-                        pokemon_list = get_pokemon_list(conn) # Refresh list
+                        # When releasing, we might "lock" generations if caught_count drops below threshold
+                        # For simplicity, we'll just refresh the list with the current max_pokedex_id
+                        mew_unlocked_now = mew_is_unlocked(conn)
+                        pokemon_list = get_pokemon_list(conn, current_max_pokedex_id, include_mew=mew_unlocked_now) # Refresh list
                 elif event.key == pygame.K_ESCAPE:
                     running = False
             elif state == "detail" and event.key == pygame.K_ESCAPE:

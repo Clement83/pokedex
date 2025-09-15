@@ -18,9 +18,24 @@ def add_caught_column():
     finally:
         conn.close()
 
-def get_pokemon_list(conn):
+def get_pokemon_list(conn, max_pokedex_id=None, include_mew=False):
     cur = conn.cursor()
-    cur.execute("SELECT pokedex_id, name_fr, sprite_regular, caught FROM pokemon ORDER BY pokedex_id")
+    query = "SELECT pokedex_id, name_fr, sprite_regular, caught FROM pokemon"
+    conditions = []
+    params = []
+
+    if max_pokedex_id:
+        conditions.append("pokedex_id <= ?")
+        params.append(max_pokedex_id)
+
+    if not include_mew:
+        conditions.append("pokedex_id != 151")
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    query += " ORDER BY pokedex_id"
+
+    cur.execute(query, tuple(params))
     return cur.fetchall()
 
 def get_pokemon_data(conn, pokedex_id):
@@ -36,3 +51,13 @@ def update_pokemon_caught_status(conn, pokedex_id, caught):
     cur = conn.cursor()
     cur.execute("UPDATE pokemon SET caught = ? WHERE pokedex_id = ?", (caught, pokedex_id))
     conn.commit()
+
+def get_caught_pokemon_count(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM pokemon WHERE caught = 1")
+    return cur.fetchone()[0]
+
+def mew_is_unlocked(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM pokemon WHERE caught = 1 AND pokedex_id < 151")
+    return cur.fetchone()[0] >= 150
