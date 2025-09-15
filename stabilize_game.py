@@ -54,7 +54,79 @@ def draw_lose_animation(screen, pokeball_sprite):
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
-def run(screen, font, pokeball_sprite):
+def intro_animation(screen, pokeball_sprite, pokemon_sprite):
+    clock = pygame.time.Clock()
+    pokeball_pos = [SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 - 100]  # pokeball en haut à gauche
+    pokemon_start = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80]         # Pokémon en bas au centre
+    pokemon_end = pokeball_pos
+    duration = 90  # frames (~1.5s)
+    start_size = 120
+    end_size = 40
+    for t in range(duration):
+        progress = t / duration
+        x = int(pokemon_start[0] + (pokemon_end[0] - pokemon_start[0]) * progress)
+        y = int(pokemon_start[1] + (pokemon_end[1] - pokemon_start[1]) * progress)
+        size = int(start_size + (end_size - start_size) * progress)
+        screen.fill((200, 220, 255))
+        # Glow effect
+        for glow in range(18, 2, -4):
+            alpha = max(30, 180 - glow*8)
+            glow_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            pygame.draw.line(glow_surf, (0,255,255,alpha), pokeball_pos, [x, y], glow)
+            screen.blit(glow_surf, (0,0))
+        pulse = 8 + int(4 * math.sin(t/6.0))
+        pygame.draw.line(screen, (0,255,255), pokeball_pos, [x, y], pulse)
+        pygame.draw.line(screen, (255,255,255), pokeball_pos, [x, y], 2)
+        # Pokeball
+        if pokeball_sprite:
+            rect = pokeball_sprite.get_rect(center=pokeball_pos)
+            screen.blit(pokeball_sprite, rect)
+        # Pokémon animé
+        if pokemon_sprite:
+            scaled = pygame.transform.smoothscale(pokemon_sprite, (size, size))
+            rect = scaled.get_rect(center=(x, y))
+            screen.blit(scaled, rect)
+        pygame.display.flip()
+        clock.tick(60)
+
+    # Descente de la pokeball au centre avec rebonds
+    start_pos = pokeball_pos
+    end_pos = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2]
+    bounce_height = 60
+    bounce_count = 2
+    bounce_frames = 60
+    for b in range(bounce_count):
+        for t in range(bounce_frames):
+            progress = t / bounce_frames
+            # Mouvement vertical avec rebond
+            x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
+            # Animation rebond : parabole
+            y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress - bounce_height * math.sin(math.pi * progress))
+            screen.fill((200, 220, 255))
+            if pokeball_sprite:
+                rect = pokeball_sprite.get_rect(center=(x, y))
+                screen.blit(pokeball_sprite, rect)
+            pygame.display.flip()
+            clock.tick(60)
+        # Réduire la hauteur du rebond à chaque fois
+        start_pos = [x, end_pos[1]]
+        bounce_height = bounce_height // 2
+    # Dernière descente douce
+    for t in range(30):
+        progress = t / 30
+        x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
+        y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress)
+        screen.fill((200, 220, 255))
+        if pokeball_sprite:
+            rect = pokeball_sprite.get_rect(center=(x, y))
+            screen.blit(pokeball_sprite, rect)
+        pygame.display.flip()
+        clock.tick(60)
+    # Les étapes 2 et 3 sont maintenant gérées par le déplacement du Pokémon vers la pokeball
+
+def run(screen, font, pokeball_sprite, pokemon_sprite=None):
+    if pokemon_sprite:
+        intro_animation(screen, pokeball_sprite, pokemon_sprite)
     timing_hits = 0
     lives = 3
     bar_cursor_x = 0

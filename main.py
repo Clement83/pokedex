@@ -110,7 +110,7 @@ while running:
                         catch_result = catch_game.run(screen, font, pokemon_sprite, pokeball_img_small)
                         if catch_result == "caught":
                             # Lancer le second mini-jeu
-                            stabilize_result = stabilize_game.run(screen, font, pokeball_img_large)
+                            stabilize_result = stabilize_game.run(screen, font, pokeball_img_large, pokemon_sprite)
                             if stabilize_result == "caught":
                                 update_pokemon_caught_status(conn, pokedex_id, True)
                                 caught_count = get_caught_pokemon_count(conn)
