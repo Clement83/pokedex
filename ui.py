@@ -47,7 +47,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
     draw_rounded_rect(screen, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
     start_y = 20
     for i in range(scroll_offset, min(scroll_offset+max_visible, len(pokemon_list))):
-        pid, name, _, caught = pokemon_list[i]
+        pid, name, _, _, caught, is_shiny = pokemon_list[i]
         y = start_y + (i-scroll_offset)*FONT_SIZE
         if i == selected_index:
             draw_rounded_rect(screen, (255,230,200), (10, y-2, 180, FONT_SIZE+4), radius=6)

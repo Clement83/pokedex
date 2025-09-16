@@ -1,6 +1,6 @@
 import pygame
 from pathlib import Path
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, SHINY_RATE
 from db import get_connection, get_pokemon_list, get_pokemon_data, add_caught_column, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked
 from sprites import load_sprite, load_pokeball_sprites, apply_shadow_effect
 from ui import draw_list_view, draw_detail_view
@@ -116,13 +116,16 @@ while running:
                         state = "detail"
                 elif event.key == pygame.K_SPACE:
                     # Choisir un Pokémon aléatoire non attrapé parmi ceux accessibles
-                    uncaught_pokemon = [p for p in pokemon_list if not p[3]]
+                    uncaught_pokemon = [p for p in pokemon_list if not p[4]] # Use index 4 for 'caught'
                     if uncaught_pokemon:
                         target_pokemon = random.choice(uncaught_pokemon)
                         pokedex_id = target_pokemon[0]
+                        
+                        is_shiny_encounter = (random.random() < SHINY_RATE)
 
                         # Charger le sprite du Pokémon cible pour le mini-jeu
-                        sprite_file = Path(target_pokemon[2]).name
+                        sprite_to_load = target_pokemon[3] if is_shiny_encounter else target_pokemon[2] # Use sprite_shiny or sprite_regular
+                        sprite_file = Path(sprite_to_load).name
                         sprite_path = BASE_DIR / "app" / "data" / "sprites" / sprite_file
                         pokemon_original_sprite = load_sprite(sprite_path)
 
@@ -134,7 +137,7 @@ while running:
                                 # Lancer le second mini-jeu
                                 stabilize_result = stabilize_game.run(screen, font, pokeball_img_large, pokemon_sprite_for_game)
                                 if stabilize_result == "caught":
-                                    update_pokemon_caught_status(conn, pokedex_id, True)
+                                    update_pokemon_caught_status(conn, pokedex_id, True, is_shiny_encounter) # Pass is_shiny_encounter
                                     caught_count = get_caught_pokemon_count(conn)
                                     mew_unlocked_now = mew_is_unlocked(conn)
 
@@ -194,15 +197,22 @@ while running:
                 last_scroll_time = now
 
     # Gestion du sprite
-    sprite_file = Path(pokemon_list[selected_index][2]).name
-    caught = pokemon_list[selected_index][3]
+    is_pokemon_caught = pokemon_list[selected_index][4] # 'caught' is at index 4
+    is_pokemon_shiny = pokemon_list[selected_index][5] # 'is_shiny' is at index 5
+
+    # Determine which sprite to load: shiny if available and shiny, otherwise regular
+    if is_pokemon_shiny and pokemon_list[selected_index][3]: # Check if is_pokemon_shiny is True AND sprite_shiny exists
+        sprite_to_load_name = pokemon_list[selected_index][3] # Use sprite_shiny
+    else:
+        sprite_to_load_name = pokemon_list[selected_index][2] # Use sprite_regular
+    sprite_file = Path(sprite_to_load_name).name
     SPRITES_DIR = BASE_DIR / "app" / "data" / "sprites"
     sprite_path = SPRITES_DIR / sprite_file
 
     original_sprite = load_sprite(sprite_path)
     if original_sprite:
         processed_sprite = original_sprite
-        if not caught:
+        if not is_pokemon_caught: # Use is_pokemon_caught
             processed_sprite = apply_shadow_effect(original_sprite)
 
         if state == "list":
@@ -214,7 +224,7 @@ while running:
     if state == "list":
         draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible_items, current_sprite, font)
     elif state == "detail" and current_pokemon_data:
-        draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught)
+        draw_detail_view(screen, current_pokemon_data, current_sprite, font, is_pokemon_caught)
 
     pygame.display.flip()
     clock.tick(60)

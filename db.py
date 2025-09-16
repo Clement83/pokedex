@@ -15,12 +15,20 @@ def add_caught_column():
             pass
         else:
             raise
+    try:
+        cur.execute("ALTER TABLE pokemon ADD COLUMN is_shiny BOOLEAN DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            pass
+        else:
+            raise
     finally:
         conn.close()
 
 def get_pokemon_list(conn, max_pokedex_id=None, include_mew=False):
     cur = conn.cursor()
-    query = "SELECT pokedex_id, name_fr, sprite_regular, caught FROM pokemon"
+    query = "SELECT pokedex_id, name_fr, sprite_regular, sprite_shiny, caught, is_shiny FROM pokemon"
     conditions = []
     params = []
 
@@ -47,9 +55,9 @@ def get_pokemon_data(conn, pokedex_id):
         return json.loads(row[0])
     return None
 
-def update_pokemon_caught_status(conn, pokedex_id, caught):
+def update_pokemon_caught_status(conn, pokedex_id, caught, is_shiny=False):
     cur = conn.cursor()
-    cur.execute("UPDATE pokemon SET caught = ? WHERE pokedex_id = ?", (caught, pokedex_id))
+    cur.execute("UPDATE pokemon SET caught = ?, is_shiny = ? WHERE pokedex_id = ?", (caught, is_shiny, pokedex_id))
     conn.commit()
 
 def get_caught_pokemon_count(conn):
