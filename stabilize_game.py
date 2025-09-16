@@ -83,7 +83,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
             rect = pokeball_sprite.get_rect(center=pokeball_pos)
             screen.blit(pokeball_sprite, rect)
         # Pokémon animé
-        if pokemon_sprite:
+        if pokemon_sprite and t % 5 == 0:  # Réduire la fréquence de mise à jour pour économiser des ressources
             scaled = pygame.transform.scale(pokemon_sprite, (size, size))
             rect = scaled.get_rect(center=(x, y))
             screen.blit(scaled, rect)
