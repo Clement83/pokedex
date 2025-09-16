@@ -45,3 +45,4 @@ class GameState:
         self.scroll_accel_time = 2000
         self.last_scroll_time = 0
         self.sprite_cache = {}
+        self.list_view_background = None

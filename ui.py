@@ -41,20 +41,29 @@ def draw_stats_radar(surface, stats, center, radius, font, color=(0, 120, 200, 1
         pygame.draw.line(surface, (150,150,150), center, (x, y), 1)
         draw_text(surface, label, int(x), int(y), font)
 
-def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font):
+def create_list_view_background():
+    background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     for y in range(SCREEN_HEIGHT):
         c = 255 - int(y * 0.3)
-        pygame.draw.line(screen, (c, c, c), (0, y), (SCREEN_WIDTH, y))
-    draw_rounded_rect(screen, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
-    start_y = 20
-    for i in range(scroll_offset, min(scroll_offset+max_visible, len(pokemon_list))):
-        pid, name, _, _, caught, is_shiny = pokemon_list[i]
-        y = start_y + (i-scroll_offset)*FONT_SIZE
-        if i == selected_index:
-            draw_rounded_rect(screen, (255,230,200), (10, y-2, 180, FONT_SIZE+4), radius=6)
-        color = (0,0,0) if i != selected_index else (200,30,30)
+        pygame.draw.line(background, (c, c, c), (0, y), (SCREEN_WIDTH, y))
+    
+    draw_rounded_rect(background, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
+    draw_rounded_rect(background, (240,240,250), (210,20,250,250), radius=20, border=2)
+    return background
 
-        # Afficher la pokeball
+def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font, background):
+    screen.blit(background, (0, 0))
+    
+    start_y = 20
+    for i in range(scroll_offset, min(scroll_offset + max_visible, len(pokemon_list))):
+        pid, name, _, _, caught, is_shiny = pokemon_list[i]
+        y = start_y + (i - scroll_offset) * FONT_SIZE
+        
+        if i == selected_index:
+            draw_rounded_rect(screen, (255, 230, 200), (10, y - 2, 180, FONT_SIZE + 4), radius=6)
+        
+        color = (0, 0, 0) if i != selected_index else (200, 30, 30)
+
         if is_shiny and masterball_img:
             screen.blit(masterball_img, (15, y))
         elif caught and pokeball_img:
@@ -65,9 +74,8 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         display_name = name if caught else "???"
         draw_text(screen, f"{pid:03d} {display_name}", 15 + FONT_SIZE + 5, y, font, color)
         
-    draw_rounded_rect(screen, (240,240,250), (210,20,250,250), radius=20, border=2)
     if current_sprite:
-        rect = current_sprite.get_rect(center=(335,145))
+        rect = current_sprite.get_rect(center=(335, 145))
         screen.blit(current_sprite, rect)
 
 def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=True, is_shiny=False):

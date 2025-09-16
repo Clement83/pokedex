@@ -46,10 +46,8 @@ def update_sprite(game_state):
         game_state.sprite_cache[cache_key] = final_sprite
 
 def render(game_state):
-    game_state.screen.fill((255, 255, 255))
-    
     if game_state.state == "list":
-        draw_list_view(game_state.screen, game_state.pokemon_list, game_state.selected_index, game_state.scroll_offset, game_state.max_visible_items, game_state.current_sprite, game_state.font)
+        draw_list_view(game_state.screen, game_state.pokemon_list, game_state.selected_index, game_state.scroll_offset, game_state.max_visible_items, game_state.current_sprite, game_state.font, game_state.list_view_background)
     elif game_state.state == "detail" and game_state.current_pokemon_data:
         is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][4]
         is_shiny = game_state.pokemon_list[game_state.selected_index][5]
