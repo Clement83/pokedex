@@ -63,6 +63,10 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
     start_size = 120
     end_size = 40
     glow_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA) # Create glow_surf once
+
+    # Initialize scaled_pokemon_sprite for optimized scaling
+    scaled_pokemon_sprite = None
+
     for t in range(duration):
         progress = t / duration
         x = int(pokemon_start[0] + (pokemon_end[0] - pokemon_start[0]) * progress)
@@ -82,11 +86,15 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
         if pokeball_sprite:
             rect = pokeball_sprite.get_rect(center=pokeball_pos)
             screen.blit(pokeball_sprite, rect)
-        # Pokémon animé
-        if pokemon_sprite and t % 5 == 0:  # Réduire la fréquence de mise à jour pour économiser des ressources
-            scaled = pygame.transform.scale(pokemon_sprite, (size, size))
-            rect = scaled.get_rect(center=(x, y))
-            screen.blit(scaled, rect)
+        # Pokémon animé - Optimized scaling
+        if pokemon_sprite:
+            # Only scale every 5 frames
+            if t % 5 == 0:
+                scaled_pokemon_sprite = pygame.transform.scale(pokemon_sprite, (size, size))
+
+            if scaled_pokemon_sprite: # Ensure it's not None
+                rect = scaled_pokemon_sprite.get_rect(center=(x, y))
+                screen.blit(scaled_pokemon_sprite, rect)
         pygame.display.flip()
         clock.tick(60)
 
