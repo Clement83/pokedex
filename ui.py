@@ -106,7 +106,7 @@ def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=
     draw_text(screen, " / ".join(types), SCREEN_WIDTH-20-120, 25, font, (30,120,30))
 
     if current_sprite:
-        sprite_big = pygame.transform.smoothscale(current_sprite, (150, 150))
+        sprite_big = pygame.transform.smoothscale(current_sprite, (128, 128))
         rect = sprite_big.get_rect(center=(150, 140))
         screen.blit(sprite_big, rect)
 

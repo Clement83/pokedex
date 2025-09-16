@@ -57,7 +57,7 @@ def handle_input(game_state):
                         pokemon_original_sprite = load_sprite(sprite_path)
 
                         if pokemon_original_sprite:
-                            pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (100, 100))
+                            pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
                             catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small)
                             if catch_result == "caught":
                                 stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)

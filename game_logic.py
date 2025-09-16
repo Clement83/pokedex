@@ -35,7 +35,7 @@ def update_sprite(game_state):
             processed_sprite = apply_shadow_effect(original_sprite.copy())
 
         if view_state == "list":
-            final_sprite = pygame.transform.scale(processed_sprite, (200, 200))
+            final_sprite = pygame.transform.scale(processed_sprite, (128, 128))
         elif view_state == "detail":
             final_sprite = processed_sprite
         else:

@@ -160,7 +160,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
             pygame.display.flip()
             clock.tick(60)
 
-            if abs(pos[0] - pokemon_pos[0]) < 40 and abs(pos[1] - pokemon_pos[1]) < 40:
+            if abs(pos[0] - pokemon_pos[0]) < 32 and abs(pos[1] - pokemon_pos[1]) < 32:
                 hit = True
                 break
         
