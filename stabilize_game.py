@@ -83,7 +83,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
             screen.blit(pokeball_sprite, rect)
         # Pokémon animé
         if pokemon_sprite:
-            scaled = pygame.transform.smoothscale(pokemon_sprite, (size, size))
+            scaled = pygame.transform.scale(pokemon_sprite, (size, size))
             rect = scaled.get_rect(center=(x, y))
             screen.blit(scaled, rect)
         pygame.display.flip()
