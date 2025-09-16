@@ -101,19 +101,25 @@ def handle_input(game_state):
     if game_state.state == "list":
         if game_state.key_down_pressed:
             elapsed = now - game_state.down_press_time
-            delay = game_state.scroll_delay if elapsed < game_state.scroll_accel_time else game_state.scroll_fast_delay
-            if elapsed > game_state.scroll_delay and now - game_state.last_scroll_time > delay:
-                if game_state.selected_index < len(game_state.pokemon_list) - 1:
-                    game_state.selected_index += 1
-                    if game_state.selected_index - game_state.scroll_offset >= game_state.max_visible_items:
-                        game_state.scroll_offset += 1
-                game_state.last_scroll_time = now
+            if elapsed > game_state.scroll_delay:
+                delay = game_state.scroll_delay if elapsed < game_state.scroll_accel_time else game_state.scroll_fast_delay
+                time_since_last_scroll = now - game_state.last_scroll_time
+                if time_since_last_scroll > delay:
+                    scroll_steps = time_since_last_scroll // delay
+                    if scroll_steps > 0:
+                        game_state.selected_index = min(len(game_state.pokemon_list) - 1, game_state.selected_index + scroll_steps)
+                        if game_state.selected_index - game_state.scroll_offset >= game_state.max_visible_items:
+                            game_state.scroll_offset = game_state.selected_index - game_state.max_visible_items + 1
+                        game_state.last_scroll_time = now
         elif game_state.key_up_pressed:
             elapsed = now - game_state.up_press_time
-            delay = game_state.scroll_delay if elapsed < game_state.scroll_accel_time else game_state.scroll_fast_delay
-            if elapsed > game_state.scroll_delay and now - game_state.last_scroll_time > delay:
-                if game_state.selected_index > 0:
-                    game_state.selected_index -= 1
-                    if game_state.selected_index < game_state.scroll_offset:
-                        game_state.scroll_offset -= 1
-                game_state.last_scroll_time = now
+            if elapsed > game_state.scroll_delay:
+                delay = game_state.scroll_delay if elapsed < game_state.scroll_accel_time else game_state.scroll_fast_delay
+                time_since_last_scroll = now - game_state.last_scroll_time
+                if time_since_last_scroll > delay:
+                    scroll_steps = time_since_last_scroll // delay
+                    if scroll_steps > 0:
+                        game_state.selected_index = max(0, game_state.selected_index - scroll_steps)
+                        if game_state.selected_index < game_state.scroll_offset:
+                            game_state.scroll_offset = game_state.selected_index
+                        game_state.last_scroll_time = now

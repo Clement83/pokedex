@@ -44,3 +44,4 @@ class GameState:
         self.scroll_fast_delay = 50
         self.scroll_accel_time = 2000
         self.last_scroll_time = 0
+        self.sprite_cache = {}

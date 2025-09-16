@@ -23,35 +23,36 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
     power = 0
     max_power = 400
     charging = False
-    pokeball_pos = [160, SCREEN_HEIGHT - 80] # Position de départ de la pokeball
+    pokeball_pos = [160, SCREEN_HEIGHT - 80]
 
-    # --- Logique de déplacement du Pokémon ---
-    # Zone de déplacement en pixels (partie droite de l'écran)
-    # On laisse une marge pour que le pokémon ne colle pas aux bords
     move_area = pygame.Rect(200, 40, SCREEN_WIDTH - 240, SCREEN_HEIGHT - 120)
-    
-    # Position et état du Pokémon en coordonnées pixel
     pokemon_pos = [float(move_area.centerx), float(move_area.centery)]
     pokemon_target_pos = list(pokemon_pos)
-    pokemon_state = "WAITING"  # "MOVING" ou "WAITING"
-    pokemon_wait_end_time = pygame.time.get_ticks() + random.randint(1000, 3000) # Attente initiale
+    pokemon_state = "WAITING"
+    pokemon_wait_end_time = pygame.time.get_ticks() + random.randint(1000, 3000)
     pokemon_speed = 40  # Pixels par seconde
+    charging_speed = 200 # Unités de puissance par seconde
 
     caught = False
     result = None
+    last_time = pygame.time.get_ticks()
 
     while not caught and attempts < max_attempts:
         charging = False
         power = 0
         launched = False
         while not launched:
+            now = pygame.time.get_ticks()
+            dt = (now - last_time) / 1000.0
+            last_time = now
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return "quit"
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RIGHT: # Diminue l'angle (tir plus bas et plus long)
+                    if event.key == pygame.K_RIGHT:
                         angle = max(min_angle, angle - 2)
-                    elif event.key == pygame.K_LEFT: # Augmente l'angle (tir plus haut et plus court)
+                    elif event.key == pygame.K_LEFT:
                         angle = min(max_angle, angle + 2)
                     elif event.key == pygame.K_UP:
                         charging = True
@@ -60,35 +61,27 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
                 elif event.type == pygame.KEYUP:
                     if event.key == pygame.K_UP and charging:
                         launched = True
-            if charging:
-                power = min(max_power, power + 2)
             
-            # Déplacement du Pokémon (logique de cible et d'attente)
-            now = pygame.time.get_ticks()
+            if charging:
+                power = min(max_power, power + charging_speed * dt)
+
             if pokemon_state == "WAITING":
                 if now >= pokemon_wait_end_time:
-                    # Fin de l'attente, choisir une nouvelle cible au hasard dans la zone
                     pokemon_target_pos = [
                         random.randint(move_area.left, move_area.right),
                         random.randint(move_area.top, move_area.bottom)
                     ]
                     pokemon_state = "MOVING"
-            
             elif pokemon_state == "MOVING":
-                dir_vec = [pokemon_target_pos[0] - pokemon_pos[0], 
-                           pokemon_target_pos[1] - pokemon_pos[1]]
+                dir_vec = [pokemon_target_pos[0] - pokemon_pos[0], pokemon_target_pos[1] - pokemon_pos[1]]
                 distance = math.hypot(dir_vec[0], dir_vec[1])
-                
-                # Vitesse pour ce frame (à 60 FPS)
-                move_dist = pokemon_speed / 60.0
+                move_dist = pokemon_speed * dt
 
                 if distance < move_dist:
-                    # Cible atteinte
                     pokemon_pos = list(pokemon_target_pos)
                     pokemon_state = "WAITING"
                     pokemon_wait_end_time = now + random.randint(3000, 10000)
                 else:
-                    # Déplacer le pokémon vers la cible
                     norm_vec = [dir_vec[0] / distance, dir_vec[1] / distance]
                     pokemon_pos[0] += norm_vec[0] * move_dist
                     pokemon_pos[1] += norm_vec[1] * move_dist
@@ -98,72 +91,84 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
             else:
                 screen.fill((180, 220, 255))
 
-            # Affichage du Pokémon
             if pokemon_sprite:
-                # On ne redimensionne plus le pokémon, il garde une taille fixe
                 rect = pokemon_sprite.get_rect(center=(int(pokemon_pos[0]), int(pokemon_pos[1])))
                 screen.blit(pokemon_sprite, rect)
-            # Affichage de la pokeball
             if pokeball_sprite:
                 rect = pokeball_sprite.get_rect(center=pokeball_pos)
                 screen.blit(pokeball_sprite, rect)
-            # Visualisation de la courbe de la pokeball
+
             rad = math.radians(angle)
             preview_power = power if charging else max_power // 5
             points = []
             pos = list(pokeball_pos)
-            dx = math.cos(rad) * preview_power / 60 * 3.5
-            dy = -math.sin(rad) * preview_power / 60 * 3.5
-            for t in range(60):
-                pos[0] += dx
-                pos[1] += dy
-                pos[1] += 0.5 * t / 60 * preview_power / 20
+            # La preview est calculée pour une durée fixe (1s) pour la cohérence
+            preview_duration = 1.0
+            vx = math.cos(rad) * preview_power * 3.5 / preview_duration
+            vy = -math.sin(rad) * preview_power * 3.5 / preview_duration
+            gravity = 0.5 * preview_power * 2.0 / preview_duration
+
+            for t_step in range(60):
+                t = t_step / 60.0 * preview_duration
+                pos[0] = pokeball_pos[0] + vx * t
+                pos[1] = pokeball_pos[1] + vy * t + 0.5 * gravity * t * t
                 points.append((int(pos[0]), int(pos[1])))
+
             if len(points) > 1:
-                pygame.draw.lines(screen, (255,0,0), False, points, 2)
-            # UI - Affichage des essais restants avec des pokeballs
+                pygame.draw.lines(screen, (255, 0, 0), False, points, 2)
+
             if pokeball_sprite:
                 remaining_attempts = max_attempts - attempts
                 pokeball_width = pokeball_sprite.get_width()
                 for i in range(remaining_attempts):
                     screen.blit(pokeball_sprite, (10 + i * (pokeball_width + 5), 10))
+            
             pygame.display.flip()
             clock.tick(60)
+
         # Animation du lancer
-        steps = 60
+        throw_duration = 1.0  # secondes
+        throw_timer = 0.0
         pos = list(pokeball_pos)
         rad = math.radians(angle)
-        dx = math.cos(rad) * power / steps * 3.5
-        dy = -math.sin(rad) * power / steps * 3.5
+        vx = math.cos(rad) * power * 3.5 / throw_duration
+        vy = -math.sin(rad) * power * 3.5 / throw_duration
+        gravity = 0.5 * power * 2.0 / throw_duration
         hit = False
-        for t in range(steps):
-            pos[0] += dx
-            pos[1] += dy
-            # Simule une parabole simple
-            pos[1] += 0.5 * t / steps * power / 20
+
+        while throw_timer < throw_duration:
+            now = pygame.time.get_ticks()
+            dt = (now - last_time) / 1000.0
+            last_time = now
+            throw_timer += dt
+
+            pos[0] = pokeball_pos[0] + vx * throw_timer
+            pos[1] = pokeball_pos[1] + vy * throw_timer + 0.5 * gravity * throw_timer * throw_timer
+
             if background_image:
                 screen.blit(background_image, (0, 0))
             else:
                 screen.fill((180, 220, 255))
 
-            # Le pokémon reste à sa dernière position pendant le lancer
             if pokemon_sprite:
                 rect = pokemon_sprite.get_rect(center=(int(pokemon_pos[0]), int(pokemon_pos[1])))
                 screen.blit(pokemon_sprite, rect)
             if pokeball_sprite:
                 rect = pokeball_sprite.get_rect(center=(int(pos[0]), int(pos[1])))
                 screen.blit(pokeball_sprite, rect)
+            
             pygame.display.flip()
             clock.tick(60)
-            # Détection de collision
-            # On utilise la position en pixels du pokémon
+
             if abs(pos[0] - pokemon_pos[0]) < 40 and abs(pos[1] - pokemon_pos[1]) < 40:
                 hit = True
                 break
+        
         attempts += 1
         if hit:
             caught = True
             result = "caught"
         else:
             result = "miss"
+            
     return result
