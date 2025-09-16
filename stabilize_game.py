@@ -150,7 +150,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
             if event.type == pygame.QUIT:
                 return "quit"
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_n:
                     cursor_rect = pygame.Rect(bar_cursor_x, SCREEN_HEIGHT - 30, 5, 20)
                     if cursor_rect.colliderect(green_zone_rect):
                         timing_hits += 1
@@ -161,7 +161,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
                         if lives == 0:
                             draw_lose_animation(screen, pokeball_sprite)
                             return "failed"
-                if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_m:
                     return "back"
 
         bar_cursor_x += bar_cursor_speed

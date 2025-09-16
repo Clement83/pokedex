@@ -109,7 +109,7 @@ while running:
                     # Ajuster le scroll_offset pour garder l'élément visible
                     if selected_index - scroll_offset >= max_visible_items:
                         scroll_offset = selected_index - max_visible_items + 1
-                elif event.key == pygame.K_RETURN:
+                elif event.key == pygame.K_n:
                     pid = pokemon_list[selected_index][0]
                     current_pokemon_data = get_pokemon_data(conn, pid)
                     if current_pokemon_data:
@@ -162,7 +162,7 @@ while running:
                                 running = False
                 elif event.key == pygame.K_ESCAPE:
                     running = False
-            elif state == "detail" and event.key == pygame.K_ESCAPE:
+            elif state == "detail" and event.key == pygame.K_m:
                 state = "list"
                 current_sprite = None
 
