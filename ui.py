@@ -1,10 +1,11 @@
 import pygame
 import math
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
-from sprites import load_pokeball_sprites
+from sprites import load_pokeball_sprites, load_masterball_sprite
 
 # Charger les sprites de la pokeball
 pokeball_img, pokeball_grayscale_img = load_pokeball_sprites(FONT_SIZE)
+masterball_img = load_masterball_sprite(FONT_SIZE)
 
 def draw_text(surface, text, x, y, font, color=(0,0,0)):
     img = font.render(text, True, color)
@@ -54,11 +55,12 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         color = (0,0,0) if i != selected_index else (200,30,30)
 
         # Afficher la pokeball
-        if pokeball_img and pokeball_grayscale_img:
-            if caught:
-                screen.blit(pokeball_img, (15, y))
-            else:
-                screen.blit(pokeball_grayscale_img, (15, y))
+        if is_shiny and masterball_img:
+            screen.blit(masterball_img, (15, y))
+        elif caught and pokeball_img:
+            screen.blit(pokeball_img, (15, y))
+        elif pokeball_grayscale_img:
+            screen.blit(pokeball_grayscale_img, (15, y))
 
         display_name = name if caught else "???"
         draw_text(screen, f"{pid:03d} {display_name}", 15 + FONT_SIZE + 5, y, font, color)
@@ -68,7 +70,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         rect = current_sprite.get_rect(center=(335,145))
         screen.blit(current_sprite, rect)
 
-def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=True):
+def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=True, is_shiny=False):
     small_font = pygame.font.SysFont("Arial", FONT_SIZE - 2)
     # Fond dégradé vertical
     for y in range(SCREEN_HEIGHT):
@@ -82,7 +84,17 @@ def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=
     name_fr = current_pokemon_data.get("name", {}).get("fr", "???") if caught else "???"
     pid = current_pokemon_data.get("pokedex_id", "?")
     types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])] if caught else ["?"]
-    draw_text(screen, f"{pid:03d} - {name_fr}", 20, 25, font, (30,30,120))
+    
+    icon_x = 20
+    text_x = icon_x + FONT_SIZE + 5
+    if is_shiny and masterball_img:
+        screen.blit(masterball_img, (icon_x, 25))
+    elif caught and pokeball_img:
+        screen.blit(pokeball_img, (icon_x, 25))
+    else:
+        screen.blit(pokeball_grayscale_img, (icon_x, 25))
+
+    draw_text(screen, f"{pid:03d} - {name_fr}", text_x, 25, font, (30,30,120))
     draw_text(screen, " / ".join(types), SCREEN_WIDTH-20-120, 25, font, (30,120,30))
 
     if current_sprite:

@@ -32,6 +32,16 @@ def load_pokeball_sprites(size):
     except pygame.error:
         return None, None
 
+def load_masterball_sprite(size):
+    BASE_DIR = Path.cwd()
+    MASTERBALL_PATH = BASE_DIR / "app" / "data" / "assets" / "masterball.png"
+    try:
+        masterball_img = pygame.image.load(MASTERBALL_PATH)
+        masterball_img = pygame.transform.scale(masterball_img, (size, size))
+        return masterball_img
+    except pygame.error:
+        return None
+
 def apply_shadow_effect(image):
     """Applies a shadow effect to an image, turning it into a black silhouette."""
     if image is None:

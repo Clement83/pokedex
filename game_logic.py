@@ -34,7 +34,8 @@ def render(game_state):
         draw_list_view(game_state.screen, game_state.pokemon_list, game_state.selected_index, game_state.scroll_offset, game_state.max_visible_items, game_state.current_sprite, game_state.font)
     elif game_state.state == "detail" and game_state.current_pokemon_data:
         is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][4]
-        draw_detail_view(game_state.screen, game_state.current_pokemon_data, game_state.current_sprite, game_state.font, is_pokemon_caught)
+        is_shiny = game_state.pokemon_list[game_state.selected_index][5]
+        draw_detail_view(game_state.screen, game_state.current_pokemon_data, game_state.current_sprite, game_state.font, is_pokemon_caught, is_shiny)
 
     pygame.display.flip()
 
