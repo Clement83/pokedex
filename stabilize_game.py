@@ -73,12 +73,8 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
         y = int(pokemon_start[1] + (pokemon_end[1] - pokemon_start[1]) * progress)
         size = int(start_size + (end_size - start_size) * progress)
         screen.fill((200, 220, 255))
-        # Glow effect (simplified)
-        glow_surf.fill((0, 0, 0, 0)) # Clear the glow surface each frame
-        glow_val = 10 # Fixed glow thickness
-        alpha_val = max(30, 180 - glow_val*8) # Calculate alpha for fixed glow
-        pygame.draw.line(glow_surf, (0,255,255,alpha_val), pokeball_pos, [x, y], glow_val)
-        screen.blit(glow_surf, (0,0))
+        # Glow effect (degraded - single thick line directly on screen)
+        pygame.draw.line(screen, (0,255,255), pokeball_pos, [x, y], 10)
         pulse = 8 + int(4 * math.sin(t/6.0))
         pygame.draw.line(screen, (0,255,255), pokeball_pos, [x, y], pulse)
         pygame.draw.line(screen, (255,255,255), pokeball_pos, [x, y], 2)
