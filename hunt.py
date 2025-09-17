@@ -2,7 +2,7 @@ import pygame
 import random
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS, STABILIZE_CATCH_RATE_THRESHOLD
-from db import get_pokemon_data, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked, get_pokemon_list
+from db import get_pokemon_data, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked, get_pokemon_list, get_user_preference, set_user_preference
 import catch_game
 import stabilize_game
 from sprites import load_sprite
@@ -36,6 +36,13 @@ def run(screen, font, game_state): # Added game_state parameter
     selected_row = 0
     selected_col = 0
 
+    # Load last selected region from preferences
+    last_region = get_user_preference(game_state.conn, "last_selected_region")
+    if last_region and last_region in region_names:
+        last_region_index = region_names.index(last_region)
+        selected_row = last_region_index // GRID_COLS
+        selected_col = last_region_index % GRID_COLS
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -62,6 +69,8 @@ def run(screen, font, game_state): # Added game_state parameter
                         if is_locked:
                             continue # Stay on the current screen, do not proceed with hunt logic
                         else:
+                            # Save the last selected region
+                            set_user_preference(game_state.conn, "last_selected_region", selected_region_name)
                             # Get all pokemon in the selected region
                             available_pokemon_in_region = [p for p in game_state.pokemon_list if p[0] >= region_data["min_id"] and p[0] < region_data["max_id"]]
                             
