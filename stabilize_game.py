@@ -33,7 +33,7 @@ def draw_victory_animation(screen, pokeball_sprite):
 def draw_lose_animation(screen, pokeball_sprite):
     original_size = pokeball_sprite.get_size()
     start_time = pygame.time.get_ticks()
-    duration = 1000  # 1 seconde
+    duration = 1000
 
     while True:
         elapsed = pygame.time.get_ticks() - start_time
@@ -54,17 +54,16 @@ def draw_lose_animation(screen, pokeball_sprite):
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
-def intro_animation(screen, pokeball_sprite, pokemon_sprite):
+def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
     clock = pygame.time.Clock()
-    pokeball_pos = [SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 - 100]  # pokeball en haut à gauche
-    pokemon_start = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80]         # Pokémon en bas au centre
+    pokeball_pos = [SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 - 100]
+    pokemon_start = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80]
     pokemon_end = pokeball_pos
-    duration = 90  # frames (~1.5s)
+    duration = 90
     start_size = 120
     end_size = 40
-    glow_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA) # Create glow_surf once
+    glow_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 
-    # Initialize scaled_pokemon_sprite for optimized scaling
     scaled_pokemon_sprite = None
 
     for t in range(duration):
@@ -72,29 +71,33 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
         x = int(pokemon_start[0] + (pokemon_end[0] - pokemon_start[0]) * progress)
         y = int(pokemon_start[1] + (pokemon_end[1] - pokemon_start[1]) * progress)
         size = int(start_size + (end_size - start_size) * progress)
-        screen.fill((200, 220, 255))
-        # Glow effect (degraded - single thick line directly on screen)
+        
+        # Draw background and dresseur sprite
+        if background_image:
+            screen.blit(background_image, (0, 0))
+        else:
+            screen.fill((200, 220, 255)) # Fallback to default background
+
+        if dresseur_front_sprite:
+            screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10)) # Bottom-left corner
+
         pygame.draw.line(screen, (0,255,255), pokeball_pos, [x, y], 10)
         pulse = 8 + int(4 * math.sin(t/6.0))
         pygame.draw.line(screen, (0,255,255), pokeball_pos, [x, y], pulse)
         pygame.draw.line(screen, (255,255,255), pokeball_pos, [x, y], 2)
-        # Pokeball
         if pokeball_sprite:
             rect = pokeball_sprite.get_rect(center=pokeball_pos)
             screen.blit(pokeball_sprite, rect)
-        # Pokémon animé - Optimized scaling
         if pokemon_sprite:
-            # Only scale every 5 frames
             if t % 5 == 0:
                 scaled_pokemon_sprite = pygame.transform.scale(pokemon_sprite, (size, size))
 
-            if scaled_pokemon_sprite: # Ensure it's not None
+            if scaled_pokemon_sprite:
                 rect = scaled_pokemon_sprite.get_rect(center=(x, y))
                 screen.blit(scaled_pokemon_sprite, rect)
         pygame.display.flip()
         clock.tick(60)
 
-    # Descente de la pokeball au centre avec rebonds
     start_pos = pokeball_pos
     end_pos = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2]
     bounce_height = 60
@@ -103,43 +106,53 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
     for b in range(bounce_count):
         for t in range(bounce_frames):
             progress = t / bounce_frames
-            # Mouvement vertical avec rebond
             x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
-            # Animation rebond : parabole
             y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress - bounce_height * math.sin(math.pi * progress))
-            screen.fill((200, 220, 255))
+            
+            # Draw background and dresseur sprite
+            if background_image:
+                screen.blit(background_image, (0, 0))
+            else:
+                screen.fill((200, 220, 255)) # Fallback to default background
+
+            if dresseur_front_sprite:
+                screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10)) # Bottom-left corner
+
             if pokeball_sprite:
                 rect = pokeball_sprite.get_rect(center=(x, y))
                 screen.blit(pokeball_sprite, rect)
             pygame.display.flip()
             clock.tick(60)
-        # Réduire la hauteur du rebond à chaque fois
         start_pos = [x, end_pos[1]]
         bounce_height = bounce_height // 2
-    # Dernière descente douce
     for t in range(30):
         progress = t / 30
         x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
         y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress)
-        screen.fill((200, 220, 255))
+        
+        # Draw background and dresseur sprite
+        if background_image:
+            screen.blit(background_image, (0, 0))
+        else:
+            screen.fill((200, 220, 255)) # Fallback to default background
+
+        if dresseur_front_sprite:
+            screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10)) # Bottom-left corner
+
         if pokeball_sprite:
             rect = pokeball_sprite.get_rect(center=(x, y))
             screen.blit(pokeball_sprite, rect)
         pygame.display.flip()
         clock.tick(60)
-    # Les étapes 2 et 3 sont maintenant gérées par le déplacement du Pokémon vers la pokeball
 
-def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite=None):
-    """Joue seulement l'animation d'introduction puis retourne 'caught' directement."""
-    if pokemon_sprite:
-        intro_animation(screen, pokeball_sprite, pokemon_sprite)
-    # Afficher brièvement l'animation de victoire
+def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
+    intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
     draw_victory_animation(screen, pokeball_sprite)
     return "caught"
 
-def run(screen, font, pokeball_sprite, pokemon_sprite=None):
+def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
     if pokemon_sprite:
-        intro_animation(screen, pokeball_sprite, pokemon_sprite)
+        intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
     timing_hits = 0
     lives = 3
     bar_cursor_x = 0
@@ -181,7 +194,6 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
         if bar_cursor_x > SCREEN_WIDTH or bar_cursor_x < 0:
             bar_cursor_speed = -bar_cursor_speed
         
-        # Shake animation
         time_in_seconds = pygame.time.get_ticks() / 1000.0
         shake_angle = math.sin(time_in_seconds * shake_speed) * shake_magnitude
         shake_offset_x = math.cos(time_in_seconds * shake_speed * 0.7) * shake_magnitude
@@ -191,7 +203,13 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
             draw_victory_animation(screen, pokeball_sprite)
             return "caught"
 
-        screen.fill((200, 220, 255))
+        if background_image:
+            screen.blit(background_image, (0, 0))
+        else:
+            screen.fill((200, 220, 255)) # Fallback to default background
+
+        if dresseur_front_sprite:
+            screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10)) # Bottom-left corner
         if pokeball_sprite:
             rotated_pokeball = pygame.transform.rotate(pokeball_sprite, shake_angle)
             pokeball_rect = rotated_pokeball.get_rect(center=(SCREEN_WIDTH // 2 + shake_offset_x, SCREEN_HEIGHT // 2 + shake_offset_y))
@@ -203,12 +221,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite=None):
         cursor_rect = pygame.Rect(bar_cursor_x, SCREEN_HEIGHT - 30, 5, 20)
         pygame.draw.rect(screen, (255, 0, 0), cursor_rect)
 
-        font.render("Appuyez sur Espace dans la zone verte !", True, (0,0,0))
-        screen.blit(font.render("Appuyez sur Espace dans la zone verte !", True, (0,0,0)), (20, 20))
-        font.render(f"Succès: {timing_hits} / 3", True, (0,0,0))
-        screen.blit(font.render(f"Succès: {timing_hits} / 3", True, (0,0,0)), (20, 50))
-        font.render(f"Vies: {lives}", True, (0,0,0))
-        screen.blit(font.render(f"Vies: {lives}", True, (0,0,0)), (20, 80))
+        
 
         pygame.display.flip()
         clock.tick(60)

@@ -3,11 +3,17 @@ import math
 import random
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT
+from sprites import load_sprite
 
-def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite):
+def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state):
     if pokeball_sprite:
         pokeball_sprite = pygame.transform.scale(pokeball_sprite, (20, 20))
     BASE_DIR = Path.cwd()
+    
+    dresseur_front_sprite = None
+    if game_state.dresseur:
+        dresseur_front_path = BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "face.png"
+        dresseur_front_sprite = load_sprite(dresseur_front_path)
     stadium_path = BASE_DIR / "app" / "data" / "assets" / region_name.lower() / "stadium"
     background_image = None
     if stadium_path.is_dir():
@@ -197,4 +203,4 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         else:
             result = "miss"
             
-    return result
+    return result, background_image, dresseur_front_sprite

@@ -89,7 +89,7 @@ def run(screen, font, game_state): # Added game_state parameter
                                     dresseur_sprite_path = game_state.BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "dos.png"
                                     dresseur_back_sprite = load_sprite(dresseur_sprite_path)
                                     pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
-                                    catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite)
+                                    catch_result, background_image, dresseur_front_sprite = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite, game_state)
                                     if catch_result == "caught":
                                         # Get pokemon data to check catch_rate
                                         pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
@@ -97,9 +97,9 @@ def run(screen, font, game_state): # Added game_state parameter
                                         
                                         # Skip stabilize mini-game if catch_rate is high enough, but keep intro animation
                                         if catch_rate > STABILIZE_CATCH_RATE_THRESHOLD:
-                                            stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
+                                            stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
                                         else:
-                                            stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
+                                            stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
                                         
                                         if stabilize_result == "caught":
                                             update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)
