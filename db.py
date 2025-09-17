@@ -74,3 +74,26 @@ def mew_is_unlocked(conn):
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM pokemon WHERE caught = 1 AND pokedex_id < 151")
     return cur.fetchone()[0] >= 150
+
+def create_user_preferences_table():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_preferences (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def get_user_preference(conn, key):
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM user_preferences WHERE key=?", (key,))
+    row = cur.fetchone()
+    return row[0] if row else None
+
+def set_user_preference(conn, key, value):
+    cur = conn.cursor()
+    cur.execute("INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()

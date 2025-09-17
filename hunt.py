@@ -24,8 +24,7 @@ def run(screen, font, game_state): # Added game_state parameter
     # Load region images once
     region_images_loaded = {}
     for region_name, data in REGIONS.items():
-        image_filename = data["image"]
-        image_path = game_state.BASE_DIR / "app" / "data" / "assets" / image_filename
+        image_path = game_state.BASE_DIR / "app" / "data" / "assets" / region_name.lower() / "icon.png"
         loaded_image = load_sprite(image_path)
         if loaded_image:
             region_images_loaded[region_name] = pygame.transform.scale(loaded_image, (IMAGE_SIZE, IMAGE_SIZE))
@@ -78,8 +77,10 @@ def run(screen, font, game_state): # Added game_state parameter
                                 pokemon_original_sprite = load_sprite(sprite_path)
 
                                 if pokemon_original_sprite:
+                                    dresseur_sprite_path = game_state.BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "dos.png"
+                                    dresseur_back_sprite = load_sprite(dresseur_sprite_path)
                                     pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
-                                    catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small)
+                                    catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite)
                                     if catch_result == "caught":
                                         # Get pokemon data to check catch_rate
                                         pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)

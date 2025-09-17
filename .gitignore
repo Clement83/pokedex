@@ -36,3 +36,5 @@ htmlcov/
 # Others
 *.tmp
 *.orig
+/tmp/
+tmp/

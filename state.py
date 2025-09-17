@@ -28,7 +28,8 @@ class GameState:
         self.pokeball_img_large, _ = load_pokeball_sprites(50)
 
         self.selected_index = 0
-        self.state = "list"  # list, detail
+        self.dresseur = None
+        self.state = "init"  # init, dresseur_selection, list, detail
         self.scroll_offset = 0
         self.max_visible_items = (SCREEN_HEIGHT - 40) // FONT_SIZE
         self.current_pokemon_data = None

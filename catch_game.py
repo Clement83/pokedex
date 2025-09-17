@@ -4,15 +4,32 @@ import random
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT
 
-def run(screen, font, pokemon_sprite, pokeball_sprite):
+def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite):
+    if pokeball_sprite:
+        pokeball_sprite = pygame.transform.scale(pokeball_sprite, (20, 20))
     BASE_DIR = Path.cwd()
-    BG_PATH = BASE_DIR / "app" / "data" / "assets" / "out.png"
-    try:
-        background_image = pygame.image.load(BG_PATH).convert()
-        background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-    except pygame.error:
-        print(f"Erreur de chargement de l'image de fond: {BG_PATH}")
-        background_image = None
+    stadium_path = BASE_DIR / "app" / "data" / "assets" / region_name.lower() / "stadium"
+    background_image = None
+    if stadium_path.is_dir():
+        stadium_images = list(stadium_path.glob('*.png')) # Or other image extensions
+        if stadium_images:
+            random_bg_path = random.choice(stadium_images)
+            try:
+                background_image = pygame.image.load(random_bg_path).convert()
+                background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            except pygame.error:
+                print(f"Erreur de chargement de l'image de fond: {random_bg_path}")
+                background_image = None
+
+    if background_image is None:
+        # Fallback to a solid color or default image if no stadium image is found
+        BG_PATH = BASE_DIR / "app" / "data" / "assets" / "out.png"
+        try:
+            background_image = pygame.image.load(BG_PATH).convert()
+            background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        except pygame.error:
+            print(f"Erreur de chargement de l'image de fond par défaut: {BG_PATH}")
+            background_image = None
 
     clock = pygame.time.Clock()
     attempts = 0
@@ -23,7 +40,10 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
     power = 0
     max_power = 400
     charging = False
-    pokeball_pos = [160, SCREEN_HEIGHT - 80]
+    if dresseur_sprite:
+        pokeball_pos = [10 + dresseur_sprite.get_width(), SCREEN_HEIGHT - dresseur_sprite.get_height() // 2 - 10]
+    else:
+        pokeball_pos = [160, SCREEN_HEIGHT - 80]
 
     move_area = pygame.Rect(200, 40, SCREEN_WIDTH - 240, SCREEN_HEIGHT - 120)
     pokemon_pos = [float(move_area.centerx), float(move_area.centery)]
@@ -91,6 +111,9 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
             else:
                 screen.fill((180, 220, 255))
 
+            if dresseur_sprite:
+                screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
+
             if pokemon_sprite:
                 rect = pokemon_sprite.get_rect(center=(int(pokemon_pos[0]), int(pokemon_pos[1])))
                 screen.blit(pokemon_sprite, rect)
@@ -149,6 +172,9 @@ def run(screen, font, pokemon_sprite, pokeball_sprite):
                 screen.blit(background_image, (0, 0))
             else:
                 screen.fill((180, 220, 255))
+
+            if dresseur_sprite:
+                screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
 
             if pokemon_sprite:
                 rect = pokemon_sprite.get_rect(center=(int(pokemon_pos[0]), int(pokemon_pos[1])))

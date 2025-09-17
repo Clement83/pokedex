@@ -33,13 +33,13 @@ GENERATION_THRESHOLDS = {
 
 # Define regions with their Pokedex ID ranges
 REGIONS = {
-    "Kanto": {"min_id": 1, "max_id": 152, "image": "kanto.png"}, # Gen 1: 1-151 (max_id is exclusive)
-    "Johto": {"min_id": 152, "max_id": 252, "image": "johto.png"}, # Gen 2: 152-251
-    "Hoenn": {"min_id": 252, "max_id": 387, "image": "hoenn.png"}, # Gen 3: 252-386
-    "Sinnoh": {"min_id": 387, "max_id": 494, "image": "sinnoh.png"}, # Gen 4: 387-493
-    "Unova": {"min_id": 494, "max_id": 650, "image": "unova.png"}, # Gen 5: 494-649
-    "Kalos": {"min_id": 650, "max_id": 722, "image": "kalos.png"}, # Gen 6: 650-721
-    "Alola": {"min_id": 722, "max_id": 810, "image": "alola.png"}, # Gen 7: 722-809
-    "Galar": {"min_id": 810, "max_id": 906, "image": "galar.png"}, # Gen 8: 810-905
-    "Paldea": {"min_id": 906, "max_id": 1026, "image": "paldea.png"}, # Gen 9: 906-1025
+    "Kanto": {"min_id": 1, "max_id": 152}, # Gen 1: 1-151 (max_id is exclusive)
+    "Johto": {"min_id": 152, "max_id": 252}, # Gen 2: 152-251
+    "Hoenn": {"min_id": 252, "max_id": 387}, # Gen 3: 252-386
+    "Sinnoh": {"min_id": 387, "max_id": 494}, # Gen 4: 387-493
+    "Unova": {"min_id": 494, "max_id": 650}, # Gen 5: 494-649
+    "Kalos": {"min_id": 650, "max_id": 722}, # Gen 6: 650-721
+    "Alola": {"min_id": 722, "max_id": 810}, # Gen 7: 722-809
+    "Galar": {"min_id": 810, "max_id": 906}, # Gen 8: 810-905
+    "Paldea": {"min_id": 906, "max_id": 1026}, # Gen 9: 906-1025
 }
