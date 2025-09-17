@@ -129,6 +129,14 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite):
         clock.tick(60)
     # Les étapes 2 et 3 sont maintenant gérées par le déplacement du Pokémon vers la pokeball
 
+def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite=None):
+    """Joue seulement l'animation d'introduction puis retourne 'caught' directement."""
+    if pokemon_sprite:
+        intro_animation(screen, pokeball_sprite, pokemon_sprite)
+    # Afficher brièvement l'animation de victoire
+    draw_victory_animation(screen, pokeball_sprite)
+    return "caught"
+
 def run(screen, font, pokeball_sprite, pokemon_sprite=None):
     if pokemon_sprite:
         intro_animation(screen, pokeball_sprite, pokemon_sprite)

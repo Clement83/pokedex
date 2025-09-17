@@ -1,7 +1,7 @@
 import pygame
 import random
 from pathlib import Path
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS, STABILIZE_CATCH_RATE_THRESHOLD
 from db import get_pokemon_data, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked, get_pokemon_list
 import catch_game
 import stabilize_game
@@ -61,8 +61,6 @@ def run(screen, font, game_state): # Added game_state parameter
                         is_locked = region_data["min_id"] >= game_state.current_max_pokedex_id
                         
                         if is_locked:
-                            game_state.message = f"Region {selected_region_name} is locked!"
-                            game_state.message_timer = pygame.time.get_ticks() + 2000 # Display for 2 seconds
                             continue # Stay on the current screen, do not proceed with hunt logic
                         else:
                             # Get all pokemon in the selected region
@@ -83,7 +81,16 @@ def run(screen, font, game_state): # Added game_state parameter
                                     pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
                                     catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small)
                                     if catch_result == "caught":
-                                        stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
+                                        # Get pokemon data to check catch_rate
+                                        pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
+                                        catch_rate = pokemon_data.get('catch_rate', 0) if pokemon_data else 0
+                                        
+                                        # Skip stabilize mini-game if catch_rate is high enough, but keep intro animation
+                                        if catch_rate > STABILIZE_CATCH_RATE_THRESHOLD:
+                                            stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
+                                        else:
+                                            stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
+                                        
                                         if stabilize_result == "caught":
                                             update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)
                                             caught_count = get_caught_pokemon_count(game_state.conn)
@@ -157,15 +164,25 @@ def run(screen, font, game_state): # Added game_state parameter
             if row == selected_row and col == selected_col:
                 pygame.draw.rect(screen, (255, 255, 0), (x_pos, y_pos, IMAGE_SIZE, IMAGE_SIZE), 3) # Yellow border
 
-        # Display selected region name at the bottom
+        # Display selected region name and status at the bottom
         selected_region_index = selected_row * GRID_COLS + selected_col
         if selected_region_index < num_regions:
             current_region_name = region_names[selected_region_index]
-            region_name_text = font.render(current_region_name, True, (255, 255, 255))
-            region_name_rect = region_name_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 20)) # 20 pixels from bottom
+            region_data = REGIONS[current_region_name]
+            is_locked = region_data["min_id"] >= game_state.current_max_pokedex_id
+            
+            if is_locked:
+                display_text = f"{current_region_name} - LOCKED"
+                text_color = (255, 100, 100)  # Light red for locked regions
+            else:
+                display_text = current_region_name
+                text_color = (255, 255, 255)  # White for unlocked regions
+            
+            region_name_text = font.render(display_text, True, text_color)
+            region_name_rect = region_name_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 10)) # 10 pixels from bottom
             screen.blit(region_name_text, region_name_rect)
 
-        # Display messages if any
+        # Display messages if any (keeping for other potential messages)
         if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
             message_text = font.render(game_state.message, True, (255, 0, 0)) # Red color for messages
             message_rect = message_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))

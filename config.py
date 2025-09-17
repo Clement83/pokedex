@@ -14,6 +14,9 @@ STATS_AREA_HEIGHT = 60
 # Shiny rate (e.g., 0.01 for 1% chance, 0.5 for 50% chance for testing)
 SHINY_RATE = 0.01
 
+# Stabilize game configuration
+STABILIZE_CATCH_RATE_THRESHOLD = 60  # Skip stabilize mini-game if catch_rate > this value
+
 GENERATION_THRESHOLDS = {
     1: {'max_id': 9, 'unlock_count': 0}, # starters
     2: {'max_id': 149, 'unlock_count': 1}, # Gen 1 (excluding Mew and Mewtwo)
