@@ -85,48 +85,57 @@ def run(screen, font, game_state): # Added game_state parameter
                                 sprite_path = game_state.BASE_DIR / "app" / "data" / "sprites" / sprite_file
                                 pokemon_original_sprite = load_sprite(sprite_path)
 
-                                if pokemon_original_sprite:
-                                    dresseur_sprite_path = game_state.BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "dos.png"
-                                    dresseur_back_sprite = load_sprite(dresseur_sprite_path)
-                                    pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
-                                    catch_result, background_image, dresseur_front_sprite = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite, game_state)
-                                    if catch_result == "caught":
-                                        # Get pokemon data to check catch_rate
-                                        pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
-                                        catch_rate = pokemon_data.get('catch_rate', 0) if pokemon_data else 0
-                                        
-                                        # Skip stabilize mini-game if catch_rate is high enough, but keep intro animation
-                                        if catch_rate > STABILIZE_CATCH_RATE_THRESHOLD:
-                                            stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
-                                        else:
-                                            stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
-                                        
-                                        if stabilize_result == "caught":
-                                            update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)
-                                            caught_count = get_caught_pokemon_count(game_state.conn)
-                                            mew_unlocked_now = mew_is_unlocked(game_state.conn)
+                                if not pokemon_original_sprite:
+                                    continue
 
-                                            for gen, data in GENERATION_THRESHOLDS.items():
-                                                if caught_count >= data['unlock_count'] and game_state.current_max_pokedex_id < data['max_id']:
-                                                    game_state.current_max_pokedex_id = data['max_id']
-                                                    print(f"Génération {gen} déverrouillée !")
+                                dresseur_sprite_path = game_state.BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "dos.png"
+                                dresseur_back_sprite = load_sprite(dresseur_sprite_path)
+                                pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
+                                catch_game_output = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite, game_state)
+
+                                if not isinstance(catch_game_output, tuple):
+                                    if catch_game_output == "quit":
+                                        return "quit"
+                                    continue # For "back" or other cases, just redraw hunt screen
+
+                                catch_result, background_image, dresseur_front_sprite = catch_game_output
+                                if catch_result == "caught":
+                                    # Get pokemon data to check catch_rate
+                                    pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
+                                    catch_rate = pokemon_data.get('catch_rate', 0) if pokemon_data else 0
+                                    
+                                    # Skip stabilize mini-game if catch_rate is high enough, but keep intro animation
+                                    if catch_rate > STABILIZE_CATCH_RATE_THRESHOLD:
+                                        stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
+                                    else:
+                                        stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
+                                    
+                                    if stabilize_result == "caught":
+                                        update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)
+                                        caught_count = get_caught_pokemon_count(game_state.conn)
+                                        mew_unlocked_now = mew_is_unlocked(game_state.conn)
+
+                                        for gen, data in GENERATION_THRESHOLDS.items():
+                                            if caught_count >= data['unlock_count'] and game_state.current_max_pokedex_id < data['max_id']:
+                                                game_state.current_max_pokedex_id = data['max_id']
+                                                print(f"Génération {gen - 1} déverrouillée !")
+                                                break
+                                        
+                                        game_state.pokemon_list = get_pokemon_list(game_state.conn, game_state.current_max_pokedex_id, include_mew=mew_unlocked_now)
+                                        game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
+                                        if game_state.current_pokemon_data:
+                                            for i, p in enumerate(game_state.pokemon_list):
+                                                if p[0] == pokedex_id:
+                                                    game_state.selected_index = i
+                                                    if game_state.selected_index < game_state.scroll_offset or game_state.selected_index >= game_state.scroll_offset + game_state.max_visible_items:
+                                                        game_state.scroll_offset = max(0, game_state.selected_index - game_state.max_visible_items // 2)
                                                     break
-                                            
-                                            game_state.pokemon_list = get_pokemon_list(game_state.conn, game_state.current_max_pokedex_id, include_mew=mew_unlocked_now)
-                                            game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
-                                            if game_state.current_pokemon_data:
-                                                for i, p in enumerate(game_state.pokemon_list):
-                                                    if p[0] == pokedex_id:
-                                                        game_state.selected_index = i
-                                                        if game_state.selected_index < game_state.scroll_offset or game_state.selected_index >= game_state.scroll_offset + game_state.max_visible_items:
-                                                            game_state.scroll_offset = max(0, game_state.selected_index - game_state.max_visible_items // 2)
-                                                        break
-                                                game_state.state = "detail"
-                                            return "detail" # Return to main loop to show detail view
+                                            game_state.state = "detail"
+                                        return "detail" # Return to main loop to show detail view
                                     elif stabilize_result == "failed":
                                         game_state.state = "list"
-                                elif catch_result == "quit":
-                                    return "quit" # Propagate quit from catch_game
+                                    # Other stabilize results ("quit", "back") will just fall through, redrawing the hunt screen.
+
                             # --- End of moved logic ---
                             else: # This else corresponds to 'if available_pokemon_in_region:'
                                 # No pokemon in this region, display a message

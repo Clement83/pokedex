@@ -56,7 +56,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
     
     start_y = 20 # Revert list to original position
     for i in range(scroll_offset, min(scroll_offset + max_visible, len(pokemon_list))):
-        pid, name, _, _, caught, is_shiny = pokemon_list[i]
+        pid, name, _, _, caught, is_shiny, _ = pokemon_list[i]
         y = start_y + (i - scroll_offset) * FONT_SIZE
         
         if i == selected_index:
@@ -77,6 +77,29 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
     if current_sprite:
         rect = current_sprite.get_rect(center=(335, 145 - LIST_VERTICAL_OFFSET))
         screen.blit(current_sprite, rect)
+
+    # Affiche le compteur de captures pour le Pokémon sélectionné
+    if selected_index < len(pokemon_list):
+        # Le 7ème élément (index 6) est times_caught
+        times_caught = pokemon_list[selected_index][6]
+
+        if times_caught > 0:
+            # Formate le nombre : 2 chiffres, avec un maximum de 99
+            display_count = min(times_caught, 99)
+            count_text = f"{display_count:02d}"
+
+            # Crée une petite bulle pour le compteur
+            bubble_font = pygame.font.SysFont("Arial", 16, bold=True)
+            text_surface = bubble_font.render(count_text, True, (255, 255, 255))
+            
+            # Positionne la bulle en haut à gauche du panneau de droite
+            bubble_pos_x = 215
+            bubble_pos_y = 10
+            bubble_rect = pygame.Rect(bubble_pos_x, bubble_pos_y, text_surface.get_width() + 12, text_surface.get_height() + 6)
+            
+            draw_rounded_rect(screen, (0, 0, 0, 180), bubble_rect, radius=10) # Fond noir semi-transparent
+            text_rect = text_surface.get_rect(center=bubble_rect.center)
+            screen.blit(text_surface, text_rect)
 
 def draw_general_stats(screen, game_state, stats_font):
     # Placeholder for now, will implement after db.py changes

@@ -1,8 +1,8 @@
 import pygame
 import random
 from pathlib import Path
-from db import get_pokemon_data, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked, get_pokemon_list
-from config import SHINY_RATE, GENERATION_THRESHOLDS
+from db import get_pokemon_data, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked, get_pokemon_list
+from config import REGIONS
 import catch_game
 import stabilize_game
 from sprites import load_sprite
@@ -14,6 +14,27 @@ def handle_input(game_state):
         if event.type == pygame.QUIT:
             game_state.running = False
         elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and game_state.state in ["list", "detail"]:
+                hunt_result = hunt.run(game_state.screen, game_state.font, game_state)
+
+                # Après être revenu de la chasse, mettez à jour les statistiques générales.
+                game_state.caught_count = get_caught_pokemon_count(game_state.conn)
+                game_state.shiny_count = get_shiny_pokemon_count(game_state.conn)
+                unlocked_regions = 0
+                for region_name, data in REGIONS.items():
+                    if data["min_id"] < game_state.current_max_pokedex_id:
+                        unlocked_regions += 1
+                game_state.unlocked_regions_count = unlocked_regions
+
+                if hunt_result == "quit":
+                    game_state.running = False
+                elif hunt_result == "main_menu": # Go back to list view
+                    game_state.state = "list"
+                elif hunt_result == "detail":
+                    game_state.state = "detail"
+                # Skip other key handling for this frame as hunt has its own loop
+                continue
+
             if game_state.state == "list":
                 if event.key == pygame.K_DOWN:
                     game_state.key_down_pressed = True
@@ -43,14 +64,6 @@ def handle_input(game_state):
                     pid = game_state.pokemon_list[game_state.selected_index][0]
                     game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
                     if game_state.current_pokemon_data:
-                        game_state.state = "detail"
-                elif event.key == pygame.K_SPACE:
-                    hunt_result = hunt.run(game_state.screen, game_state.font, game_state)
-                    if hunt_result == "quit":
-                        game_state.running = False
-                    elif hunt_result == "main_menu": # Assuming "main_menu" means return to list view
-                        game_state.state = "list"
-                    elif hunt_result == "detail":
                         game_state.state = "detail"
                 elif event.key == pygame.K_ESCAPE:
                     game_state.running = False
