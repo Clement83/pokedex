@@ -46,6 +46,23 @@ def update_sprite(game_state):
         # Mettre le sprite final en cache
         game_state.sprite_cache[cache_key] = final_sprite
 
+def update_animations(game_state):
+    # Evolution text scrolling animation
+    if game_state.state == "detail" and game_state.evolution_scroll_active:
+        if game_state.evolution_text_surface:
+            now = pygame.time.get_ticks()
+            if now - game_state.evolution_scroll_timer > 20: # Control scroll speed
+                game_state.evolution_scroll_timer = now
+                
+                text_width = game_state.evolution_text_surface.get_width()
+                box_width = 350
+                scroll_limit = text_width - box_width
+
+                if scroll_limit > 0:
+                    game_state.evolution_text_scroll_x += game_state.evolution_scroll_direction
+                    if game_state.evolution_text_scroll_x >= scroll_limit or game_state.evolution_text_scroll_x <= 0:
+                        game_state.evolution_scroll_direction *= -1
+
 def render(game_state):
     stats_font = pygame.font.SysFont("Arial", STATS_FONT_SIZE, bold=True) # Define stats_font here
     if game_state.state == "list":
@@ -54,7 +71,7 @@ def render(game_state):
     elif game_state.state == "detail" and game_state.current_pokemon_data:
         is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][4]
         is_shiny = game_state.pokemon_list[game_state.selected_index][5]
-        draw_detail_view(game_state.screen, game_state.current_pokemon_data, game_state.current_sprite, game_state.font, is_pokemon_caught, is_shiny)
+        draw_detail_view(game_state)
 
     pygame.display.flip()
 

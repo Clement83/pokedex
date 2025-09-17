@@ -92,7 +92,14 @@ def draw_general_stats(screen, game_state, stats_font):
     draw_text(screen, f"Regions Unlocked: {unlocked_regions_count}/{len(REGIONS)}", 220, stats_y_start + (STATS_FONT_SIZE + 2) * 2, stats_font, (255, 255, 255))
 
 
-def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=True, is_shiny=False):
+def draw_detail_view(game_state):
+    screen = game_state.screen
+    current_pokemon_data = game_state.current_pokemon_data
+    current_sprite = game_state.current_sprite
+    font = game_state.font
+    caught = game_state.pokemon_list[game_state.selected_index][4]
+    is_shiny = game_state.pokemon_list[game_state.selected_index][5]
+
     small_font = pygame.font.SysFont("Arial", FONT_SIZE - 2)
     # Fond dégradé vertical
     for y in range(SCREEN_HEIGHT):
@@ -117,7 +124,12 @@ def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=
         screen.blit(pokeball_grayscale_img, (icon_x, 25))
 
     draw_text(screen, f"{pid:03d} - {name_fr}", text_x, 25, font, (30,30,120))
-    draw_text(screen, " / ".join(types), SCREEN_WIDTH-20-120, 25, font, (30,120,30))
+    type_text = " / ".join(types)
+    type_img = font.render(type_text, True, (30,120,30))
+    type_rect = type_img.get_rect()
+    type_rect.right = SCREEN_WIDTH - 30
+    type_rect.top = 25
+    screen.blit(type_img, type_rect)
 
     if current_sprite:
         sprite_big = pygame.transform.smoothscale(current_sprite, (128, 128))
@@ -140,7 +152,50 @@ def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=
     draw_rounded_rect(screen, (255,255,255), (30,230,370,40), radius=10, border=2)
     draw_text(screen, "Talents: " + ", ".join(talents), 40, 240, font)
 
+    # Evolution text scrolling logic
     evol = (current_pokemon_data.get("evolution", {}) or {}).get("next") or []
-    evol_text = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict)) if caught else "?"
+    evol_text_content = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict)) if caught else "" # Empty string if no evolutions, to handle "Aucune" separately
+    
     draw_rounded_rect(screen, (255,255,255), (30,277,370,40), radius=10, border=2)
-    draw_text(screen, "Évolutions: " + (evol_text if evol_text else "Aucune"), 40, 290, font)
+    
+    # Render static prefix
+    prefix_text = "Évolutions: "
+    prefix_img = font.render(prefix_text, True, (0,0,0))
+    prefix_width = prefix_img.get_width()
+    screen.blit(prefix_img, (40, 290))
+
+    # Determine the content to scroll
+    if not evol_text_content: # If no evolutions
+        scrollable_text = "Aucune"
+        game_state.evolution_scroll_active = False
+        game_state.evolution_text_surface = None
+        draw_text(screen, scrollable_text, 40 + prefix_width, 290, font)
+    else:
+        scrollable_text = evol_text_content
+        scrollable_img = font.render(scrollable_text, True, (0,0,0))
+        scrollable_text_width = scrollable_img.get_width()
+        
+        # Available width for scrolling text
+        # Box starts at 30, width 370. Text starts at 40.
+        # So available space is (30 + 370 - 10) - (40 + prefix_width) = 390 - 40 - prefix_width = 350 - prefix_width
+        available_scroll_width = 350 - prefix_width 
+
+        if scrollable_text_width > available_scroll_width:
+            game_state.evolution_scroll_active = True
+            if game_state.evolution_text_surface is None or game_state.evolution_text_surface.get_width() != scrollable_text_width:
+                game_state.evolution_text_surface = scrollable_img
+                game_state.evolution_text_scroll_x = 0 # Reset scroll on new text
+
+            # Create a clipping area for the scrollable part
+            clip_rect = pygame.Rect(40 + prefix_width, 290, available_scroll_width, font.get_height())
+            screen.set_clip(clip_rect)
+
+            # Blit the scrolling text
+            screen.blit(game_state.evolution_text_surface, (40 + prefix_width - game_state.evolution_text_scroll_x, 290))
+
+            # Reset clipping area
+            screen.set_clip(None)
+        else:
+            game_state.evolution_scroll_active = False
+            game_state.evolution_text_surface = None
+            draw_text(screen, scrollable_text, 40 + prefix_width, 290, font)

@@ -58,3 +58,10 @@ class GameState:
         for region_name, data in REGIONS.items():
             if data["min_id"] < self.current_max_pokedex_id:
                 self.unlocked_regions_count += 1
+
+        # Evolution text scrolling
+        self.evolution_text_scroll_x = 0
+        self.evolution_text_surface = None
+        self.evolution_scroll_timer = 0
+        self.evolution_scroll_direction = 1
+        self.evolution_scroll_active = False

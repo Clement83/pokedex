@@ -1,6 +1,6 @@
 import pygame
 from state import GameState
-from game_logic import update_sprite, render
+from game_logic import update_sprite, render, update_animations
 import input_handler
 from db import add_caught_column, create_user_preferences_table, get_user_preference
 from ui import create_list_view_background
@@ -31,6 +31,7 @@ def main():
         elif game_state.state in ["list", "detail"]:
             input_handler.handle_input(game_state)
             update_sprite(game_state)
+            update_animations(game_state)
             render(game_state)
         
         elif game_state.state == "quit":

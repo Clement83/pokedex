@@ -54,9 +54,20 @@ def handle_input(game_state):
                         game_state.state = "detail"
                 elif event.key == pygame.K_ESCAPE:
                     game_state.running = False
-            elif game_state.state == "detail" and event.key == pygame.K_m:
-                game_state.state = "list"
-                game_state.current_sprite = None
+            elif game_state.state == "detail":
+                if event.key == pygame.K_m:
+                    game_state.state = "list"
+                    game_state.current_sprite = None
+                elif event.key == pygame.K_RIGHT:
+                    if game_state.selected_index < len(game_state.pokemon_list) - 1:
+                        game_state.selected_index += 1
+                        pid = game_state.pokemon_list[game_state.selected_index][0]
+                        game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
+                elif event.key == pygame.K_LEFT:
+                    if game_state.selected_index > 0:
+                        game_state.selected_index -= 1
+                        pid = game_state.pokemon_list[game_state.selected_index][0]
+                        game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
 
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_DOWN:
