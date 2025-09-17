@@ -1,7 +1,8 @@
 import pygame
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, GENERATION_THRESHOLDS
-from db import get_connection, get_pokemon_list, get_caught_pokemon_count, mew_is_unlocked
+from db import get_connection, get_pokemon_list, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, GENERATION_THRESHOLDS, REGIONS, STATS_AREA_HEIGHT
 from sprites import load_pokeball_sprites
 
 class GameState:
@@ -48,3 +49,11 @@ class GameState:
         self.list_view_background = None
         self.message = None
         self.message_timer = 0
+
+        # General stats
+        self.caught_count = get_caught_pokemon_count(self.conn)
+        self.shiny_count = get_shiny_pokemon_count(self.conn)
+        self.unlocked_regions_count = 0
+        for region_name, data in REGIONS.items():
+            if data["min_id"] < self.current_max_pokedex_id:
+                self.unlocked_regions_count += 1

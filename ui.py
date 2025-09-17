@@ -1,6 +1,6 @@
 import pygame
 import math
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, LIST_VERTICAL_OFFSET, STATS_AREA_HEIGHT, REGIONS, STATS_FONT_SIZE
 from sprites import load_pokeball_sprites, load_masterball_sprite
 
 # Charger les sprites de la pokeball
@@ -48,13 +48,13 @@ def create_list_view_background():
         pygame.draw.line(background, (c, c, c), (0, y), (SCREEN_WIDTH, y))
     
     draw_rounded_rect(background, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
-    draw_rounded_rect(background, (240,240,250), (210,20,250,250), radius=20, border=2)
+    draw_rounded_rect(background, (240,240,250), (210,5,250,250), radius=20, border=2) # Moved up to align with left frame
     return background
 
 def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font, background):
     screen.blit(background, (0, 0))
     
-    start_y = 20
+    start_y = 20 # Revert list to original position
     for i in range(scroll_offset, min(scroll_offset + max_visible, len(pokemon_list))):
         pid, name, _, _, caught, is_shiny = pokemon_list[i]
         y = start_y + (i - scroll_offset) * FONT_SIZE
@@ -75,8 +75,22 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         draw_text(screen, f"{pid:03d} {display_name}", 15 + FONT_SIZE + 5, y, font, color)
         
     if current_sprite:
-        rect = current_sprite.get_rect(center=(335, 145))
+        rect = current_sprite.get_rect(center=(335, 145 - LIST_VERTICAL_OFFSET))
         screen.blit(current_sprite, rect)
+
+def draw_general_stats(screen, game_state, stats_font):
+    # Placeholder for now, will implement after db.py changes
+    caught_count = game_state.caught_count if hasattr(game_state, 'caught_count') else 0
+    shiny_count = game_state.shiny_count if hasattr(game_state, 'shiny_count') else 0
+    unlocked_regions_count = game_state.unlocked_regions_count if hasattr(game_state, 'unlocked_regions_count') else 0
+    total_pokemon = len(game_state.pokemon_list) if hasattr(game_state, 'pokemon_list') else 0
+
+    stats_y_start = SCREEN_HEIGHT - STATS_AREA_HEIGHT + 5 # Start drawing stats from here
+
+    draw_text(screen, f"Caught: {caught_count}/{total_pokemon}", 220, stats_y_start, stats_font, (255, 255, 255))
+    draw_text(screen, f"Shiny: {shiny_count}", 220, stats_y_start + STATS_FONT_SIZE + 2, stats_font, (255, 255, 255))
+    draw_text(screen, f"Regions Unlocked: {unlocked_regions_count}/{len(REGIONS)}", 220, stats_y_start + (STATS_FONT_SIZE + 2) * 2, stats_font, (255, 255, 255))
+
 
 def draw_detail_view(screen, current_pokemon_data, current_sprite, font, caught=True, is_shiny=False):
     small_font = pygame.font.SysFont("Arial", FONT_SIZE - 2)

@@ -65,6 +65,11 @@ def get_caught_pokemon_count(conn):
     cur.execute("SELECT COUNT(*) FROM pokemon WHERE caught = 1")
     return cur.fetchone()[0]
 
+def get_shiny_pokemon_count(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM pokemon WHERE is_shiny = 1")
+    return cur.fetchone()[0]
+
 def mew_is_unlocked(conn):
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM pokemon WHERE caught = 1 AND pokedex_id < 151")

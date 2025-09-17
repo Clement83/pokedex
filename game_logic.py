@@ -1,7 +1,8 @@
 import pygame
 from pathlib import Path
 from sprites import load_sprite, apply_shadow_effect
-from ui import draw_list_view, draw_detail_view
+from ui import draw_list_view, draw_detail_view, draw_general_stats
+from config import STATS_FONT_SIZE
 
 def update_sprite(game_state):
     pokemon_id = game_state.pokemon_list[game_state.selected_index][0]
@@ -46,8 +47,10 @@ def update_sprite(game_state):
         game_state.sprite_cache[cache_key] = final_sprite
 
 def render(game_state):
+    stats_font = pygame.font.SysFont("Arial", STATS_FONT_SIZE, bold=True) # Define stats_font here
     if game_state.state == "list":
         draw_list_view(game_state.screen, game_state.pokemon_list, game_state.selected_index, game_state.scroll_offset, game_state.max_visible_items, game_state.current_sprite, game_state.font, game_state.list_view_background)
+        draw_general_stats(game_state.screen, game_state, stats_font) # Call draw_general_stats
     elif game_state.state == "detail" and game_state.current_pokemon_data:
         is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][4]
         is_shiny = game_state.pokemon_list[game_state.selected_index][5]

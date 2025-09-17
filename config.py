@@ -6,6 +6,11 @@ SPRITE_SIZE = 64
 FONT_SIZE = 16
 DB_PATH = "./pokedex.db"
 
+# UI adjustments for list screen
+STATS_FONT_SIZE = 12
+LIST_VERTICAL_OFFSET = 20
+STATS_AREA_HEIGHT = 60
+
 # Shiny rate (e.g., 0.01 for 1% chance, 0.5 for 50% chance for testing)
 SHINY_RATE = 0.01
 
