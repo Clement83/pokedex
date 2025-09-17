@@ -57,58 +57,66 @@ def run(screen, font, game_state): # Added game_state parameter
                         selected_region_name = region_names[selected_region_index]
                         region_data = REGIONS[selected_region_name]
                         
-                        # --- Moved Pokémon selection and catch game logic from input_handler.py ---
-                        # Filter uncaught pokemon based on selected region's max_id
-                        uncaught_pokemon = [p for p in game_state.pokemon_list if not p[4] and p[0] >= region_data["min_id"] and p[0] < region_data["max_id"]]
+                        # Check if region is locked
+                        is_locked = region_data["min_id"] >= game_state.current_max_pokedex_id
                         
-                        if uncaught_pokemon:
-                            target_pokemon = random.choice(uncaught_pokemon)
-                            pokedex_id = target_pokemon[0]
+                        if is_locked:
+                            game_state.message = f"Region {selected_region_name} is locked!"
+                            game_state.message_timer = pygame.time.get_ticks() + 2000 # Display for 2 seconds
+                            continue # Stay on the current screen, do not proceed with hunt logic
+                        else:
+                            # Get all pokemon in the selected region
+                            available_pokemon_in_region = [p for p in game_state.pokemon_list if p[0] >= region_data["min_id"] and p[0] < region_data["max_id"]]
                             
-                            is_shiny_encounter = (random.random() < SHINY_RATE)
+                            if available_pokemon_in_region:
+                                target_pokemon = random.choice(available_pokemon_in_region)
+                                pokedex_id = target_pokemon[0]
+                                
+                                is_shiny_encounter = (random.random() < SHINY_RATE)
 
-                            sprite_to_load = target_pokemon[3] if is_shiny_encounter else target_pokemon[2]
-                            sprite_file = Path(sprite_to_load).name
-                            sprite_path = game_state.BASE_DIR / "app" / "data" / "sprites" / sprite_file
-                            pokemon_original_sprite = load_sprite(sprite_path)
+                                sprite_to_load = target_pokemon[3] if is_shiny_encounter else target_pokemon[2]
+                                sprite_file = Path(sprite_to_load).name
+                                sprite_path = game_state.BASE_DIR / "app" / "data" / "sprites" / sprite_file
+                                pokemon_original_sprite = load_sprite(sprite_path)
 
-                            if pokemon_original_sprite:
-                                pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
-                                catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small)
-                                if catch_result == "caught":
-                                    stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
-                                    if stabilize_result == "caught":
-                                        update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)
-                                        caught_count = get_caught_pokemon_count(game_state.conn)
-                                        mew_unlocked_now = mew_is_unlocked(game_state.conn)
+                                if pokemon_original_sprite:
+                                    pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
+                                    catch_result = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small)
+                                    if catch_result == "caught":
+                                        stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game)
+                                        if stabilize_result == "caught":
+                                            update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)
+                                            caught_count = get_caught_pokemon_count(game_state.conn)
+                                            mew_unlocked_now = mew_is_unlocked(game_state.conn)
 
-                                        for gen, data in GENERATION_THRESHOLDS.items():
-                                            if caught_count >= data['unlock_count'] and game_state.current_max_pokedex_id < data['max_id']:
-                                                game_state.current_max_pokedex_id = data['max_id']
-                                                print(f"Génération {gen} déverrouillée !")
-                                                break
-                                        
-                                        game_state.pokemon_list = get_pokemon_list(game_state.conn, game_state.current_max_pokedex_id, include_mew=mew_unlocked_now)
-                                        game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
-                                        if game_state.current_pokemon_data:
-                                            for i, p in enumerate(game_state.pokemon_list):
-                                                if p[0] == pokedex_id:
-                                                    game_state.selected_index = i
-                                                    if game_state.selected_index < game_state.scroll_offset or game_state.selected_index >= game_state.scroll_offset + game_state.max_visible_items:
-                                                        game_state.scroll_offset = max(0, game_state.selected_index - game_state.max_visible_items // 2)
+                                            for gen, data in GENERATION_THRESHOLDS.items():
+                                                if caught_count >= data['unlock_count'] and game_state.current_max_pokedex_id < data['max_id']:
+                                                    game_state.current_max_pokedex_id = data['max_id']
+                                                    print(f"Génération {gen} déverrouillée !")
                                                     break
-                                            game_state.state = "detail"
-                                elif stabilize_result == "failed":
-                                    game_state.state = "list"
-                            elif catch_result == "quit":
-                                return "quit" # Propagate quit from catch_game
-                        # --- End of moved logic ---
-                        return "main_menu" # Return to main menu after hunt attempt
-                    else:
-                        # No uncaught pokemon in this region, maybe display a message
-                        print(f"No uncaught pokemon in {selected_region_name}!")
-                        # Optionally, stay on hunt screen or return to main menu
-                        return "main_menu"
+                                            
+                                            game_state.pokemon_list = get_pokemon_list(game_state.conn, game_state.current_max_pokedex_id, include_mew=mew_unlocked_now)
+                                            game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pokedex_id)
+                                            if game_state.current_pokemon_data:
+                                                for i, p in enumerate(game_state.pokemon_list):
+                                                    if p[0] == pokedex_id:
+                                                        game_state.selected_index = i
+                                                        if game_state.selected_index < game_state.scroll_offset or game_state.selected_index >= game_state.scroll_offset + game_state.max_visible_items:
+                                                            game_state.scroll_offset = max(0, game_state.selected_index - game_state.max_visible_items // 2)
+                                                        break
+                                                game_state.state = "detail"
+                                            return "detail" # Return to main loop to show detail view
+                                    elif stabilize_result == "failed":
+                                        game_state.state = "list"
+                                elif catch_result == "quit":
+                                    return "quit" # Propagate quit from catch_game
+                            # --- End of moved logic ---
+                            else: # This else corresponds to 'if available_pokemon_in_region:'
+                                # No pokemon in this region, display a message
+                                game_state.message = f"No pokemon in {selected_region_name}!"
+                                game_state.message_timer = pygame.time.get_ticks() + 2000 # Display for 2 seconds
+                                # Stay on the current screen
+                                # Do not return "main_menu" here.
 
 
                 elif event.key == pygame.K_m: # Allow escaping from hunt screen
@@ -156,6 +164,12 @@ def run(screen, font, game_state): # Added game_state parameter
             region_name_text = font.render(current_region_name, True, (255, 255, 255))
             region_name_rect = region_name_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 20)) # 20 pixels from bottom
             screen.blit(region_name_text, region_name_rect)
+
+        # Display messages if any
+        if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
+            message_text = font.render(game_state.message, True, (255, 0, 0)) # Red color for messages
+            message_rect = message_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+            screen.blit(message_text, message_rect)
 
         pygame.display.flip()
         pygame.time.Clock().tick(60)

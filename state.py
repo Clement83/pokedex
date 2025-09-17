@@ -46,3 +46,5 @@ class GameState:
         self.last_scroll_time = 0
         self.sprite_cache = {}
         self.list_view_background = None
+        self.message = None
+        self.message_timer = 0

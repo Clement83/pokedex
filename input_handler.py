@@ -50,6 +50,8 @@ def handle_input(game_state):
                         game_state.running = False
                     elif hunt_result == "main_menu": # Assuming "main_menu" means return to list view
                         game_state.state = "list"
+                    elif hunt_result == "detail":
+                        game_state.state = "detail"
                 elif event.key == pygame.K_ESCAPE:
                     game_state.running = False
             elif game_state.state == "detail" and event.key == pygame.K_m:
