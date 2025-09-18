@@ -1,13 +1,66 @@
 import pygame
 import random
 from pathlib import Path
+import subprocess
+import os
 from db import get_pokemon_data, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked, get_pokemon_list
-from config import REGIONS, KEY_MAPPINGS
+from config import REGIONS, KEY_MAPPINGS, SCREEN_WIDTH, SCREEN_HEIGHT
 import controls
 import catch_game
 import stabilize_game
 from sprites import load_sprite
 import hunt # Import the new hunt module
+
+def _run_git_pull(game_state):
+    """Executes git pull and displays feedback on the screen."""
+    screen = game_state.screen
+    font = game_state.font
+    project_path = game_state.BASE_DIR
+
+    def draw_message(message, color=(255, 255, 255)):
+        screen.fill((0, 0, 0)) # Black background
+        text_surface = font.render(message, True, color)
+        text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+        screen.blit(text_surface, text_rect)
+        pygame.display.flip()
+
+    draw_message("Mise à jour en cours via 'git pull'...")
+    pygame.time.wait(500)
+
+    try:
+        result = subprocess.run(
+            ['git', 'pull'],
+            cwd=str(project_path),
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding='utf-8'
+        )
+        
+        output = result.stdout
+        if "Already up to date." in output:
+            draw_message("Déjà à jour.")
+        else:
+            draw_message("Mise à jour terminée. Redémarrage requis.")
+        
+        print("--- 'git pull' réussi ! ---")
+        print(output)
+        pygame.time.wait(2000)
+
+    except FileNotFoundError:
+        draw_message("Erreur: 'git' non trouvé.", color=(255, 100, 100))
+        print("Erreur : La commande 'git' n'a pas été trouvée.")
+        pygame.time.wait(3000)
+    except subprocess.CalledProcessError as e:
+        error_message = e.stderr.strip().split('\n')[-1]
+        draw_message(f"Échec: {error_message}", color=(255, 100, 100))
+        print(f"--- Erreur lors de 'git pull' (code: {e.returncode}) ---")
+        print(e.stderr)
+        pygame.time.wait(3000)
+    except Exception as e:
+        draw_message(f"Erreur inattendue.", color=(255, 100, 100))
+        print(f"Une erreur inattendue est survenue : {e}")
+        pygame.time.wait(3000)
 
 def handle_input(game_state):
     controls.process_joystick_input()
@@ -17,6 +70,12 @@ def handle_input(game_state):
         if event.type == pygame.QUIT:
             game_state.running = False
         elif event.type == pygame.KEYDOWN:
+            if event.key in KEY_MAPPINGS["GIT_PULL"]:
+                _run_git_pull(game_state)
+                # After pulling, the app should ideally be restarted.
+                # For now, we just continue the loop.
+                continue
+
             if event.key in KEY_MAPPINGS["ACTION"] and game_state.state in ["list", "detail"]:
                 hunt_result = hunt.run(game_state.screen, game_state.font, game_state)
 

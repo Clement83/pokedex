@@ -38,3 +38,4 @@ htmlcov/
 *.orig
 /tmp/
 tmp/
+*.db

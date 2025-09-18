@@ -60,7 +60,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
     pokeball_pos = [SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 - 100]
     pokemon_start = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80]
     pokemon_end = pokeball_pos
-    duration = 90
+    duration = 60
     start_size = 120
     end_size = 40
     glow_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -103,7 +103,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
     end_pos = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2]
     bounce_height = 60
     bounce_count = 2
-    bounce_frames = 60
+    bounce_frames = 40
     for b in range(bounce_count):
         for t in range(bounce_frames):
             progress = t / bounce_frames
@@ -126,7 +126,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
             clock.tick(60)
         start_pos = [x, end_pos[1]]
         bounce_height = bounce_height // 2
-    for t in range(30):
+    for t in range(20):
         progress = t / 30
         x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
         y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress)
@@ -157,11 +157,11 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
     timing_hits = 0
     lives = 3
     bar_cursor_x = 0
-    bar_cursor_speed = 3
+    bar_cursor_speed = 5
     
     shake_angle = 0
     shake_offset = 0
-    shake_speed = 3
+    shake_speed = 5
     shake_magnitude = 5
 
     def new_green_zone():
