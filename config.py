@@ -1,3 +1,5 @@
+import pygame
+
 # Configuration écran & BDD
 SCREEN_WIDTH = 480
 SCREEN_HEIGHT = 320
@@ -14,12 +16,55 @@ STATS_AREA_HEIGHT = 60
 # Shiny rate (e.g., 0.01 for 1% chance, 0.5 for 50% chance for testing)
 SHINY_RATE = 0.01
 
+# Key Mappings for Odroid Go Advance compatibility
+KEY_MAPPINGS = {
+    "UP": [pygame.K_UP],
+    "DOWN": [pygame.K_DOWN],
+    "LEFT": [pygame.K_LEFT],
+    "RIGHT": [pygame.K_RIGHT],
+    "CONFIRM": [pygame.K_n, pygame.K_RETURN], # Validate button (A on Odroid)
+    "CANCEL": [pygame.K_m],                   # Cancel button (B on Odroid)
+    "ACTION": [pygame.K_SPACE],               # Action button (e.g., Start on Odroid)
+    "QUIT": [pygame.K_ESCAPE],                # Quit/Menu button
+}
+
+# Joystick Mappings for Odroid Go Advance / Standard Gamepads
+# NOTE: Button numbers might need to be adjusted for your specific controller.
+# Common mappings: 0=A, 1=B, 8=Select, 9=Start
+JOYSTICK_MAPPINGS = {
+    "BUTTONS": {
+        0: "CONFIRM",  # A button
+        1: "CANCEL",   # B button
+        # 2: "X_ACTION", # X button (not used yet)
+        # 3: "Y_ACTION", # Y button (not used yet)
+        8: "ACTION",   # Select button
+        9: "QUIT",     # Start button
+    },
+    "HATS": {
+        # Hat 0 is usually the D-Pad
+        # Value is (x, y), where x is -1 (left), 0, 1 (right) and y is -1 (down), 0, 1 (up)
+        # This mapping is handled by the controls.py logic directly
+    },
+    "AXES": {
+        # (axis_index, direction): "ACTION"
+        # direction is -1 for up/left, 1 for down/right
+        # Axis 0: Left Stick L/R
+        # Axis 1: Left Stick U/D
+        (1, -1): "UP",
+        (1, 1): "DOWN",
+        (0, -1): "LEFT",
+        (0, 1): "RIGHT",
+    },
+    "AXIS_DEADZONE": 0.7 # Use a higher deadzone to avoid drift
+}
+
+
 # Stabilize game configuration
 STABILIZE_CATCH_RATE_THRESHOLD = 60  # Skip stabilize mini-game if catch_rate > this value
 
 GENERATION_THRESHOLDS = {
     1: {'max_id': 9, 'unlock_count': 0}, # starters
-    2: {'max_id': 149, 'unlock_count': 1}, # Gen 1 (excluding Mew and Mewtwo)
+    2: {'max_id': 150, 'unlock_count': 1}, # Gen 1 (excluding Mew)
     4: {'max_id': 251, 'unlock_count': 50}, # Unlock Gen 2 after catching 100 Pokémon
     5: {'max_id': 386, 'unlock_count': 100}, # Unlock Gen 3 after catching 150 Pokémon
     6: {'max_id': 493, 'unlock_count': 150}, # Unlock Gen 4 after catching 250 Pokémon

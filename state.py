@@ -8,6 +8,13 @@ from sprites import load_pokeball_sprites
 class GameState:
     def __init__(self):
         pygame.init()
+        pygame.joystick.init() # Initialize joystick module
+        self.joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+        if self.joysticks:
+            print(f"Found {len(self.joysticks)} joystick(s). Using the first one.")
+            # self.joysticks[0].init() # init() is deprecated and called automatically
+        else:
+            print("No joysticks found.")
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Pokédex Pi Zero")
         self.clock = pygame.time.Clock()

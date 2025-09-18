@@ -1,8 +1,9 @@
 import pygame
 import random
 from pathlib import Path
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS, STABILIZE_CATCH_RATE_THRESHOLD
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS, STABILIZE_CATCH_RATE_THRESHOLD, KEY_MAPPINGS
 from db import get_pokemon_data, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked, get_pokemon_list, get_user_preference, set_user_preference
+import controls
 import catch_game
 import stabilize_game
 from sprites import load_sprite
@@ -45,19 +46,23 @@ def run(screen, font, game_state): # Added game_state parameter
 
     running = True
     while running:
+        controls.process_joystick_input()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+                if event.key in KEY_MAPPINGS["UP"]:
                     selected_row = (selected_row - 1) % GRID_ROWS
-                elif event.key == pygame.K_DOWN:
+                elif event.key in KEY_MAPPINGS["DOWN"]:
                     selected_row = (selected_row + 1) % GRID_ROWS
-                elif event.key == pygame.K_LEFT:
+                elif event.key in KEY_MAPPINGS["LEFT"]:
                     selected_col = (selected_col - 1) % GRID_COLS
-                elif event.key == pygame.K_RIGHT:
+                elif event.key in KEY_MAPPINGS["RIGHT"]:
                     selected_col = (selected_col + 1) % GRID_COLS
-                elif event.key == pygame.K_n:
+                elif event.key in KEY_MAPPINGS["QUIT"]:
+                    return "quit"
+                elif event.key in KEY_MAPPINGS["CONFIRM"]:
                     selected_region_index = selected_row * GRID_COLS + selected_col
                     if selected_region_index < num_regions: # Ensure a valid region is selected
                         selected_region_name = region_names[selected_region_index]
@@ -145,7 +150,7 @@ def run(screen, font, game_state): # Added game_state parameter
                                 # Do not return "main_menu" here.
 
 
-                elif event.key == pygame.K_m: # Allow escaping from hunt screen
+                elif event.key in KEY_MAPPINGS["CANCEL"]: # Allow escaping from hunt screen
                     return "main_menu" # Go back to list view
 
         screen.fill((0, 0, 0)) # Black background

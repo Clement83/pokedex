@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 from db import set_user_preference
 from sprites import load_sprite
-from config import SCREEN_WIDTH, SCREEN_HEIGHT
+import controls
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 
 def draw_arrow(screen, direction, position, size=20, color=(255, 255, 255)):
     if direction == 'left':
@@ -43,21 +44,25 @@ def run(screen, font, game_state):
 
     running = True
     while running:
+        controls.process_joystick_input()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RIGHT: # Swapped
+                if event.key in KEY_MAPPINGS["LEFT"]:
                     selected_dresseur_index = (selected_dresseur_index - 1) % len(dresseur_sprites)
-                elif event.key == pygame.K_LEFT: # Swapped
+                elif event.key in KEY_MAPPINGS["RIGHT"]:
                     selected_dresseur_index = (selected_dresseur_index + 1) % len(dresseur_sprites)
-                elif event.key == pygame.K_UP or event.key == pygame.K_DOWN:
+                elif event.key in KEY_MAPPINGS["UP"] or event.key in KEY_MAPPINGS["DOWN"]:
                     show_face = not show_face
-                elif event.key == pygame.K_n:
+                elif event.key in KEY_MAPPINGS["CONFIRM"]:
                     selected_dresseur_name = dresseur_sprites[selected_dresseur_index]["name"]
                     set_user_preference(game_state.conn, "dresseur", selected_dresseur_name)
                     game_state.dresseur = selected_dresseur_name
                     return "list"
+                elif event.key in KEY_MAPPINGS["QUIT"]:
+                    return "quit"
 
         if background_image:
             screen.blit(background_image, (0, 0))

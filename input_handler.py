@@ -2,19 +2,22 @@ import pygame
 import random
 from pathlib import Path
 from db import get_pokemon_data, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked, get_pokemon_list
-from config import REGIONS
+from config import REGIONS, KEY_MAPPINGS
+import controls
 import catch_game
 import stabilize_game
 from sprites import load_sprite
 import hunt # Import the new hunt module
 
 def handle_input(game_state):
+    controls.process_joystick_input()
+
     now = pygame.time.get_ticks()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_state.running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and game_state.state in ["list", "detail"]:
+            if event.key in KEY_MAPPINGS["ACTION"] and game_state.state in ["list", "detail"]:
                 hunt_result = hunt.run(game_state.screen, game_state.font, game_state)
 
                 # Après être revenu de la chasse, mettez à jour les statistiques générales.
@@ -36,7 +39,7 @@ def handle_input(game_state):
                 continue
 
             if game_state.state == "list":
-                if event.key == pygame.K_DOWN:
+                if event.key in KEY_MAPPINGS["DOWN"]:
                     game_state.key_down_pressed = True
                     game_state.down_press_time = now
                     game_state.last_scroll_time = now
@@ -44,7 +47,7 @@ def handle_input(game_state):
                         game_state.selected_index += 1
                         if game_state.selected_index - game_state.scroll_offset >= game_state.max_visible_items:
                             game_state.scroll_offset += 1
-                elif event.key == pygame.K_UP:
+                elif event.key in KEY_MAPPINGS["UP"]:
                     game_state.key_up_pressed = True
                     game_state.up_press_time = now
                     game_state.last_scroll_time = now
@@ -52,40 +55,40 @@ def handle_input(game_state):
                         game_state.selected_index -= 1
                         if game_state.selected_index < game_state.scroll_offset:
                             game_state.scroll_offset -= 1
-                elif event.key == pygame.K_LEFT:
+                elif event.key in KEY_MAPPINGS["LEFT"]:
                     game_state.selected_index = max(0, game_state.selected_index - 50)
                     if game_state.selected_index < game_state.scroll_offset:
                         game_state.scroll_offset = game_state.selected_index
-                elif event.key == pygame.K_RIGHT:
+                elif event.key in KEY_MAPPINGS["RIGHT"]:
                     game_state.selected_index = min(len(game_state.pokemon_list) - 1, game_state.selected_index + 50)
                     if game_state.selected_index - game_state.scroll_offset >= game_state.max_visible_items:
                         game_state.scroll_offset = game_state.selected_index - game_state.max_visible_items + 1
-                elif event.key == pygame.K_n:
+                elif event.key in KEY_MAPPINGS["CONFIRM"]:
                     pid = game_state.pokemon_list[game_state.selected_index][0]
                     game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
                     if game_state.current_pokemon_data:
                         game_state.state = "detail"
-                elif event.key == pygame.K_ESCAPE:
+                elif event.key in KEY_MAPPINGS["QUIT"]:
                     game_state.running = False
             elif game_state.state == "detail":
-                if event.key == pygame.K_m:
+                if event.key in KEY_MAPPINGS["CANCEL"]:
                     game_state.state = "list"
                     game_state.current_sprite = None
-                elif event.key == pygame.K_RIGHT:
+                elif event.key in KEY_MAPPINGS["RIGHT"]:
                     if game_state.selected_index < len(game_state.pokemon_list) - 1:
                         game_state.selected_index += 1
                         pid = game_state.pokemon_list[game_state.selected_index][0]
                         game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
-                elif event.key == pygame.K_LEFT:
+                elif event.key in KEY_MAPPINGS["LEFT"]:
                     if game_state.selected_index > 0:
                         game_state.selected_index -= 1
                         pid = game_state.pokemon_list[game_state.selected_index][0]
                         game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
 
         elif event.type == pygame.KEYUP:
-            if event.key == pygame.K_DOWN:
+            if event.key in KEY_MAPPINGS["DOWN"]:
                 game_state.key_down_pressed = False
-            elif event.key == pygame.K_UP:
+            elif event.key in KEY_MAPPINGS["UP"]:
                 game_state.key_up_pressed = False
 
     if game_state.state == "list":

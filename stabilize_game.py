@@ -1,7 +1,8 @@
 import pygame
 import random
 import math
-from config import SCREEN_WIDTH, SCREEN_HEIGHT
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
+import controls
 
 def draw_victory_animation(screen, pokeball_sprite):
     stars = []
@@ -172,11 +173,13 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
     clock = pygame.time.Clock()
     
     while True:
+        controls.process_joystick_input()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_n:
+                if event.key in KEY_MAPPINGS["CONFIRM"]:
                     cursor_rect = pygame.Rect(bar_cursor_x, SCREEN_HEIGHT - 30, 5, 20)
                     if cursor_rect.colliderect(green_zone_rect):
                         timing_hits += 1
@@ -187,7 +190,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
                         if lives == 0:
                             draw_lose_animation(screen, pokeball_sprite)
                             return "failed"
-                if event.key == pygame.K_m:
+                if event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
                     return "back"
 
         bar_cursor_x += bar_cursor_speed

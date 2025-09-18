@@ -2,7 +2,8 @@ import pygame
 import math
 import random
 from pathlib import Path
-from config import SCREEN_WIDTH, SCREEN_HEIGHT
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
+import controls
 from sprites import load_sprite
 
 def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state):
@@ -69,6 +70,8 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         launched = False
         while not launched:
             now = pygame.time.get_ticks()
+            controls.process_joystick_input()
+
             dt = (now - last_time) / 1000.0
             last_time = now
 
@@ -76,16 +79,16 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                 if event.type == pygame.QUIT:
                     return "quit"
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RIGHT:
+                    if event.key in KEY_MAPPINGS["RIGHT"]:
                         angle = max(min_angle, angle - 2)
-                    elif event.key == pygame.K_LEFT:
+                    elif event.key in KEY_MAPPINGS["LEFT"]:
                         angle = min(max_angle, angle + 2)
-                    elif event.key == pygame.K_UP:
+                    elif event.key in KEY_MAPPINGS["CONFIRM"]:
                         charging = True
-                    elif event.key == pygame.K_ESCAPE:
+                    elif event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
                         return "back"
                 elif event.type == pygame.KEYUP:
-                    if event.key == pygame.K_UP and charging:
+                    if event.key in KEY_MAPPINGS["CONFIRM"] and charging:
                         launched = True
             
             if charging:
