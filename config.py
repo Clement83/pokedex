@@ -35,10 +35,12 @@ JOYSTICK_MAPPINGS = {
     "BUTTONS": {
         0: "CONFIRM",  # A button
         1: "CANCEL",   # B button
-        # 2: "X_ACTION", # X button (not used yet)
+        2: "ACTION", # X button (not used yet)
         # 3: "Y_ACTION", # Y button (not used yet)
-        8: "ACTION",   # Select button
-        9: "QUIT",     # Start button
+        8: "UP",   
+        9: "DOWN", 
+        10: "LEFT",  # Left Bumper (not used yet)
+        11: "RIGHT", # Right Bumper (not used yet)
     },
     "HATS": {
         # Hat 0 is usually the D-Pad
