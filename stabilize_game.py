@@ -4,8 +4,8 @@ import math
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 import controls
 
-def draw_victory_animation(screen, pokeball_sprite):
-    pygame.mixer.music.stop()
+def draw_victory_animation(screen, pokeball_sprite, game_state):
+    game_state.play_victory_song()
     stars = []
     for _ in range(20):
         stars.append({
@@ -150,8 +150,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
 
 def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite, game_state):
     intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
-    draw_victory_animation(screen, pokeball_sprite)
-    pygame.mixer.music.stop()
+    draw_victory_animation(screen, pokeball_sprite, game_state)
     return "caught"
 
 def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite, game_state):
@@ -176,9 +175,8 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
     clock = pygame.time.Clock()
     
     while True:
-        controls.process_joystick_input(game_state)
-
         for event in pygame.event.get():
+            controls.process_joystick_input(game_state, event)
             if event.type == pygame.QUIT:
                 pygame.mixer.music.stop()
                 return "quit"
@@ -193,7 +191,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
                         lives -= 1
                         if lives == 0:
                             draw_lose_animation(screen, pokeball_sprite)
-                            pygame.mixer.music.stop()
+                            # pygame.mixer.music.stop()
                             return "failed"
                 if event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
                     pygame.mixer.music.stop()
@@ -209,8 +207,8 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
         shake_offset_y = math.sin(time_in_seconds * shake_speed * 0.5) * shake_magnitude
 
         if timing_hits >= 3:
-            draw_victory_animation(screen, pokeball_sprite)
-            pygame.mixer.music.stop()
+            draw_victory_animation(screen, pokeball_sprite, game_state)
+            # pygame.mixer.music.stop()
             return "caught"
 
         if background_image:

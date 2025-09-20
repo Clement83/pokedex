@@ -46,9 +46,8 @@ def run(screen, font, game_state): # Added game_state parameter
 
     running = True
     while running:
-        controls.process_joystick_input(game_state)
-
         for event in pygame.event.get():
+            controls.process_joystick_input(game_state, event)
             if event.type == pygame.QUIT:
                 return "quit"
             if event.type == pygame.KEYDOWN:

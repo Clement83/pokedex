@@ -1,4 +1,5 @@
 import pygame
+import random
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, GENERATION_THRESHOLDS
 from db import get_connection, get_pokemon_list, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked
@@ -74,3 +75,39 @@ class GameState:
         self.evolution_scroll_active = False
 
         self.music_volume = 0.5
+        
+        # Music handling
+        self.MUSIC_END_EVENT = pygame.USEREVENT + 1
+        pygame.mixer.music.set_endevent(self.MUSIC_END_EVENT)
+        self.music_state = 'menu'
+        self.music_playlists = {
+            'menu': list(Path('./audio').glob('menu_*.mp3')),
+            'victory': list(Path('./audio').glob('win_*.mp3'))
+        }
+        random.shuffle(self.music_playlists['menu'])
+        random.shuffle(self.music_playlists['victory'])
+
+    def play_next_menu_song(self):
+        self.music_state = 'menu'
+        if not self.music_playlists['menu']:
+            self.music_playlists['menu'] = list(Path('./audio').glob('menu_*.mp3'))
+            random.shuffle(self.music_playlists['menu'])
+        
+        if self.music_playlists['menu']:
+            music_path = self.music_playlists['menu'].pop(0)
+            pygame.mixer.music.load(str(music_path))
+            pygame.mixer.music.set_volume(self.music_volume)
+            pygame.mixer.music.play()
+
+    def play_victory_song(self):
+        self.music_state = 'victory'
+        if not self.music_playlists['victory']:
+            self.music_playlists['victory'] = list(Path('./audio').glob('win_*.mp3'))
+            random.shuffle(self.music_playlists['victory'])
+        
+        if self.music_playlists['victory']:
+            music_path = self.music_playlists['victory'].pop(0)
+            pygame.mixer.music.load(str(music_path))
+            pygame.mixer.music.set_volume(self.music_volume)
+            pygame.mixer.music.play(0) # Play once
+

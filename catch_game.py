@@ -79,12 +79,11 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         launched = False
         while not launched:
             now = pygame.time.get_ticks()
-            controls.process_joystick_input(game_state)
-
             dt = (now - last_time) / 1000.0
             last_time = now
 
             for event in pygame.event.get():
+                controls.process_joystick_input(game_state, event)
                 if event.type == pygame.QUIT:
                     pygame.mixer.music.stop()
                     return "quit"
