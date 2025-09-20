@@ -5,6 +5,7 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 import controls
 
 def draw_victory_animation(screen, pokeball_sprite):
+    pygame.mixer.music.stop()
     stars = []
     for _ in range(20):
         stars.append({
@@ -32,6 +33,7 @@ def draw_victory_animation(screen, pokeball_sprite):
         pygame.time.Clock().tick(60)
 
 def draw_lose_animation(screen, pokeball_sprite):
+    pygame.mixer.music.stop()
     original_size = pokeball_sprite.get_size()
     start_time = pygame.time.get_ticks()
     duration = 1000
@@ -149,6 +151,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
 def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
     intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
     draw_victory_animation(screen, pokeball_sprite)
+    pygame.mixer.music.stop()
     return "caught"
 
 def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
@@ -177,6 +180,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                pygame.mixer.music.stop()
                 return "quit"
             if event.type == pygame.KEYDOWN:
                 if event.key in KEY_MAPPINGS["CONFIRM"]:
@@ -189,8 +193,10 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
                         lives -= 1
                         if lives == 0:
                             draw_lose_animation(screen, pokeball_sprite)
+                            pygame.mixer.music.stop()
                             return "failed"
                 if event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
+                    pygame.mixer.music.stop()
                     return "back"
 
         bar_cursor_x += bar_cursor_speed
@@ -204,6 +210,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
         if timing_hits >= 3:
             draw_victory_animation(screen, pokeball_sprite)
+            pygame.mixer.music.stop()
             return "caught"
 
         if background_image:

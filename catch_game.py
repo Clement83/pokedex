@@ -2,11 +2,19 @@ import pygame
 import math
 import random
 from pathlib import Path
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS, REGION_MUSIC
 import controls
 from sprites import load_sprite
 
 def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state):
+    # Start battle music
+    if region_name in REGION_MUSIC and REGION_MUSIC[region_name]:
+        music_file = random.choice(REGION_MUSIC[region_name])
+        music_path = Path.cwd() / "pokemon_audio" / music_file
+        if music_path.exists():
+            pygame.mixer.music.load(str(music_path))
+            pygame.mixer.music.play(-1)  # -1 for looping
+
     if pokeball_sprite:
         pokeball_sprite = pygame.transform.scale(pokeball_sprite, (20, 20))
     BASE_DIR = Path.cwd()
@@ -77,6 +85,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    pygame.mixer.music.stop()
                     return "quit"
                 elif event.type == pygame.KEYDOWN:
                     if event.key in KEY_MAPPINGS["RIGHT"]:
@@ -86,6 +95,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                     elif event.key in KEY_MAPPINGS["CONFIRM"]:
                         charging = True
                     elif event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
+                        pygame.mixer.music.stop()
                         return "back"
                 elif event.type == pygame.KEYUP:
                     if event.key in KEY_MAPPINGS["CONFIRM"] and charging:

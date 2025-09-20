@@ -39,6 +39,7 @@ python main.py
 
 ## Sources
 Les assets (sprites, données) proviennent du site [Tyradex](https://tyradex.vercel.app/), qui récupère ses données de [Poképédia](https://www.pokepedia.fr/).
+Les assets audio proviennent du site [Pokemon Showdown](https://play.pokemonshowdown.com/). Tous les droits leur sont réservés.
 
 ## Disclaimer
 Ce projet est non officiel et n'est pas affilié à The Pokémon Company, Nintendo ou Game Freak. Les noms, images et données Pokémon sont la propriété de leurs détenteurs respectifs et sont utilisés ici à des fins éducatives et non commerciales.

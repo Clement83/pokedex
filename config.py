@@ -92,3 +92,16 @@ REGIONS = {
     "Galar": {"min_id": 810, "max_id": 906}, # Gen 8: 810-905
     "Paldea": {"min_id": 906, "max_id": 1026}, # Gen 9: 906-1025
 }
+
+# Music files for each region
+REGION_MUSIC = {
+    "Kanto": ["hgss-kanto-trainer.mp3", "bw2-kanto-gym-leader.mp3"],
+    "Johto": ["hgss-johto-trainer.mp3"],
+    "Hoenn": ["oras-rival.mp3", "oras-trainer.mp3"],
+    "Sinnoh": ["dpp-rival.mp3", "dpp-trainer.mp3"],
+    "Unova": ["bw-rival.mp3", "bw-subway-trainer.mp3", "bw-trainer.mp3", "bw2-homika-dogars.mp3", "bw2-rival.mp3"],
+    "Kalos": ["xy-rival.mp3", "xy-trainer.mp3"],
+    "Alola": ["sm-rival.mp3", "sm-trainer.mp3"],
+    "Paldea": ["spl-elite4.mp3"],
+    "Orre": ["colosseum-miror-b.mp3", "xd-miror-b.mp3"],
+}
