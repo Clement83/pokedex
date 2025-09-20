@@ -24,10 +24,10 @@ def _post_key_event(action, event_type):
         event = pygame.event.Event(event_type, event_dict)
         pygame.event.post(event)
 
-def process_joystick_input():
+def process_joystick_input(game_state):
     """
-    Processes joystick events from the queue and posts keyboard-like events.
-    This function should be called once per frame, before the main event loop.
+    Processes joystick events from the queue, handles volume changes directly,
+    and posts keyboard-like events for other actions.
     """
     global _axis_states, _hat_states
 
@@ -35,7 +35,13 @@ def process_joystick_input():
     for event in pygame.event.get([pygame.JOYAXISMOTION, pygame.JOYHATMOTION, pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP]):
         if event.type == pygame.JOYBUTTONDOWN:
             action = JOYSTICK_MAPPINGS["BUTTONS"].get(event.button)
-            if action:
+            if action == "VOLUME_UP":
+                game_state.music_volume = min(1.0, game_state.music_volume + 0.1)
+                pygame.mixer.music.set_volume(game_state.music_volume)
+            elif action == "VOLUME_DOWN":
+                game_state.music_volume = max(0.0, game_state.music_volume - 0.1)
+                pygame.mixer.music.set_volume(game_state.music_volume)
+            elif action:
                 _post_key_event(action, pygame.KEYDOWN)
         
         elif event.type == pygame.JOYBUTTONUP:

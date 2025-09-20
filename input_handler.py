@@ -63,20 +63,13 @@ def _run_git_pull(game_state):
         pygame.time.wait(3000)
 
 def handle_input(game_state):
-    controls.process_joystick_input()
+    controls.process_joystick_input(game_state)
 
     now = pygame.time.get_ticks()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_state.running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key in KEY_MAPPINGS.get("VOLUME_UP", []):
-                game_state.music_volume = min(1.0, game_state.music_volume + 0.1)
-                pygame.mixer.music.set_volume(game_state.music_volume)
-            elif event.key in KEY_MAPPINGS.get("VOLUME_DOWN", []):
-                game_state.music_volume = max(0.0, game_state.music_volume - 0.1)
-                pygame.mixer.music.set_volume(game_state.music_volume)
-
             if event.key in KEY_MAPPINGS["GIT_PULL"]:
                 _run_git_pull(game_state)
                 # After pulling, the app should ideally be restarted.
