@@ -97,7 +97,8 @@ def run(screen, font, game_state): # Added game_state parameter
                                 dresseur_sprite_path = game_state.BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "dos.png"
                                 dresseur_back_sprite = load_sprite(dresseur_sprite_path)
                                 pokemon_sprite_for_game = pygame.transform.scale(pokemon_original_sprite, (64, 64))
-                                catch_game_output = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite, game_state)
+                                pokemon_name_en = target_pokemon[2] # English name
+                                catch_game_output = catch_game.run(game_state.screen, game_state.font, pokemon_sprite_for_game, game_state.pokeball_img_small, selected_region_name, dresseur_back_sprite, game_state, pokedex_id, pokemon_name_en)
 
                                 if not isinstance(catch_game_output, tuple):
                                     if catch_game_output == "quit":

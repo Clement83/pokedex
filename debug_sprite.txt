@@ -591,3 +591,30 @@ DEBUG: processed_sprite size: (128, 128)
 DEBUG: is_pokemon_caught: 0
 DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
 DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)
+DEBUG: is_pokemon_caught: 0
+DEBUG: processed_sprite after shadow: <Surface(128x128x32 SW)>
+DEBUG: processed_sprite size: (128, 128)

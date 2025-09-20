@@ -6,7 +6,7 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS, REGION_MUSIC
 import controls
 from sprites import load_sprite
 
-def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state):
+def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state, pokedex_id, pokemon_name_en):
     # Start battle music
     if region_name in REGION_MUSIC and REGION_MUSIC[region_name]:
         music_file = random.choice(REGION_MUSIC[region_name])
@@ -15,6 +15,16 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
             pygame.mixer.music.load(str(music_path))
             pygame.mixer.music.set_volume(game_state.music_volume)
             pygame.mixer.music.play(-1)  # -1 for looping
+
+        # Play pokemon cry
+        cry_path = game_state.BASE_DIR / "pokemon_audio" / "cries" / f"{pokemon_name_en.lower()}.mp3"
+        if cry_path.exists():
+            try:
+                cry_sound = pygame.mixer.Sound(str(cry_path))
+                cry_sound.set_volume(game_state.music_volume)
+                cry_sound.play()
+            except pygame.error as e:
+                print(f"Error playing cry: {e}")
 
     if pokeball_sprite:
         pokeball_sprite = pygame.transform.scale(pokeball_sprite, (20, 20))
