@@ -72,3 +72,5 @@ class GameState:
         self.evolution_scroll_timer = 0
         self.evolution_scroll_direction = 1
         self.evolution_scroll_active = False
+
+        self.music_volume = 0.5

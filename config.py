@@ -27,6 +27,8 @@ KEY_MAPPINGS = {
     "ACTION": [pygame.K_SPACE],               # Action button (e.g., Start on Odroid)
     "QUIT": [pygame.K_ESCAPE],                # Quit/Menu button
     "GIT_PULL": [pygame.K_F10],
+    "VOLUME_UP": [pygame.K_PAGEUP],
+    "VOLUME_DOWN": [pygame.K_PAGEDOWN],
 }
 
 # Joystick Mappings for Odroid Go Advance / Standard Gamepads
@@ -44,6 +46,8 @@ JOYSTICK_MAPPINGS = {
         11: "RIGHT", # Right Bumper (not used yet)
         12: "QUIT",  # Select button
         13: "GIT_PULL",
+        14: "VOLUME_DOWN",
+        15: "VOLUME_UP",
     },
     "HATS": {
         # Hat 0 is usually the D-Pad

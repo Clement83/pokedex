@@ -13,7 +13,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         music_path = Path.cwd() / "pokemon_audio" / music_file
         if music_path.exists():
             pygame.mixer.music.load(str(music_path))
-            pygame.mixer.music.set_volume(0.5)  # Set volume to 50%
+            pygame.mixer.music.set_volume(game_state.music_volume)
             pygame.mixer.music.play(-1)  # -1 for looping
 
     if pokeball_sprite:
