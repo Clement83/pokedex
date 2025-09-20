@@ -79,7 +79,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         launched = False
         while not launched:
             now = pygame.time.get_ticks()
-            controls.process_joystick_input()
+            controls.process_joystick_input(game_state)
 
             dt = (now - last_time) / 1000.0
             last_time = now

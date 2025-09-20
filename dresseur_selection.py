@@ -44,7 +44,7 @@ def run(screen, font, game_state):
 
     running = True
     while running:
-        controls.process_joystick_input()
+        controls.process_joystick_input(game_state)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

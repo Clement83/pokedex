@@ -46,7 +46,7 @@ def run(screen, font, game_state): # Added game_state parameter
 
     running = True
     while running:
-        controls.process_joystick_input()
+        controls.process_joystick_input(game_state)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -111,9 +111,9 @@ def run(screen, font, game_state): # Added game_state parameter
                                     
                                     # Skip stabilize mini-game if catch_rate is high enough, but keep intro animation
                                     if catch_rate > STABILIZE_CATCH_RATE_THRESHOLD:
-                                        stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
+                                        stabilize_result = stabilize_game.run_intro_only(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite, game_state)
                                     else:
-                                        stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite)
+                                        stabilize_result = stabilize_game.run(game_state.screen, game_state.font, game_state.pokeball_img_large, pokemon_sprite_for_game, background_image, dresseur_front_sprite, game_state)
                                     
                                     if stabilize_result == "caught":
                                         update_pokemon_caught_status(game_state.conn, pokedex_id, True, is_shiny_encounter)

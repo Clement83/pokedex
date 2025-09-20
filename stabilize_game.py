@@ -148,13 +148,13 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
         pygame.display.flip()
         clock.tick(60)
 
-def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
+def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite, game_state):
     intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
     draw_victory_animation(screen, pokeball_sprite)
     pygame.mixer.music.stop()
     return "caught"
 
-def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite):
+def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite, game_state):
     if pokemon_sprite:
         intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
     timing_hits = 0
@@ -176,7 +176,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
     clock = pygame.time.Clock()
     
     while True:
-        controls.process_joystick_input()
+        controls.process_joystick_input(game_state)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
