@@ -159,6 +159,8 @@ def handle_input(game_state, event):
         elif event.key in KEY_MAPPINGS["UP"]:
             game_state.key_up_pressed = False
 
+def handle_continuous_input(game_state):
+    now = pygame.time.get_ticks()
     if game_state.state == "list":
         if game_state.key_down_pressed:
             elapsed = now - game_state.down_press_time

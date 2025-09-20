@@ -216,4 +216,8 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         else:
             result = "miss"
             
+    if not caught:
+        pygame.mixer.music.stop()
+        game_state.play_next_menu_song()
+            
     return result, background_image, dresseur_front_sprite

@@ -32,8 +32,9 @@ def draw_victory_animation(screen, pokeball_sprite, game_state):
         pygame.display.flip()
         pygame.time.Clock().tick(60)
 
-def draw_lose_animation(screen, pokeball_sprite):
+def draw_lose_animation(screen, pokeball_sprite, game_state):
     pygame.mixer.music.stop()
+    game_state.play_next_menu_song()
     original_size = pokeball_sprite.get_size()
     start_time = pygame.time.get_ticks()
     duration = 1000
@@ -190,7 +191,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
                     else:
                         lives -= 1
                         if lives == 0:
-                            draw_lose_animation(screen, pokeball_sprite)
+                            draw_lose_animation(screen, pokeball_sprite, game_state)
                             # pygame.mixer.music.stop()
                             return "failed"
                 if event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
