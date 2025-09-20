@@ -39,3 +39,4 @@ htmlcov/
 /tmp/
 tmp/
 *.db
+debug*.txt
