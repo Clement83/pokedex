@@ -6,8 +6,8 @@ from config import STATS_FONT_SIZE
 
 def update_sprite(game_state):
     pokemon_id = game_state.pokemon_list[game_state.selected_index][0]
-    is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][4]
-    is_pokemon_shiny = game_state.pokemon_list[game_state.selected_index][5]
+    is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][5] # Corrected index
+    is_pokemon_shiny = game_state.pokemon_list[game_state.selected_index][6] # Corrected index
     view_state = game_state.state
 
     # Clé de cache unique pour chaque état du sprite
@@ -19,10 +19,10 @@ def update_sprite(game_state):
         return
 
     # Si non, charger et traiter le sprite
-    if is_pokemon_shiny and game_state.pokemon_list[game_state.selected_index][3]:
-        sprite_to_load_name = game_state.pokemon_list[game_state.selected_index][3]
+    if is_pokemon_shiny and game_state.pokemon_list[game_state.selected_index][4]: # sprite_shiny is at index 4
+        sprite_to_load_name = game_state.pokemon_list[game_state.selected_index][4]
     else:
-        sprite_to_load_name = game_state.pokemon_list[game_state.selected_index][2]
+        sprite_to_load_name = game_state.pokemon_list[game_state.selected_index][3] # sprite_regular is at index 3
     
     sprite_file = Path(sprite_to_load_name).name
     SPRITES_DIR = game_state.BASE_DIR / "app" / "data" / "sprites"
@@ -34,6 +34,13 @@ def update_sprite(game_state):
         if not is_pokemon_caught:
             # L'effet d'ombre modifie la surface, il faut copier pour ne pas affecter le cache original
             processed_sprite = apply_shadow_effect(original_sprite.copy())
+            with open("debug_sprite.txt", "a", encoding="utf-8") as f:
+                f.write(f"DEBUG: is_pokemon_caught: {is_pokemon_caught}\n")
+                f.write(f"DEBUG: processed_sprite after shadow: {processed_sprite}\n")
+                if processed_sprite:
+                    f.write(f"DEBUG: processed_sprite size: {processed_sprite.get_size()}\n")
+                else:
+                    f.write(f"DEBUG: processed_sprite is None\n")
 
         if view_state == "list":
             final_sprite = pygame.transform.scale(processed_sprite, (128, 128))

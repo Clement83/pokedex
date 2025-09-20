@@ -84,13 +84,15 @@ def run(screen, font, game_state): # Added game_state parameter
                                 
                                 is_shiny_encounter = (random.random() < SHINY_RATE)
 
-                                sprite_to_load = target_pokemon[3] if is_shiny_encounter else target_pokemon[2]
+                                sprite_to_load = target_pokemon[4] if is_shiny_encounter else target_pokemon[3]
                                 sprite_file = Path(sprite_to_load).name
                                 sprite_path = game_state.BASE_DIR / "app" / "data" / "sprites" / sprite_file
                                 pokemon_original_sprite = load_sprite(sprite_path)
 
                                 if not pokemon_original_sprite:
-                                    continue
+                                    game_state.message = f"Sprite for {target_pokemon[1]} not found!"
+                                    game_state.message_timer = pygame.time.get_ticks() + 2000 # Display for 2 seconds
+                                    # continue # Removed for debugging
 
                                 dresseur_sprite_path = game_state.BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "dos.png"
                                 dresseur_back_sprite = load_sprite(dresseur_sprite_path)

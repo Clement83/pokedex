@@ -56,7 +56,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
     
     start_y = 20 # Revert list to original position
     for i in range(scroll_offset, min(scroll_offset + max_visible, len(pokemon_list))):
-        pid, name, _, _, caught, is_shiny, _ = pokemon_list[i]
+        pid, name, name_en, _, _, caught, is_shiny, _ = pokemon_list[i]
         y = start_y + (i - scroll_offset) * FONT_SIZE
         
         if i == selected_index:

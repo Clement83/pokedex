@@ -36,7 +36,7 @@ def add_caught_column():
 
 def get_pokemon_list(conn, max_pokedex_id=None, include_mew=False):
     cur = conn.cursor()
-    query = "SELECT pokedex_id, name_fr, sprite_regular, sprite_shiny, caught, is_shiny, times_caught FROM pokemon"
+    query = "SELECT pokedex_id, name_fr, name_en, sprite_regular, sprite_shiny, caught, is_shiny, times_caught FROM pokemon"
     conditions = []
     params = []
 
