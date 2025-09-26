@@ -46,22 +46,22 @@ def create_list_view_background():
     for y in range(SCREEN_HEIGHT):
         c = 255 - int(y * 0.3)
         pygame.draw.line(background, (c, c, c), (0, y), (SCREEN_WIDTH, y))
-    
+
     draw_rounded_rect(background, (245,245,245), (5,5,200,SCREEN_HEIGHT-10), radius=10, border=2)
     draw_rounded_rect(background, (240,240,250), (210,5,250,250), radius=20, border=2) # Moved up to align with left frame
     return background
 
 def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font, background):
     screen.blit(background, (0, 0))
-    
+
     start_y = 20 # Revert list to original position
     for i in range(scroll_offset, min(scroll_offset + max_visible, len(pokemon_list))):
         pid, name, name_en, _, _, caught, is_shiny, _ = pokemon_list[i]
         y = start_y + (i - scroll_offset) * FONT_SIZE
-        
+
         if i == selected_index:
             draw_rounded_rect(screen, (255, 230, 200), (10, y - 2, 180, FONT_SIZE + 4), radius=6)
-        
+
         color = (0, 0, 0) if i != selected_index else (200, 30, 30)
 
         if is_shiny and masterball_img:
@@ -73,7 +73,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
         display_name = name if caught else "???"
         draw_text(screen, f"{pid:03d} {display_name}", 15 + FONT_SIZE + 5, y, font, color)
-        
+
     if current_sprite:
         rect = current_sprite.get_rect(center=(335, 145 - LIST_VERTICAL_OFFSET))
         screen.blit(current_sprite, rect)
@@ -91,12 +91,12 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
             # Crée une petite bulle pour le compteur
             bubble_font = pygame.font.SysFont("Arial", 16, bold=True)
             text_surface = bubble_font.render(count_text, True, (255, 255, 255))
-            
+
             # Positionne la bulle en haut à gauche du panneau de droite
             bubble_pos_x = 215
             bubble_pos_y = 10
             bubble_rect = pygame.Rect(bubble_pos_x, bubble_pos_y, text_surface.get_width() + 12, text_surface.get_height() + 6)
-            
+
             draw_rounded_rect(screen, (0, 0, 0, 180), bubble_rect, radius=10) # Fond noir semi-transparent
             text_rect = text_surface.get_rect(center=bubble_rect.center)
             screen.blit(text_surface, text_rect)
@@ -120,8 +120,8 @@ def draw_detail_view(game_state):
     current_pokemon_data = game_state.current_pokemon_data
     current_sprite = game_state.current_sprite
     font = game_state.font
-    caught = game_state.pokemon_list[game_state.selected_index][4]
-    is_shiny = game_state.pokemon_list[game_state.selected_index][5]
+    caught = game_state.pokemon_list[game_state.selected_index][5]
+    is_shiny = game_state.pokemon_list[game_state.selected_index][6]
 
     small_font = pygame.font.SysFont("Arial", FONT_SIZE - 2)
     # Fond dégradé vertical
@@ -136,7 +136,7 @@ def draw_detail_view(game_state):
     name_fr = current_pokemon_data.get("name", {}).get("fr", "???") if caught else "???"
     pid = current_pokemon_data.get("pokedex_id", "?")
     types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])] if caught else ["?"]
-    
+
     icon_x = 20
     text_x = icon_x + FONT_SIZE + 5
     if is_shiny and masterball_img:
@@ -178,9 +178,9 @@ def draw_detail_view(game_state):
     # Evolution text scrolling logic
     evol = (current_pokemon_data.get("evolution", {}) or {}).get("next") or []
     evol_text_content = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict)) if caught else "" # Empty string if no evolutions, to handle "Aucune" separately
-    
+
     draw_rounded_rect(screen, (255,255,255), (30,277,370,40), radius=10, border=2)
-    
+
     # Render static prefix
     prefix_text = "Évolutions: "
     prefix_img = font.render(prefix_text, True, (0,0,0))
@@ -197,11 +197,11 @@ def draw_detail_view(game_state):
         scrollable_text = evol_text_content
         scrollable_img = font.render(scrollable_text, True, (0,0,0))
         scrollable_text_width = scrollable_img.get_width()
-        
+
         # Available width for scrolling text
         # Box starts at 30, width 370. Text starts at 40.
         # So available space is (30 + 370 - 10) - (40 + prefix_width) = 390 - 40 - prefix_width = 350 - prefix_width
-        available_scroll_width = 350 - prefix_width 
+        available_scroll_width = 350 - prefix_width
 
         if scrollable_text_width > available_scroll_width:
             game_state.evolution_scroll_active = True
