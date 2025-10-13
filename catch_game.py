@@ -6,7 +6,7 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS, REGION_MUSIC
 import controls
 from sprites import load_sprite
 
-def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state, pokedex_id, pokemon_name_en):
+def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state, pokedex_id, pokemon_name_en, background_image):
     # Start battle music
     if region_name in REGION_MUSIC and REGION_MUSIC[region_name]:
         music_file = random.choice(REGION_MUSIC[region_name])
@@ -34,28 +34,6 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
     if game_state.dresseur:
         dresseur_front_path = BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "face.png"
         dresseur_front_sprite = load_sprite(dresseur_front_path)
-    stadium_path = BASE_DIR / "app" / "data" / "assets" / region_name.lower() / "stadium"
-    background_image = None
-    if stadium_path.is_dir():
-        stadium_images = list(stadium_path.glob('*.png')) # Or other image extensions
-        if stadium_images:
-            random_bg_path = random.choice(stadium_images)
-            try:
-                background_image = pygame.image.load(random_bg_path).convert()
-                background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-            except pygame.error:
-                print(f"Erreur de chargement de l'image de fond: {random_bg_path}")
-                background_image = None
-
-    if background_image is None:
-        # Fallback to a solid color or default image if no stadium image is found
-        BG_PATH = BASE_DIR / "app" / "data" / "assets" / "out.png"
-        try:
-            background_image = pygame.image.load(BG_PATH).convert()
-            background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        except pygame.error:
-            print(f"Erreur de chargement de l'image de fond par défaut: {BG_PATH}")
-            background_image = None
 
     clock = pygame.time.Clock()
     attempts = 0
@@ -230,4 +208,4 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
         pygame.mixer.music.stop()
         game_state.play_next_menu_song()
             
-    return result, background_image, dresseur_front_sprite
+    return result, dresseur_front_sprite
