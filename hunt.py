@@ -7,6 +7,8 @@ import controls
 import catch_game
 import stabilize_game
 import combat_dodge_game
+import combat_qte_game
+import combat_memory_game
 from sprites import load_sprite
 
 # Grid configuration for regions
@@ -29,6 +31,7 @@ class HuntManager:
         self.catch_game_output = None
         self.background_image = None
         self.pokemon_types = None
+        self.full_pokemon_data = None
 
     def run(self):
         """Main loop for the hunt state machine."""
@@ -159,9 +162,9 @@ class HuntManager:
         """Prepares for the encounter by loading assets."""
         # Get Pokemon types for styling
         pokedex_id = self.target_pokemon_data[0]
-        full_pokemon_data = get_pokemon_data(self.game_state.conn, pokedex_id)
-        if full_pokemon_data and 'types' in full_pokemon_data:
-            self.pokemon_types = [t['name'] for t in full_pokemon_data['types'] if 'name' in t]
+        self.full_pokemon_data = get_pokemon_data(self.game_state.conn, pokedex_id)
+        if self.full_pokemon_data and 'types' in self.full_pokemon_data:
+            self.pokemon_types = [t['name'] for t in self.full_pokemon_data['types'] if 'name' in t]
         else:
             self.pokemon_types = ["Normal"] # Fallback type
 
@@ -213,11 +216,15 @@ class HuntManager:
         """Runs the combat mini-game."""
         # Here you can add logic to select from multiple combat games
         # For now, we only have one.
-        combat_minigames = [combat_dodge_game.run]
+        combat_minigames = [combat_dodge_game.run, combat_qte_game.run, combat_memory_game.run]
         selected_game = random.choice(combat_minigames)
 
-        # The dresseur_back_sprite is used as the player sprite in the dodge game
-        result = selected_game(self.screen, self.font, self.game_state, self.pokemon_sprite, self.dresseur_back_sprite, self.background_image, self.pokemon_types)
+        # Pass all potential arguments. Each game will use what it needs.
+        result = selected_game(
+            self.screen, self.font, self.game_state, 
+            self.pokemon_sprite, self.dresseur_back_sprite, 
+            self.background_image, self.pokemon_types, self.full_pokemon_data
+        )
 
         if result == "win":
             self.state = "CATCHING"

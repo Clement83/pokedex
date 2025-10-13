@@ -97,7 +97,7 @@ class Projectile(pygame.sprite.Sprite):
         if not pygame.Rect(-30, -30, SCREEN_WIDTH + 60, SCREEN_HEIGHT + 60).colliderect(self.rect):
             self.kill()
 
-def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_image, pokemon_types):
+def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_image, pokemon_types, full_pokemon_data):
     clock = pygame.time.Clock()
     start_time = pygame.time.get_ticks()
 
