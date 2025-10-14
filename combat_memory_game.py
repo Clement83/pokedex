@@ -2,6 +2,7 @@ import pygame
 import random
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 import controls
+from ui import draw_hp_bar
 
 # Game settings
 SEQUENCE_LENGTH = 4  # Fixed length of 4 steps
@@ -139,6 +140,9 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             time_left = (time_limit - (current_time - phase_timer)) / 1000
             timer_text = font.render(f"Temps: {max(0, time_left):.1f}s", True, (255, 255, 255))
             screen.blit(timer_text, (10, 10))
+
+        # Draw the HP bar
+        draw_hp_bar(screen, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
 
         pygame.display.flip()
         clock.tick(60)

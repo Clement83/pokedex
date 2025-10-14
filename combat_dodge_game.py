@@ -106,7 +106,9 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     player_group = pygame.sprite.GroupSingle(player)
     projectiles = pygame.sprite.Group()
 
-    pokemon_pos = (SCREEN_WIDTH // 2, 60)
+    pokemon_pos_x = SCREEN_WIDTH // 2
+    pokemon_speed_x = 2  # Speed of the pokemon's horizontal movement
+    pokemon_pos = (pokemon_pos_x, 60)
     pokemon_rect = pokemon_sprite.get_rect(center=pokemon_pos)
     
     keys = {"up": False, "down": False, "left": False, "right": False}
@@ -144,6 +146,12 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             if projectile_timer >= PROJECTILE_ADD_RATE:
                 projectile_timer = 0
                 projectiles.add(Projectile(pokemon_rect.center, pokemon_types))
+
+        # Update pokemon position
+        pokemon_pos_x += pokemon_speed_x
+        if pokemon_pos_x - pokemon_rect.width // 2 < 0 or pokemon_pos_x + pokemon_rect.width // 2 > SCREEN_WIDTH:
+            pokemon_speed_x *= -1
+        pokemon_rect.centerx = pokemon_pos_x
 
         # Check for collisions
         if pygame.sprite.spritecollide(player, projectiles, True, pygame.sprite.collide_mask):
