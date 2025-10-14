@@ -389,23 +389,24 @@ class HuntManager:
         update_pokemon_caught_status(self.game_state.conn, pokedex_id, True, self.is_shiny)
         
         caught_count = get_caught_pokemon_count(self.game_state.conn)
+        
+        last_unlocked_region = None # To store the last region unlocked in this session
+        previous_max_pokedex_id = self.game_state.current_max_pokedex_id # Store before potential update
+
         # Check if a new generation has been unlocked
+        # Iterate through all thresholds to find the first one just crossed
         for gen, data in sorted(GENERATION_THRESHOLDS.items(), key=lambda item: item[1]['unlock_count']):
-            if caught_count >= data['unlock_count'] and self.game_state.current_max_pokedex_id < data['max_id']:
+            if caught_count >= data['unlock_count'] and previous_max_pokedex_id < data['max_id']:
                 self.game_state.current_max_pokedex_id = data['max_id']
                 
-                # Find the name of the region that was just unlocked
-                unlocked_region_name = "Unknown"
-                target_max_id = data['max_id'] # The max_id from GENERATION_THRESHOLDS
-                for region_name, region_data in REGIONS.items():
-                    if region_data["max_id"] - 1 == target_max_id:
-                        unlocked_region_name = region_name
-                        break
-                
-                # Save the unlock event to be celebrated later
-                set_user_preference(self.game_state.conn, 'new_region_unlocked', unlocked_region_name)
+                # Store the unlock event to be celebrated later
+                last_unlocked_region = data['unlocked_region']
+                # Break here, as we only want to celebrate the first new region unlocked by this catch
                 break
         
+        if last_unlocked_region and last_unlocked_region != "None": # Only save if a valid region was unlocked
+            set_user_preference(self.game_state.conn, 'new_region_unlocked', last_unlocked_region)
+
         mew_unlocked = mew_is_unlocked(self.game_state.conn)
         self.game_state.pokemon_list = get_pokemon_list(self.game_state.conn, self.game_state.current_max_pokedex_id, include_mew=mew_unlocked)
         self.game_state.current_pokemon_data = get_pokemon_data(self.game_state.conn, pokedex_id)
