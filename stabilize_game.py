@@ -155,82 +155,227 @@ def run_intro_only(screen, font, pokeball_sprite, pokemon_sprite, background_ima
     return "caught"
 
 def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite, game_state):
+
     if pokemon_sprite:
+
         intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, dresseur_front_sprite)
+
+
+
     timing_hits = 0
+
     lives = 3
-    bar_cursor_x = 0
-    bar_cursor_speed = 5
+
     
+
+    # --- Poké-Lock Gameplay Variables ---
+
+    track_height = SCREEN_HEIGHT // 2 + 80  # Moved lower
+
+    pokeball_y = track_height
+
+    pokeball_x = 0
+
+    pokeball_speed = 5
+
+    
+
+    moving_pokeball_sprite = game_state.pokeball_img_small
+
+    if moving_pokeball_sprite is None:
+
+        moving_pokeball_sprite = pygame.transform.scale(pokeball_sprite, (25, 25))
+
+
+
+    target_zone_width = 150
+
+    target_zone_height = 40
+
+    target_zone_x = (SCREEN_WIDTH - target_zone_width) // 2
+
+    target_zone_rect = pygame.Rect(target_zone_x, track_height - target_zone_height // 2, target_zone_width, target_zone_height)
+
+    
+
     shake_angle = 0
-    shake_offset = 0
+
     shake_speed = 5
+
     shake_magnitude = 5
 
-    def new_green_zone():
-        green_zone_width = 100
-        green_zone_x = random.randint(0, SCREEN_WIDTH - green_zone_width)
-        return pygame.Rect(green_zone_x, SCREEN_HEIGHT - 30, green_zone_width, 20)
 
-    green_zone_rect = new_green_zone()
+
     clock = pygame.time.Clock()
+
     
+
     while True:
+
         for event in pygame.event.get():
+
             controls.process_joystick_input(game_state, event)
+
             if event.type == pygame.QUIT:
+
                 pygame.mixer.music.stop()
+
                 return "quit"
+
             if event.type == pygame.KEYDOWN:
+
                 if event.key in KEY_MAPPINGS["CONFIRM"]:
-                    cursor_rect = pygame.Rect(bar_cursor_x, SCREEN_HEIGHT - 30, 5, 20)
-                    if cursor_rect.colliderect(green_zone_rect):
+
+                    if target_zone_rect.left < pokeball_x < target_zone_rect.right:
+
                         timing_hits += 1
-                        if timing_hits < 3:
-                            green_zone_rect = new_green_zone()
+
+                        target_zone_rect.width = max(30, target_zone_rect.width * 0.75)
+
+                        target_zone_rect.centerx = SCREEN_WIDTH // 2
+
+                        pokeball_speed *= 1.2
+
                     else:
+
                         lives -= 1
+
                         if lives == 0:
+
                             draw_lose_animation(screen, pokeball_sprite, game_state)
-                            # pygame.mixer.music.stop()
+
                             return "failed"
+
                 if event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
+
                     pygame.mixer.music.stop()
+
                     return "back"
 
-        bar_cursor_x += bar_cursor_speed
-        if bar_cursor_x > SCREEN_WIDTH or bar_cursor_x < 0:
-            bar_cursor_speed = -bar_cursor_speed
+
+
+        pokeball_x += pokeball_speed
+
+        if pokeball_x > SCREEN_WIDTH or pokeball_x < 0:
+
+            pokeball_speed = -pokeball_speed
+
         
+
         time_in_seconds = pygame.time.get_ticks() / 1000.0
+
         shake_angle = math.sin(time_in_seconds * shake_speed) * shake_magnitude
+
         shake_offset_x = math.cos(time_in_seconds * shake_speed * 0.7) * shake_magnitude
+
         shake_offset_y = math.sin(time_in_seconds * shake_speed * 0.5) * shake_magnitude
 
+
+
         if timing_hits >= 3:
+
             draw_victory_animation(screen, pokeball_sprite, game_state)
-            # pygame.mixer.music.stop()
+
             return "caught"
 
+
+
+        # --- Drawing ---
+
         if background_image:
+
             screen.blit(background_image, (0, 0))
+
         else:
-            screen.fill((200, 220, 255)) # Fallback to default background
+
+            screen.fill((200, 220, 255))
+
+
 
         if dresseur_front_sprite:
-            screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10)) # Bottom-left corner
-        if pokeball_sprite:
-            rotated_pokeball = pygame.transform.rotate(pokeball_sprite, shake_angle)
-            pokeball_rect = rotated_pokeball.get_rect(center=(SCREEN_WIDTH // 2 + shake_offset_x, SCREEN_HEIGHT // 2 + shake_offset_y))
-            screen.blit(rotated_pokeball, pokeball_rect)
-        
-        bar_rect = pygame.Rect(0, SCREEN_HEIGHT - 30, SCREEN_WIDTH, 20)
-        pygame.draw.rect(screen, (100, 100, 100), bar_rect)
-        pygame.draw.rect(screen, (0, 255, 0), green_zone_rect)
-        cursor_rect = pygame.Rect(bar_cursor_x, SCREEN_HEIGHT - 30, 5, 20)
-        pygame.draw.rect(screen, (255, 0, 0), cursor_rect)
+
+            screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10))
 
         
+
+        if pokeball_sprite:
+
+            rotated_pokeball = pygame.transform.rotate(pokeball_sprite, shake_angle)
+
+            pokeball_rect = rotated_pokeball.get_rect(center=(SCREEN_WIDTH // 2 + shake_offset_x, SCREEN_HEIGHT // 2 + shake_offset_y))
+
+            screen.blit(rotated_pokeball, pokeball_rect)
+
+        
+
+        # --- Draw New UI Elements ---
+
+        track_rect = pygame.Rect(0, track_height - 2, SCREEN_WIDTH, 4)
+
+        pygame.draw.rect(screen, (20, 20, 20, 150), track_rect)
+
+
+
+        glow_color = (255, 80, 80, 60)  # Reddish glow
+
+        for i in range(5, 0, -1):
+
+            glow_rect = target_zone_rect.inflate(i*4, i*4)
+
+            pygame.draw.rect(screen, glow_color, glow_rect, border_radius=15)
+
+
+
+        pygame.draw.rect(screen, (255, 255, 255), target_zone_rect, 3, border_radius=12) # White border
+
+
+
+        if moving_pokeball_sprite:
+
+            moving_rect = moving_pokeball_sprite.get_rect(center=(pokeball_x, pokeball_y))
+
+            screen.blit(moving_pokeball_sprite, moving_rect)
+
+
+
+        # Draw timing hits indicators as pokeballs
+
+        indicator_y = track_height - 60
+
+        if game_state.pokeball_img_small:
+
+            pokeball_indicator_sprite = pygame.transform.scale(game_state.pokeball_img_small, (24, 24))
+
+            for i in range(3):
+
+                pos = (SCREEN_WIDTH // 2 - 45 + i * 40, indicator_y)
+
+                screen.blit(pokeball_indicator_sprite, pos)
+
+                if i >= timing_hits:
+
+                    # Darken the sprite if the hit is not yet achieved
+
+                    darken_surface = pygame.Surface(pokeball_indicator_sprite.get_size(), pygame.SRCALPHA)
+
+                    darken_surface.fill((0, 0, 0, 180))
+
+                    screen.blit(darken_surface, pos)
+
+
+
+        # Draw lives
+
+        if game_state.pokeball_img_small:
+
+            for i in range(lives):
+
+                screen.blit(game_state.pokeball_img_small, (10 + i * 35, 10))
+
+
 
         pygame.display.flip()
+
         clock.tick(60)
+
+
