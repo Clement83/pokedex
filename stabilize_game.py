@@ -10,46 +10,46 @@ def draw_victory_animation(screen, font, pokeball_sprite, background_image, dres
     start_time = pygame.time.get_ticks()
     duration = 4000 # 4-second animation
 
-    # Create a larger font for the "ATTRAPÉ !" text
     try:
-        large_font = pygame.font.Font(None, 60) # Using default font, size 60
+        large_font = pygame.font.Font(None, 60)
     except:
-        large_font = font # Fallback to the passed font
+        large_font = font
 
-    # Star properties
+    victory_sprite = None
+    if game_state.dresseur:
+        victory_sprite_path = game_state.BASE_DIR / f"app/data/assets/dresseurs/{game_state.dresseur}/success1.png"
+        from sprites import load_sprite
+        victory_sprite = load_sprite(victory_sprite_path)
+
     stars = []
-    star_spawn_time = 500 # ms after start
+    star_spawn_time = 500
     stars_spawned = False
-
-    # Text properties
-    text_appear_time = 1200 # ms after start
+    text_appear_time = 1200
 
     clock = pygame.time.Clock()
 
     while pygame.time.get_ticks() - start_time < duration:
         elapsed_time = pygame.time.get_ticks() - start_time
 
-        # --- Drawing --- 
-        # Always draw the background first
         if background_image:
             screen.blit(background_image, (0, 0))
         else:
-            screen.fill((20, 20, 30)) # Fallback color
+            screen.fill((20, 20, 30))
 
-        # Phase 1: The pokeball clicks and settles (first 500ms)
+        # Draw Dresseur's victory pose from the beginning, at the bottom-left
+        if victory_sprite:
+            d_rect = victory_sprite.get_rect(bottomleft=(10, SCREEN_HEIGHT - 10))
+            screen.blit(victory_sprite, d_rect)
+
         pokeball_rect = pokeball_sprite.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         if elapsed_time < 200:
-            # Slight shake before the click
             offset_x = random.randint(-1, 1)
             offset_y = random.randint(-1, 1)
             screen.blit(pokeball_sprite, (pokeball_rect.x + offset_x, pokeball_rect.y + offset_y))
         else:
-            # Still pokeball after the click
             screen.blit(pokeball_sprite, pokeball_rect)
 
-        # Phase 2: Starburst (after 500ms)
         if elapsed_time > star_spawn_time and not stars_spawned:
-            # Spawn 6 stylized stars
             for i in range(6):
                 angle = (i * 60 + random.randint(-10, 10)) * (math.pi / 180)
                 stars.append({
@@ -57,11 +57,10 @@ def draw_victory_animation(screen, font, pokeball_sprite, background_image, dres
                     "angle": angle,
                     "speed": random.uniform(3, 5),
                     "size": random.uniform(15, 25),
-                    "life": 1000 # live for 1 second
+                    "life": 1000
                 })
             stars_spawned = True
 
-        # Update and draw stars
         if stars_spawned:
             for star in stars[:]:
                 star["pos"][0] += math.cos(star["angle"]) * star["speed"]
@@ -70,8 +69,7 @@ def draw_victory_animation(screen, font, pokeball_sprite, background_image, dres
                 if star["life"] <= 0:
                     stars.remove(star)
                 else:
-                    # Draw a simple 4-point star polygon
-                    size = star["size"] * (star["life"] / 1000) # Shrink as it dies
+                    size = star["size"] * (star["life"] / 1000)
                     points = [
                         (star["pos"][0], star["pos"][1] - size),
                         (star["pos"][0] + size * 0.3, star["pos"][1] - size * 0.3),
@@ -85,19 +83,11 @@ def draw_victory_animation(screen, font, pokeball_sprite, background_image, dres
                     pygame.draw.polygon(screen, (255, 255, 0), points)
                     pygame.draw.polygon(screen, (255, 255, 255), points, 2)
 
-        # Phase 3: "ATTRAPÉ !" text and Dresseur
         if elapsed_time > text_appear_time:
-            # Draw Dresseur
-            if dresseur_front_sprite:
-                d_rect = dresseur_front_sprite.get_rect(center=(SCREEN_WIDTH * 0.25, SCREEN_HEIGHT * 0.7))
-                screen.blit(dresseur_front_sprite, d_rect)
-            
-            # Draw Text
-            text_surf = large_font.render("ATTRAPÉ !", True, (255, 255, 0)) # Yellow text
-            outline_surf = large_font.render("ATTRAPÉ !", True, (0, 0, 139)) # Dark blue outline
+            text_surf = large_font.render("ATTRAPÉ !", True, (255, 255, 0))
+            outline_surf = large_font.render("ATTRAPÉ !", True, (0, 0, 139))
             text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT * 0.2))
             
-            # Blit outlines by offset
             screen.blit(outline_surf, (text_rect.x - 2, text_rect.y - 2))
             screen.blit(outline_surf, (text_rect.x + 2, text_rect.y - 2))
             screen.blit(outline_surf, (text_rect.x - 2, text_rect.y + 2))

@@ -123,6 +123,18 @@ def handle_input(game_state, event):
                 game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
                 if game_state.current_pokemon_data:
                     game_state.state = "detail"
+                    # Only play cry if the Pokémon has been caught
+                    is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][5]
+                    if is_pokemon_caught:
+                        pokemon_name_en = game_state.pokemon_list[game_state.selected_index][2]
+                        cry_path = game_state.BASE_DIR / "pokemon_audio" / "cries" / f"{pokemon_name_en.lower()}.mp3"
+                        if cry_path.exists():
+                            try:
+                                cry_sound = pygame.mixer.Sound(str(cry_path))
+                                cry_sound.set_volume(game_state.music_volume)
+                                cry_sound.play()
+                            except pygame.error as e:
+                                print(f"Error playing cry: {e}")
             elif event.key in KEY_MAPPINGS["QUIT"]:
                 game_state.running = False
         elif game_state.state == "detail":
