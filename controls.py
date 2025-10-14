@@ -1,5 +1,6 @@
 import pygame
 from config import KEY_MAPPINGS, JOYSTICK_MAPPINGS
+import debug_actions
 
 # --- State for axes and hats ---
 _axis_states = {}
@@ -17,12 +18,27 @@ def _post_key_event(action, event_type):
 
 def process_joystick_input(game_state, event):
     """
-    Processes joystick events, handles volume changes directly,
+    Processes joystick events, handles debug combinations, volume changes,
     and posts keyboard-like events for other actions.
     """
     global _axis_states, _hat_states
 
     if event.type == pygame.JOYBUTTONDOWN:
+        game_state.pressed_buttons.add(event.button)
+
+        # --- Debug Actions Check ---
+        # Check for combinations with button 12 (Select button on Odroid)
+        if 12 in game_state.pressed_buttons:
+            if 13 in game_state.pressed_buttons: # Select + F10
+                debug_actions.update_and_restart(game_state)
+                return # Stop processing to avoid other actions
+            if 14 in game_state.pressed_buttons: # Select + PageDown
+                debug_actions.reset_game_state(game_state)
+                return
+            if 15 in game_state.pressed_buttons: # Select + PageUp
+                debug_actions.go_to_next_milestone(game_state)
+                return
+
         action = JOYSTICK_MAPPINGS["BUTTONS"].get(event.button)
         if action == "VOLUME_UP":
             game_state.music_volume = min(1.0, game_state.music_volume + 0.1)
@@ -34,6 +50,9 @@ def process_joystick_input(game_state, event):
             _post_key_event(action, pygame.KEYDOWN)
     
     elif event.type == pygame.JOYBUTTONUP:
+        if event.button in game_state.pressed_buttons:
+            game_state.pressed_buttons.remove(event.button)
+        
         action = JOYSTICK_MAPPINGS["BUTTONS"].get(event.button)
         if action:
             _post_key_event(action, pygame.KEYUP)
