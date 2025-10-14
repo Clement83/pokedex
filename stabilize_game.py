@@ -170,7 +170,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
     # --- Poké-Lock Gameplay Variables ---
 
-    track_height = SCREEN_HEIGHT // 2 + 80  # Moved lower
+    track_height = SCREEN_HEIGHT // 2 + 100  # Moved lower
 
     pokeball_y = track_height
 
@@ -310,12 +310,6 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
         # --- Draw New UI Elements ---
 
-        track_rect = pygame.Rect(0, track_height - 2, SCREEN_WIDTH, 4)
-
-        pygame.draw.rect(screen, (20, 20, 20, 150), track_rect)
-
-
-
         glow_color = (255, 80, 80, 60)  # Reddish glow
 
         for i in range(5, 0, -1):
@@ -377,5 +371,7 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
         pygame.display.flip()
 
         clock.tick(60)
+
+
 
 
