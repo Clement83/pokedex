@@ -213,7 +213,6 @@ class HuntManager:
             self.screen.fill((0, 0, 0))
             self._draw_region_grid(region_names, region_images_loaded, selected_row, selected_col, GRID_ROWS)
             self._draw_region_info(region_names, selected_row, selected_col)
-            self._display_messages()
             pygame.display.flip()
             pygame.time.Clock().tick(60)
 
@@ -243,12 +242,6 @@ class HuntManager:
             rendered_text = self.font.render(text, True, color)
             rect = rendered_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 10))
             self.screen.blit(rendered_text, rect)
-
-    def _display_messages(self):
-        if self.game_state.message and pygame.time.get_ticks() < self.game_state.message_timer:
-            text = self.font.render(self.game_state.message, True, (255, 0, 0))
-            rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-            self.screen.blit(text, rect)
 
     def _handle_encounter(self):
         """Prepares for the encounter, loads assets, and runs the transition."""

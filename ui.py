@@ -77,7 +77,7 @@ def create_list_view_background():
     draw_rounded_rect(background, (240,240,250), (210,5,250,250), radius=20, border=2) # Moved up to align with left frame
     return background
 
-def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font, background):
+def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visible, current_sprite, font, background, game_state):
     screen.blit(background, (0, 0))
 
     start_y = 20 # Revert list to original position
@@ -126,6 +126,12 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
             draw_rounded_rect(screen, (0, 0, 0, 180), bubble_rect, radius=10) # Fond noir semi-transparent
             text_rect = text_surface.get_rect(center=bubble_rect.center)
             screen.blit(text_surface, text_rect)
+
+    # Display game_state.message if active
+    if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
+        message_text = font.render(game_state.message, True, (255, 0, 0)) # Red color for messages
+        message_rect = message_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)) # Slightly above center
+        screen.blit(message_text, message_rect)
 
 def draw_general_stats(screen, game_state, stats_font):
     # Placeholder for now, will implement after db.py changes
