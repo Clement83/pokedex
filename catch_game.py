@@ -67,9 +67,9 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                     pygame.mixer.music.stop()
                     return "quit"
                 elif event.type == pygame.KEYDOWN:
-                    if event.key in KEY_MAPPINGS["RIGHT"]:
+                    if event.key in KEY_MAPPINGS["RIGHT"] or event.key in KEY_MAPPINGS["DOWN"]:
                         angle = max(min_angle, angle - 2)
-                    elif event.key in KEY_MAPPINGS["LEFT"]:
+                    elif event.key in KEY_MAPPINGS["LEFT"] or event.key in KEY_MAPPINGS["UP"]:
                         angle = min(max_angle, angle + 2)
                     elif event.key in KEY_MAPPINGS["CONFIRM"]:
                         charging = True
