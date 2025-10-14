@@ -2,6 +2,10 @@ import os
 import sys
 import subprocess
 import pygame
+import shutil
+import glob
+from pathlib import Path
+from datetime import datetime
 from config import GENERATION_THRESHOLDS
 from db import get_caught_pokemon_count
 
@@ -29,7 +33,6 @@ def update_and_restart(game_state):
         print("--- Git pull successful ---")
         print(result.stdout)
         pygame.time.wait(1500)
-        # Restart logic
         os.execv(sys.executable, ['python'] + sys.argv)
     except Exception as e:
         draw_message(f"Update failed: {e}", color=(255, 100, 100))
@@ -38,7 +41,7 @@ def update_and_restart(game_state):
         pygame.time.wait(3000)
 
 def reset_game_state(game_state):
-    """Resets all Pokémon to uncaught and clears user preferences."""
+    """Resets all Pokémon to uncaught and clears user preferences, with backup."""
     screen = game_state.screen
     font = game_state.font
 
@@ -49,8 +52,21 @@ def reset_game_state(game_state):
         screen.blit(text_surface, text_rect)
         pygame.display.flip()
 
-    draw_message("Resetting game state...")
     try:
+        # --- Create Backup ---
+        draw_message("Creating database backup...")
+        db_path = game_state.BASE_DIR / "pokedex.db"
+        
+        # Generate timestamped backup filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"pokedex_{timestamp}.bk"
+        backup_path = game_state.BASE_DIR / backup_filename
+        shutil.copyfile(db_path, backup_path)
+        draw_message(f"Backup created: {backup_filename}")
+        pygame.time.wait(1000)
+
+        # --- Reset Game State ---
+        draw_message("Resetting game state...")
         with game_state.conn:
             game_state.conn.execute("UPDATE pokemon SET caught=0, is_shiny=0, times_caught=0")
             game_state.conn.execute("DELETE FROM user_preferences")
