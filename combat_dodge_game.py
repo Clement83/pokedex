@@ -13,11 +13,13 @@ PROJECTILE_ADD_RATE = 20  # Lower is faster, adds a projectile every X frames
 class Player(pygame.sprite.Sprite):
     def __init__(self, dresseur_sprite):
         super().__init__()
-        # Assuming dresseur_sprite is the back view, which is what we have.
-        # For this game, a front-facing or smaller sprite might be better,
-        # but we'll use what we have.
-        self.image = pygame.transform.scale(dresseur_sprite, (48, 48))
-        self.rect = self.image.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50))
+        # Scale the sprite proportionally to a new height, preserving aspect ratio
+        new_height = 80
+        original_width, original_height = dresseur_sprite.get_size()
+        aspect_ratio = original_width / original_height
+        new_width = int(new_height * aspect_ratio)
+        self.image = pygame.transform.scale(dresseur_sprite, (new_width, new_height))
+        self.rect = self.image.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60))
 
     def update(self, keys):
         if keys["left"]:
@@ -59,7 +61,6 @@ class Projectile(pygame.sprite.Sprite):
         
         self.velocity = pygame.math.Vector2(target_x - start_pos[0], target_y - start_pos[1]).normalize() * PROJECTILE_SPEED
         
-        # Rotate sprite to face direction of movement
         angle = self.velocity.angle_to(pygame.math.Vector2(1, 0))
         self.image = pygame.transform.rotate(self.image, angle)
 
@@ -79,7 +80,6 @@ class Projectile(pygame.sprite.Sprite):
         elif p_type == "Électrik":
             pygame.draw.polygon(surface, self.color, [(0, 15), (10, 0), (10, 10), (20, 0), (20, 15), (30, 15), (20, 30), (20, 20), (10, 30), (10, 15)])
         elif p_type in ["Psy", "Fée"]:
-            # Simple star
             points = []
             for i in range(5):
                 angle = math.radians(i * 72 - 54)
@@ -111,6 +111,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     keys = {"up": False, "down": False, "left": False, "right": False}
     
     projectile_timer = 0
+    time_is_up = False
 
     while True:
         for event in pygame.event.get():
@@ -132,17 +133,26 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         player.update(keys)
         projectiles.update()
 
-        projectile_timer += 1
-        if projectile_timer >= PROJECTILE_ADD_RATE:
-            projectile_timer = 0
-            projectiles.add(Projectile(pokemon_rect.center, pokemon_types))
+        # Check if time is up
+        if not time_is_up and pygame.time.get_ticks() - start_time >= SURVIVAL_TIME_MS:
+            time_is_up = True
 
+        # Add new projectiles only if time is not up
+        if not time_is_up:
+            projectile_timer += 1
+            if projectile_timer >= PROJECTILE_ADD_RATE:
+                projectile_timer = 0
+                projectiles.add(Projectile(pokemon_rect.center, pokemon_types))
+
+        # Check for collisions
         if pygame.sprite.spritecollide(player, projectiles, True, pygame.sprite.collide_mask):
             return "lose"
 
-        if pygame.time.get_ticks() - start_time >= SURVIVAL_TIME_MS:
+        # Win condition: time is up and all projectiles are gone
+        if time_is_up and not projectiles:
             return "win"
 
+        # --- Drawing ---
         if background_image:
             screen.blit(background_image, (0, 0))
         else:
@@ -150,10 +160,6 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         screen.blit(pokemon_sprite, pokemon_rect)
         player_group.draw(screen)
         projectiles.draw(screen)
-
-        time_left = (SURVIVAL_TIME_MS - (pygame.time.get_ticks() - start_time)) / 1000
-        timer_text = font.render(f"SURVIVE: {max(0, time_left):.1f}s", True, (255, 255, 255))
-        screen.blit(timer_text, (10, 10))
 
         pygame.display.flip()
         clock.tick(60)
