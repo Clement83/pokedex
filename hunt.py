@@ -9,8 +9,9 @@ import stabilize_game
 import combat_dodge_game
 import combat_qte_game
 import combat_memory_game
+from ui import draw_hp_bar
 from sprites import load_sprite
-from transitions import play_spiral_cubes_transition
+from transitions import play_spiral_cubes_transition, play_lose_transition
 
 # Grid configuration for regions
 GRID_COLS = 3
@@ -218,12 +219,9 @@ class HuntManager:
 
     def _handle_combat(self):
         """Runs the combat mini-game."""
-        # Here you can add logic to select from multiple combat games
-        # For now, we only have one.
         combat_minigames = [combat_dodge_game.run, combat_qte_game.run, combat_memory_game.run]
         selected_game = random.choice(combat_minigames)
 
-        # Pass all potential arguments. Each game will use what it needs.
         result = selected_game(
             self.screen, self.font, self.game_state, 
             self.pokemon_sprite, self.dresseur_back_sprite, 
@@ -231,8 +229,38 @@ class HuntManager:
         )
 
         if result == "win":
+            # --- HP Bar Depletion Animation ---
+            start_time = pygame.time.get_ticks()
+            duration = 1500 # 1.5 seconds
+            clock = pygame.time.Clock()
+            
+            while True:
+                elapsed = pygame.time.get_ticks() - start_time
+                if elapsed > duration:
+                    break
+
+                # Draw the static background scene
+                self.screen.blit(self.background_image, (0, 0))
+                if self.dresseur_back_sprite:
+                    self.screen.blit(self.dresseur_back_sprite, (10, SCREEN_HEIGHT - self.dresseur_back_sprite.get_height() - 10))
+                if self.pokemon_sprite:
+                    p_rect = self.pokemon_sprite.get_rect(center=(SCREEN_WIDTH * 0.75, SCREEN_HEIGHT * 0.35))
+                    self.screen.blit(self.pokemon_sprite, p_rect)
+
+                # Calculate HP percentage
+                progress = elapsed / duration
+                hp_percent = 100 * (1 - progress)
+                hp_percent = max(10, hp_percent) # Ensure it stops at a small amount
+
+                # Draw the HP bar
+                draw_hp_bar(self.screen, hp_percent, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=self.font)
+
+                pygame.display.flip()
+                clock.tick(60)
+
             self.state = "CATCHING"
         elif result == "lose":
+            play_lose_transition(self.screen, pygame.time.Clock())
             self.state = "FLED"
         else: # quit
             self.state = "QUIT"
@@ -252,7 +280,7 @@ class HuntManager:
             return
 
         result, dresseur_front_sprite = output
-        self.catch_game_output = dresseur_front_sprite # Store only the front sprite now
+        self.catch_game_output = dresseur_front_sprite
         self.state = "STABILIZING" if result == "caught" else "FLED"
 
     def _handle_stabilizing(self):
@@ -270,8 +298,11 @@ class HuntManager:
         )
         
         if result == "caught": self.state = "SUCCESS"
-        elif result == "failed": self.state = "FLED"
+        elif result == "failed":
+            play_lose_transition(self.screen, pygame.time.Clock())
+            self.state = "FLED"
         else: self.state = "REGION_SELECTION"
+
     def _handle_success(self):
         """Handles the logic for a successful catch."""
         pokedex_id = self.target_pokemon_data[0]
@@ -299,7 +330,6 @@ class HuntManager:
 
     def _handle_fled(self):
         """Handles the Pokémon fleeing."""
-        pygame.mixer.music.stop()
         self.game_state.play_next_menu_song()
         self.game_state.message = f"{self.target_pokemon_data[1]} fled!"
         self.game_state.message_timer = pygame.time.get_ticks() + 2000

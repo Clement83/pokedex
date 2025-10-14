@@ -19,6 +19,32 @@ def draw_rounded_rect(surface, color, rect, radius=8, border=0, border_color=(0,
         pygame.draw.rect(shape_surf, border_color, shape_surf.get_rect(), border, border_radius=radius)
     surface.blit(shape_surf, rect.topleft)
 
+def draw_hp_bar(surface, percent, pos, size, font):
+    """Draws a classic Pokémon-style HP bar."""
+    x, y = pos
+    width, height = size
+
+    # Determine color based on percentage
+    if percent > 50:
+        bar_color = (30, 200, 30)  # Green
+    elif percent > 20:
+        bar_color = (255, 200, 0) # Yellow
+    else:
+        bar_color = (220, 30, 30)  # Red
+
+    # Draw the outer frame
+    frame_rect = pygame.Rect(x, y, width, height)
+    draw_rounded_rect(surface, (240, 240, 240), frame_rect, radius=5, border=2, border_color=(40, 40, 40))
+
+    # Draw the "PV" label
+    pv_text = font.render("PV", True, (40, 40, 40))
+    surface.blit(pv_text, (x + 5, y + (height - pv_text.get_height()) // 2))
+
+    # Draw the inner health bar
+    bar_width = (width - 35) * (percent / 100)
+    bar_rect = pygame.Rect(x + 30, y + 4, bar_width, height - 8)
+    pygame.draw.rect(surface, bar_color, bar_rect)
+
 def draw_stats_radar(surface, stats, center, radius, font, color=(0, 120, 200, 120)):
     labels = ["hp", "atk", "def", "spe_atk", "spe_def", "vit"]
     values = [stats.get(l, 0) for l in labels]

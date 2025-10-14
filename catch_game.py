@@ -5,6 +5,7 @@ from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS, REGION_MUSIC
 import controls
 from sprites import load_sprite
+from ui import draw_hp_bar
 
 def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state, pokedex_id, pokemon_name_en, background_image):
     # Play pokemon cry
@@ -143,6 +144,9 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                 for i in range(remaining_attempts):
                     screen.blit(pokeball_sprite, (10 + i * (pokeball_width + 5), 10))
             
+            # Draw the depleted HP bar
+            draw_hp_bar(screen, 10, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
+
             pygame.display.flip()
             clock.tick(60)
 
@@ -180,6 +184,9 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                 rect = pokeball_sprite.get_rect(center=(int(pos[0]), int(pos[1])))
                 screen.blit(pokeball_sprite, rect)
             
+            # Draw the depleted HP bar during the throw as well
+            draw_hp_bar(screen, 10, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
+
             pygame.display.flip()
             clock.tick(60)
 

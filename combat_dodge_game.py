@@ -3,6 +3,7 @@ import random
 import math
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 import controls
+from ui import draw_hp_bar
 
 # Game settings
 SURVIVAL_TIME_MS = 15000  # 15 seconds
@@ -160,6 +161,9 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         screen.blit(pokemon_sprite, pokemon_rect)
         player_group.draw(screen)
         projectiles.draw(screen)
+
+        # Draw the HP bar
+        draw_hp_bar(screen, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
 
         pygame.display.flip()
         clock.tick(60)
