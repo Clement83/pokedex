@@ -6,7 +6,7 @@ import controls
 from ui import draw_hp_bar
 
 # Game settings
-QTE_BUTTONS = ["UP", "DOWN", "LEFT", "RIGHT", "A", "B"]
+QTE_BUTTONS = ["UP", "DOWN", "LEFT", "RIGHT"]
 PROMPT_SPEED_BASE = 3
 PROMPT_SPAWN_INTERVAL_MS = 1000 # How often new prompts appear
 HIT_ZONE_X = SCREEN_WIDTH // 2 - 25 # Center of the screen
