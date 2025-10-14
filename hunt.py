@@ -1,7 +1,7 @@
 import pygame
 import random
 from pathlib import Path
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS, STABILIZE_CATCH_RATE_THRESHOLD, KEY_MAPPINGS
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, SHINY_RATE, GENERATION_THRESHOLDS, REGIONS, STABILIZE_CATCH_RATE_THRESHOLD, KEY_MAPPINGS, REGION_MUSIC
 from db import get_pokemon_data, update_pokemon_caught_status, get_caught_pokemon_count, mew_is_unlocked, get_pokemon_list, get_user_preference, set_user_preference
 import controls
 import catch_game
@@ -109,6 +109,16 @@ class HuntManager:
                                 self.target_pokemon_data = random.choice(available_pokemon)
                                 self.is_shiny = random.random() < SHINY_RATE
                                 self.state = "ENCOUNTER"
+
+                                # Start battle music
+                                if self.selected_region_name in REGION_MUSIC and REGION_MUSIC[self.selected_region_name]:
+                                    music_file = random.choice(REGION_MUSIC[self.selected_region_name])
+                                    music_path = self.game_state.BASE_DIR / "pokemon_audio" / music_file
+                                    if music_path.exists():
+                                        pygame.mixer.music.load(str(music_path))
+                                        pygame.mixer.music.set_volume(self.game_state.music_volume)
+                                        pygame.mixer.music.play(-1)  # -1 for looping
+
                                 return
                             else:
                                 self.game_state.message = f"No pokemon in {self.selected_region_name}!"
@@ -295,6 +305,8 @@ class HuntManager:
 
     def _handle_fled(self):
         """Handles the Pokémon fleeing."""
+        pygame.mixer.music.stop()
+        self.game_state.play_next_menu_song()
         self.game_state.message = f"{self.target_pokemon_data[1]} fled!"
         self.game_state.message_timer = pygame.time.get_ticks() + 2000
         self.state = "REGION_SELECTION"

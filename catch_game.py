@@ -7,24 +7,15 @@ import controls
 from sprites import load_sprite
 
 def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_sprite, game_state, pokedex_id, pokemon_name_en, background_image):
-    # Start battle music
-    if region_name in REGION_MUSIC and REGION_MUSIC[region_name]:
-        music_file = random.choice(REGION_MUSIC[region_name])
-        music_path = Path.cwd() / "pokemon_audio" / music_file
-        if music_path.exists():
-            pygame.mixer.music.load(str(music_path))
-            pygame.mixer.music.set_volume(game_state.music_volume)
-            pygame.mixer.music.play(-1)  # -1 for looping
-
-        # Play pokemon cry
-        cry_path = game_state.BASE_DIR / "pokemon_audio" / "cries" / f"{pokemon_name_en.lower()}.mp3"
-        if cry_path.exists():
-            try:
-                cry_sound = pygame.mixer.Sound(str(cry_path))
-                cry_sound.set_volume(game_state.music_volume)
-                cry_sound.play()
-            except pygame.error as e:
-                print(f"Error playing cry: {e}")
+    # Play pokemon cry
+    cry_path = game_state.BASE_DIR / "pokemon_audio" / "cries" / f"{pokemon_name_en.lower()}.mp3"
+    if cry_path.exists():
+        try:
+            cry_sound = pygame.mixer.Sound(str(cry_path))
+            cry_sound.set_volume(game_state.music_volume)
+            cry_sound.play()
+        except pygame.error as e:
+            print(f"Error playing cry: {e}")
 
     if pokeball_sprite:
         pokeball_sprite = pygame.transform.scale(pokeball_sprite, (20, 20))
@@ -83,7 +74,6 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                     elif event.key in KEY_MAPPINGS["CONFIRM"]:
                         charging = True
                     elif event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
-                        pygame.mixer.music.stop()
                         return "back"
                 elif event.type == pygame.KEYUP:
                     if event.key in KEY_MAPPINGS["CONFIRM"] and charging:
@@ -203,9 +193,5 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
             result = "caught"
         else:
             result = "miss"
-            
-    if not caught:
-        pygame.mixer.music.stop()
-        game_state.play_next_menu_song()
             
     return result, dresseur_front_sprite
