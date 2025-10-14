@@ -24,7 +24,7 @@ class HuntManager:
         self.screen = screen
         self.font = font
         self.game_state = game_state
-        self.state = "REGION_SELECTION"
+        
         self.target_pokemon_data = None
         self.is_shiny = False
         self.selected_region_name = None
@@ -35,8 +35,29 @@ class HuntManager:
         self.pokemon_types = None
         self.full_pokemon_data = None
 
+        caught_count = get_caught_pokemon_count(self.game_state.conn)
+
+        if caught_count == 0:
+            self.state = "ENCOUNTER"
+            self.selected_region_name = "Kanto"
+            starters = [p for p in self.game_state.pokemon_list if p[0] in [1, 4, 7]]
+            if starters:
+                self.target_pokemon_data = random.choice(starters)
+            else:
+                self.state = "REGION_SELECTION"
+                return
+            self.is_shiny = False
+            if self.selected_region_name in REGION_MUSIC and REGION_MUSIC[self.selected_region_name]:
+                music_file = random.choice(REGION_MUSIC[self.selected_region_name])
+                music_path = self.game_state.BASE_DIR / "pokemon_audio" / music_file
+                if music_path.exists():
+                    pygame.mixer.music.load(str(music_path))
+                    pygame.mixer.music.set_volume(self.game_state.music_volume)
+                    pygame.mixer.music.play(-1)
+        else:
+            self.state = "REGION_SELECTION"
+
     def run(self):
-        """Main loop for the hunt state machine."""
         running = True
         while running:
             if self.state == "REGION_SELECTION":
@@ -55,6 +76,8 @@ class HuntManager:
                 return self._handle_success()
             elif self.state == "FLED":
                 self._handle_fled()
+            elif self.state == "QUIT_HUNT":
+                return "main_menu"
             elif self.state == "QUIT":
                 return "quit"
             else:
@@ -62,16 +85,88 @@ class HuntManager:
                 running = False
         return "main_menu"
 
+    def _play_region_unlock_animation(self, unlocked_region_name):
+        from ui import draw_rounded_rect
+        region_names = list(REGIONS.keys())
+        region_images = {name: load_sprite(self.game_state.BASE_DIR / f"app/data/assets/{name.lower()}/icon.png") for name in region_names}
+        unlocked_image = region_images.get(unlocked_region_name)
+        if not unlocked_image:
+            return
+
+        try:
+            unlocked_idx = region_names.index(unlocked_region_name)
+        except ValueError:
+            return
+
+        GRID_ROWS = (len(region_names) + GRID_COLS - 1) // GRID_COLS
+        unlocked_row, unlocked_col = unlocked_idx // GRID_COLS, unlocked_idx % GRID_COLS
+        start_x = (SCREEN_WIDTH - (GRID_COLS * IMAGE_SIZE + (GRID_COLS - 1) * GRID_PADDING)) // 2
+        end_pos = (start_x + unlocked_col * (IMAGE_SIZE + GRID_PADDING), GRID_START_Y + unlocked_row * (IMAGE_SIZE + GRID_PADDING))
+
+        clock = pygame.time.Clock()
+        start_time = pygame.time.get_ticks()
+        total_duration = 5000 # 5 seconds total
+        msg_duration = 2000
+        anim_duration = 1500
+        settle_duration = 1500
+
+        try:
+            big_font = pygame.font.Font(None, 40)
+        except: big_font = self.font
+
+        while True:
+            elapsed = pygame.time.get_ticks() - start_time
+            if elapsed > total_duration: break
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT: return "quit"
+                if event.type == pygame.KEYDOWN and elapsed > msg_duration:
+                    if event.key in KEY_MAPPINGS["CONFIRM"] or event.key in KEY_MAPPINGS["CANCEL"]:
+                        return
+
+            self.screen.fill((0, 0, 0))
+            self._draw_region_grid(region_names, {n: pygame.transform.scale(i, (IMAGE_SIZE, IMAGE_SIZE)) for n, i in region_images.items()}, -1, -1, GRID_ROWS)
+
+            if elapsed < msg_duration:
+                overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                overlay.fill((0, 0, 0, 180))
+                self.screen.blit(overlay, (0, 0))
+                msg_rect = pygame.Rect(40, SCREEN_HEIGHT // 2 - 50, SCREEN_WIDTH - 80, 100)
+                draw_rounded_rect(self.screen, (240, 240, 255), msg_rect, radius=15, border=2, border_color=(20,20,20))
+                line1_surf = big_font.render("Nouvelle région !", True, (0, 0, 139))
+                line2_surf = self.font.render(f"La région de {unlocked_region_name} est disponible !", True, (30, 30, 30))
+                self.screen.blit(line1_surf, (msg_rect.centerx - line1_surf.get_width() // 2, msg_rect.y + 15))
+                self.screen.blit(line2_surf, (msg_rect.centerx - line2_surf.get_width() // 2, msg_rect.y + 55))
+            elif elapsed < msg_duration + anim_duration:
+                progress = (elapsed - msg_duration) / anim_duration
+                start_size = SCREEN_HEIGHT
+                end_size = IMAGE_SIZE
+                curr_size = int(start_size + (end_size - start_size) * progress)
+                start_center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+                end_center = (end_pos[0] + IMAGE_SIZE // 2, end_pos[1] + IMAGE_SIZE // 2)
+                curr_center_x = int(start_center[0] + (end_center[0] - start_center[0]) * progress)
+                curr_center_y = int(start_center[1] + (end_center[1] - start_center[1]) * progress)
+                
+                scaled_img = pygame.transform.smoothscale(unlocked_image, (curr_size, curr_size))
+                img_rect = scaled_img.get_rect(center=(curr_center_x, curr_center_y))
+                self.screen.blit(scaled_img, img_rect)
+            else:
+                if int((elapsed - (msg_duration + anim_duration)) / 250) % 2 == 0:
+                    pygame.draw.rect(self.screen, (255, 255, 0), (end_pos[0], end_pos[1], IMAGE_SIZE, IMAGE_SIZE), 4)
+
+            pygame.display.flip()
+            clock.tick(60)
+
     def _handle_region_selection(self):
-        """Handles the region selection screen."""
+        unlocked_region = get_user_preference(self.game_state.conn, 'new_region_unlocked')
+        if unlocked_region:
+            self._play_region_unlock_animation(unlocked_region)
+            set_user_preference(self.game_state.conn, 'new_region_unlocked', '')
+
         region_names = list(REGIONS.keys())
         num_regions = len(region_names)
         GRID_ROWS = (num_regions + GRID_COLS - 1) // GRID_COLS
-
-        region_images_loaded = {
-            name: pygame.transform.scale(load_sprite(self.game_state.BASE_DIR / f"app/data/assets/{name.lower()}/icon.png"), (IMAGE_SIZE, IMAGE_SIZE))
-            for name in region_names
-        }
+        region_images_loaded = {name: pygame.transform.scale(load_sprite(self.game_state.BASE_DIR / f"app/data/assets/{name.lower()}/icon.png"), (IMAGE_SIZE, IMAGE_SIZE)) for name in region_names}
 
         selected_row, selected_col = 0, 0
         last_region = get_user_preference(self.game_state.conn, "last_selected_region")
@@ -84,12 +179,7 @@ class HuntManager:
                 controls.process_joystick_input(self.game_state, event)
                 if event.type == pygame.QUIT: return "quit"
                 if event.type == pygame.KEYDOWN:
-                    key_actions = {
-                        "UP": lambda: (selected_row - 1) % GRID_ROWS,
-                        "DOWN": lambda: (selected_row + 1) % GRID_ROWS,
-                        "LEFT": lambda: (selected_col - 1) % GRID_COLS,
-                        "RIGHT": lambda: (selected_col + 1) % GRID_COLS,
-                    }
+                    key_actions = {"UP": lambda: (selected_row - 1) % GRID_ROWS, "DOWN": lambda: (selected_row + 1) % GRID_ROWS, "LEFT": lambda: (selected_col - 1) % GRID_COLS, "RIGHT": lambda: (selected_col + 1) % GRID_COLS}
                     if event.key in KEY_MAPPINGS["UP"]: selected_row = key_actions["UP"]()
                     elif event.key in KEY_MAPPINGS["DOWN"]: selected_row = key_actions["DOWN"]()
                     elif event.key in KEY_MAPPINGS["LEFT"]: selected_col = key_actions["LEFT"]()
@@ -101,26 +191,20 @@ class HuntManager:
                         if idx < num_regions:
                             self.selected_region_name = region_names[idx]
                             region_data = REGIONS[self.selected_region_name]
-                            if region_data["min_id"] >= self.game_state.current_max_pokedex_id:
-                                continue
-                            
+                            if region_data["min_id"] >= self.game_state.current_max_pokedex_id: continue
                             set_user_preference(self.game_state.conn, "last_selected_region", self.selected_region_name)
                             available_pokemon = [p for p in self.game_state.pokemon_list if region_data["min_id"] <= p[0] < region_data["max_id"]]
-                            
                             if available_pokemon:
                                 self.target_pokemon_data = random.choice(available_pokemon)
                                 self.is_shiny = random.random() < SHINY_RATE
                                 self.state = "ENCOUNTER"
-
-                                # Start battle music
                                 if self.selected_region_name in REGION_MUSIC and REGION_MUSIC[self.selected_region_name]:
                                     music_file = random.choice(REGION_MUSIC[self.selected_region_name])
                                     music_path = self.game_state.BASE_DIR / "pokemon_audio" / music_file
                                     if music_path.exists():
                                         pygame.mixer.music.load(str(music_path))
                                         pygame.mixer.music.set_volume(self.game_state.music_volume)
-                                        pygame.mixer.music.play(-1)  # -1 for looping
-
+                                        pygame.mixer.music.play(-1)
                                 return
                             else:
                                 self.game_state.message = f"No pokemon in {self.selected_region_name}!"
@@ -138,17 +222,13 @@ class HuntManager:
         for i, name in enumerate(region_names):
             row, col = i // GRID_COLS, i % GRID_COLS
             if row >= grid_rows: continue
-            
             x = start_x + col * (IMAGE_SIZE + GRID_PADDING)
             y = GRID_START_Y + row * (IMAGE_SIZE + GRID_PADDING)
-            
             self.screen.blit(images[name], (x, y))
-            
             if REGIONS[name]["min_id"] >= self.game_state.current_max_pokedex_id:
                 overlay = pygame.Surface((IMAGE_SIZE, IMAGE_SIZE), pygame.SRCALPHA)
                 overlay.fill((0, 0, 0, 150))
                 self.screen.blit(overlay, (x, y))
-            
             if row == sel_row and col == sel_col:
                 pygame.draw.rect(self.screen, (255, 255, 0), (x, y, IMAGE_SIZE, IMAGE_SIZE), 3)
 
@@ -309,9 +389,21 @@ class HuntManager:
         update_pokemon_caught_status(self.game_state.conn, pokedex_id, True, self.is_shiny)
         
         caught_count = get_caught_pokemon_count(self.game_state.conn)
-        for gen, data in GENERATION_THRESHOLDS.items():
+        # Check if a new generation has been unlocked
+        for gen, data in sorted(GENERATION_THRESHOLDS.items(), key=lambda item: item[1]['unlock_count']):
             if caught_count >= data['unlock_count'] and self.game_state.current_max_pokedex_id < data['max_id']:
                 self.game_state.current_max_pokedex_id = data['max_id']
+                
+                # Find the name of the region that was just unlocked
+                unlocked_region_name = "Unknown"
+                for region_name, region_data in REGIONS.items():
+                    if region_data["max_id"] -1 == data['max_id'] or (region_data["min_id"] <= data['max_id'] < region_data["max_id"]):
+                         # A bit of fuzzy matching to link generation to region
+                        unlocked_region_name = region_name
+                        break
+                
+                # Save the unlock event to be celebrated later
+                set_user_preference(self.game_state.conn, 'new_region_unlocked', unlocked_region_name)
                 break
         
         mew_unlocked = mew_is_unlocked(self.game_state.conn)
@@ -331,9 +423,12 @@ class HuntManager:
     def _handle_fled(self):
         """Handles the Pokémon fleeing."""
         self.game_state.play_next_menu_song()
-        self.game_state.message = f"{self.target_pokemon_data[1]} fled!"
+        self.game_state.message = f"{self.target_pokemon_data[1]} s'est enfui !"
         self.game_state.message_timer = pygame.time.get_ticks() + 2000
-        self.state = "REGION_SELECTION"
+
+        # Always return to the Pokedex list after a flee
+        self.game_state.state = "list"
+        self.state = "QUIT_HUNT"
 
 def run(screen, font, game_state):
     """Entry point for the hunt feature."""

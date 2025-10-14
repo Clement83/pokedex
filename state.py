@@ -74,7 +74,7 @@ class GameState:
         self.evolution_scroll_direction = 1
         self.evolution_scroll_active = False
 
-        self.music_volume = 0.5
+        self.music_volume = 0.2
         
         # Music handling
         self.MUSIC_END_EVENT = pygame.USEREVENT + 1
