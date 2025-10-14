@@ -10,6 +10,7 @@ import combat_dodge_game
 import combat_qte_game
 import combat_memory_game
 from sprites import load_sprite
+from transitions import play_spiral_cubes_transition
 
 # Grid configuration for regions
 GRID_COLS = 3
@@ -169,57 +170,50 @@ class HuntManager:
             self.screen.blit(text, rect)
 
     def _handle_encounter(self):
-        """Prepares for the encounter by loading assets."""
-        # Get Pokemon types for styling
+        """Prepares for the encounter, loads assets, and runs the transition."""
+        # 1. Load all assets for combat
         pokedex_id = self.target_pokemon_data[0]
         self.full_pokemon_data = get_pokemon_data(self.game_state.conn, pokedex_id)
-        if self.full_pokemon_data and 'types' in self.full_pokemon_data:
-            self.pokemon_types = [t['name'] for t in self.full_pokemon_data['types'] if 'name' in t]
-        else:
-            self.pokemon_types = ["Normal"] # Fallback type
+        self.pokemon_types = [t['name'] for t in self.full_pokemon_data.get('types', []) if 'name' in t] or ["Normal"]
 
         sprite_path_key = 4 if self.is_shiny else 3
         sprite_filename = Path(self.target_pokemon_data[sprite_path_key]).name
         sprite_path = self.game_state.BASE_DIR / "app/data/sprites" / sprite_filename
-        
         original_sprite = load_sprite(sprite_path)
+
         if not original_sprite:
             self.game_state.message = f"Sprite for {self.target_pokemon_data[1]} not found!"
             self.game_state.message_timer = pygame.time.get_ticks() + 2000
             self.state = "REGION_SELECTION"
             return
 
-        self.pokemon_sprite = pygame.transform.scale(original_sprite, (64, 64))
+        self.pokemon_sprite = pygame.transform.scale(original_sprite, (128, 128))
         dresseur_path = self.game_state.BASE_DIR / f"app/data/assets/dresseurs/{self.game_state.dresseur}/dos.png"
         self.dresseur_back_sprite = load_sprite(dresseur_path)
 
-        # Load background image once for the entire hunt
-        stadium_path = self.game_state.BASE_DIR / "app" / "data" / "assets" / self.selected_region_name.lower() / "stadium"
-        background_image = None
-        if stadium_path.is_dir():
-            stadium_images = list(stadium_path.glob('*.png'))
-            if stadium_images:
-                random_bg_path = random.choice(stadium_images)
-                try:
-                    background_image = pygame.image.load(random_bg_path).convert()
-                except pygame.error:
-                    print(f"Error loading stadium background: {random_bg_path}")
-        
-        if background_image is None:
-            fallback_path = self.game_state.BASE_DIR / "app" / "data" / "assets" / "out.png"
-            try:
-                background_image = pygame.image.load(fallback_path).convert()
-            except pygame.error:
-                print(f"Error loading fallback background: {fallback_path}")
-
-        if background_image:
-            self.background_image = pygame.transform.scale(background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        stadium_path = self.game_state.BASE_DIR / "app/data/assets" / self.selected_region_name.lower() / "stadium"
+        background_image_path = random.choice(list(stadium_path.glob('*.png'))) if stadium_path.is_dir() else None
+        if background_image_path:
+            self.background_image = pygame.image.load(background_image_path).convert()
         else:
-            # If all loading fails, create a placeholder surface
-            self.background_image = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            self.background_image.fill((20, 20, 30)) # Fallback color
+            fallback_path = self.game_state.BASE_DIR / "app/data/assets/out.png"
+            self.background_image = pygame.image.load(fallback_path).convert()
+        self.background_image = pygame.transform.scale(self.background_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-        # This is where you can add logic to decide between combat and catching
+        # 2. Pre-render the initial combat scene
+        combat_scene_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        combat_scene_surface.blit(self.background_image, (0, 0))
+        if self.dresseur_back_sprite:
+            combat_scene_surface.blit(self.dresseur_back_sprite, (10, SCREEN_HEIGHT - self.dresseur_back_sprite.get_height() - 10))
+        if self.pokemon_sprite:
+            # Position the pokemon more centrally and higher up
+            p_rect = self.pokemon_sprite.get_rect(center=(SCREEN_WIDTH * 0.75, SCREEN_HEIGHT * 0.35))
+            combat_scene_surface.blit(self.pokemon_sprite, p_rect)
+
+        # 3. Run the transition
+        play_spiral_cubes_transition(self.screen, pygame.time.Clock(), combat_scene_surface)
+
+        # 4. Proceed to combat
         self.state = "COMBAT"
 
     def _handle_combat(self):
