@@ -396,9 +396,9 @@ class HuntManager:
                 
                 # Find the name of the region that was just unlocked
                 unlocked_region_name = "Unknown"
+                target_max_id = data['max_id'] # The max_id from GENERATION_THRESHOLDS
                 for region_name, region_data in REGIONS.items():
-                    if region_data["max_id"] -1 == data['max_id'] or (region_data["min_id"] <= data['max_id'] < region_data["max_id"]):
-                         # A bit of fuzzy matching to link generation to region
+                    if region_data["max_id"] - 1 == target_max_id:
                         unlocked_region_name = region_name
                         break
                 
