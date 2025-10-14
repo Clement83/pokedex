@@ -129,9 +129,23 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
     # Display game_state.message if active
     if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
-        message_text = font.render(game_state.message, True, (255, 0, 0)) # Red color for messages
-        message_rect = message_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)) # Slightly above center
-        screen.blit(message_text, message_rect)
+        # Create a semi-transparent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180)) # Black with 180 alpha
+        screen.blit(overlay, (0, 0))
+
+        # Define message box dimensions and position
+        msg_box_width = SCREEN_WIDTH - 80
+        msg_box_height = 100
+        msg_rect = pygame.Rect(40, SCREEN_HEIGHT // 2 - msg_box_height // 2, msg_box_width, msg_box_height)
+        
+        # Draw the rounded rectangle background for the message
+        draw_rounded_rect(screen, (240, 240, 255), msg_rect, radius=15, border=2, border_color=(20,20,20))
+        
+        # Render the message text
+        message_text = font.render(game_state.message, True, (30, 30, 30)) # Dark grey color for messages
+        message_text_rect = message_text.get_rect(center=msg_rect.center)
+        screen.blit(message_text, message_text_rect)
 
 def draw_general_stats(screen, game_state, stats_font):
     # Placeholder for now, will implement after db.py changes
