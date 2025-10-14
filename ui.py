@@ -143,7 +143,11 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
         draw_rounded_rect(screen, (240, 240, 255), msg_rect, radius=15, border=2, border_color=(20,20,20))
         
         # Render the message text
-        message_text = font.render(game_state.message, True, (30, 30, 30)) # Dark grey color for messages
+        try:
+            big_font = pygame.font.Font(None, 40)
+        except: 
+            big_font = font # Fallback to default font if big_font fails
+        message_text = big_font.render(game_state.message, True, (0, 0, 139)) # Dark blue color for messages
         message_text_rect = message_text.get_rect(center=msg_rect.center)
         screen.blit(message_text, message_text_rect)
 
