@@ -349,7 +349,10 @@ class HuntManager:
         )
 
         if not isinstance(output, tuple):
-            self.state = "QUIT" if output == "quit" else "REGION_SELECTION"
+            if output == "quit":
+                self.state = "QUIT"
+            else:
+                self.state = "FLED"
             return
 
         result, dresseur_front_sprite = output
@@ -374,7 +377,10 @@ class HuntManager:
         elif result == "failed":
             play_lose_transition(self.screen, pygame.time.Clock())
             self.state = "FLED"
-        else: self.state = "REGION_SELECTION"
+        elif result == "quit":
+            self.state = "QUIT"
+        else:
+            self.state = "FLED"
 
     def _handle_success(self):
         """Handles the logic for a successful catch."""
