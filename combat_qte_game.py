@@ -11,7 +11,7 @@ PROMPT_SPEED_BASE = 3
 PROMPT_SPAWN_INTERVAL_MS = 1000 # How often new prompts appear
 HIT_ZONE_X = SCREEN_WIDTH // 2 - 25 # Center of the screen
 HIT_ZONE_WIDTH = 50
-MAX_MISSES = 5
+MAX_MISSES = 3
 SUCCESS_THRESHOLD = 10 # Number of successful hits to win
 BUTTON_SIZE = 40
 
@@ -153,6 +153,8 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     
     score = 0
     misses = 0
+    player_hp_percent = 100.0
+    game_over = False
     active_feedback = [] # List to hold active feedback messages
     
     pokemon_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -163,67 +165,79 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
 
     while True:
         current_time = pygame.time.get_ticks()
-        
+
+        # --- HP Bar Animation and Game Over Logic ---
+        player_hp = MAX_MISSES - misses
+        target_hp_percent = (player_hp / MAX_MISSES) * 100 if MAX_MISSES > 0 else 0
+        if player_hp_percent > target_hp_percent:
+            player_hp_percent -= 1.0  # Animation speed
+
+        if game_over and player_hp_percent <= target_hp_percent:
+            pygame.time.wait(500)
+            return "lose"
+
         # --- Event Handling ---
         for event in pygame.event.get():
             controls.process_joystick_input(game_state, event)
             if event.type == pygame.QUIT: return "quit"
             if event.type == pygame.KEYDOWN:
                 if event.key in KEY_MAPPINGS["QUIT"]: return "quit"
-                # if event.key in KEY_MAPPINGS["CANCEL"]: return "lose" # Instant lose for testing/escape
+                
+                if not game_over:
+                    pressed_button_type = None
+                    if event.key in KEY_MAPPINGS["UP"]: pressed_button_type = "UP"
+                    elif event.key in KEY_MAPPINGS["DOWN"]: pressed_button_type = "DOWN"
+                    elif event.key in KEY_MAPPINGS["LEFT"]: pressed_button_type = "LEFT"
+                    elif event.key in KEY_MAPPINGS["RIGHT"]: pressed_button_type = "RIGHT"
+                    elif event.key in KEY_MAPPINGS["CONFIRM"]: pressed_button_type = "A"
+                    elif event.key in KEY_MAPPINGS["CANCEL"]: pressed_button_type = "B"
 
-                pressed_button_type = None
-                if event.key in KEY_MAPPINGS["UP"]: pressed_button_type = "UP"
-                elif event.key in KEY_MAPPINGS["DOWN"]: pressed_button_type = "DOWN"
-                elif event.key in KEY_MAPPINGS["LEFT"]: pressed_button_type = "LEFT"
-                elif event.key in KEY_MAPPINGS["RIGHT"]: pressed_button_type = "RIGHT"
-                elif event.key in KEY_MAPPINGS["CONFIRM"]: pressed_button_type = "A"
-                elif event.key in KEY_MAPPINGS["CANCEL"]: pressed_button_type = "B" # Using CANCEL for B for now
+                    if pressed_button_type:
+                        hit_found = False
+                        for prompt in active_prompts:
+                            if click_zone_rect.colliderect(prompt.rect) and prompt.button_type == pressed_button_type and not prompt.hit:
+                                score += 1
+                                active_feedback.append(Feedback("HIT!", (0, 255, 0), click_zone_rect.center, 700))
+                                prompt.trigger_hit_effect()
+                                prompt.hit = True
+                                hit_found = True
+                                break
+                        if not hit_found:
+                            misses += 1
+                            active_feedback.append(Feedback("MISS!", (255, 0, 0), click_zone_rect.center, 700))
 
-                if pressed_button_type:
-                    hit_found = False
-                    for prompt in active_prompts:
-                        # Check if prompt is in click zone and matches pressed button
-                        if click_zone_rect.colliderect(prompt.rect) and prompt.button_type == pressed_button_type and not prompt.hit:
-                            score += 1
-                            active_feedback.append(Feedback("HIT!", (0, 255, 0), click_zone_rect.center, 700)) # Green for hit
-                            prompt.trigger_hit_effect()
-                            prompt.hit = True # Mark as hit so it's not processed again
-                            hit_found = True
-                            break
-                    if not hit_found:
-                        misses += 1
-                        active_feedback.append(Feedback("MISS!", (255, 0, 0), click_zone_rect.center, 700)) # Red for miss
+        if not game_over:
+            # --- Prompt Spawning ---
+            if current_time >= next_prompt_time:
+                random_button = random.choice(QTE_BUTTONS)
+                new_prompt = QTEPrompt(random_button, button_surfaces[random_button], SCREEN_WIDTH, pokemon_rect.centery)
+                active_prompts.add(new_prompt)
+                next_prompt_time = current_time + PROMPT_SPAWN_INTERVAL_MS
 
-        # --- Prompt Spawning ---
-        if current_time >= next_prompt_time:
-            random_button = random.choice(QTE_BUTTONS)
-            new_prompt = QTEPrompt(random_button, button_surfaces[random_button], SCREEN_WIDTH, pokemon_rect.centery)
-            active_prompts.add(new_prompt)
-            next_prompt_time = current_time + PROMPT_SPAWN_INTERVAL_MS
+            # --- Update Prompts ---
+            active_prompts.update(prompt_speed)
 
-        # --- Update Prompts ---
-        active_prompts.update(prompt_speed)
+            for prompt in list(active_prompts):
+                if prompt.rect.right < click_zone_rect.left and not prompt.hit:
+                    misses += 1
+                    prompt.kill()
+                elif prompt.hit and not prompt.hit_effect_active:
+                    prompt.kill()
 
-        # Check for prompts that passed the click zone or finished their hit effect
-        for prompt in list(active_prompts): # Iterate over a copy to allow modification
-            if prompt.rect.right < click_zone_rect.left and not prompt.hit: # Passed click zone without being hit
-                misses += 1
-                prompt.kill()
-            elif prompt.hit and not prompt.hit_effect_active: # Was hit and effect finished
-                prompt.kill()
-
-        # --- Win/Lose Conditions ---
-        if score >= SUCCESS_THRESHOLD:
-            return "win"
-        if misses >= MAX_MISSES:
-            return "lose"
+            # --- Win/Lose Conditions ---
+            if score >= SUCCESS_THRESHOLD:
+                return "win"
+            if misses >= MAX_MISSES:
+                game_over = True
 
         # --- Drawing ---
         if background_image:
             screen.blit(background_image, (0, 0))
         else:
             screen.fill((20, 20, 30))
+
+        if dresseur_sprite:
+            screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
 
         # Draw Pokémon
         screen.blit(pokemon_sprite, pokemon_rect)
@@ -239,14 +253,11 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             in_click_zone = click_zone_rect.colliderect(prompt.rect)
             prompt.draw(screen, in_click_zone=in_click_zone)
 
-        # Draw score and misses
-        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-        miss_text = font.render(f"Misses: {misses}/{MAX_MISSES}", True, (255, 255, 255))
-        screen.blit(score_text, (10, 10))
-        screen.blit(miss_text, (10, 40))
-
-        # Draw the HP bar (already present)
+        # Draw the Pokemon HP bar
         draw_hp_bar(screen, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
+
+        # Draw the Player HP bar
+        draw_hp_bar(screen, player_hp_percent, pos=(20, 20), size=(150, 20), font=font)
 
         # Draw and update feedback messages
         for feedback in list(active_feedback): # Iterate over a copy to allow modification

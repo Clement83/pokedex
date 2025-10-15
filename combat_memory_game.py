@@ -135,13 +135,17 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                 phase_timer = current_time
         elif game_phase == "INPUT":
             if not game_over and current_time - phase_timer > time_limit:
-                handle_mistake()
+                player_hp = 0
+                game_over = True
 
         # --- Drawing ---
         if background_image:
             screen.blit(background_image, (0, 0))
         else:
             screen.fill((20, 20, 30))
+
+        if dresseur_sprite:
+            screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
         
         screen.blit(pokemon_sprite, pokemon_rect)
 
@@ -176,9 +180,6 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                 else:
                     pygame.draw.rect(screen, (80, 80, 80), box_rect, 2)
 
-            time_left = (time_limit - (current_time - phase_timer)) / 1000
-            timer_text = font.render(f"Temps: {max(0, time_left):.1f}s", True, (255, 255, 255))
-            screen.blit(timer_text, (10, 10))
 
         # Draw player HP bar
         draw_hp_bar(screen, player_hp_percent, pos=(20, 20), size=(150, 20), font=font)
