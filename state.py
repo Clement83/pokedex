@@ -22,12 +22,12 @@ class GameState:
         self.font = pygame.font.SysFont("Arial", FONT_SIZE, bold=True)
         
         self.conn = get_connection()
-        caught_count_at_startup = get_caught_pokemon_count(self.conn)
+        seen_count_at_startup = get_seen_pokemon_count(self.conn)
         mew_unlocked_at_startup = mew_is_unlocked(self.conn)
 
         self.current_max_pokedex_id = GENERATION_THRESHOLDS[1]['max_id']
         for gen, data in GENERATION_THRESHOLDS.items():
-            if caught_count_at_startup >= data['unlock_count'] and self.current_max_pokedex_id < data['max_id']:
+            if seen_count_at_startup >= data['unlock_count'] and self.current_max_pokedex_id < data['max_id']:
                 self.current_max_pokedex_id = data['max_id']
 
         self.pokemon_list = get_pokemon_list(self.conn, self.current_max_pokedex_id, include_mew=mew_unlocked_at_startup)

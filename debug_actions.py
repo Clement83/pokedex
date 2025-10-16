@@ -56,7 +56,7 @@ def reset_game_state(game_state):
         # --- Create Backup ---
         draw_message("Creating database backup...")
         db_path = game_state.BASE_DIR / "pokedex.db"
-        
+
         # Generate timestamped backup filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"pokedex_{timestamp}.bk"
@@ -98,7 +98,7 @@ def go_to_next_milestone(game_state):
             if data['unlock_count'] > caught_count:
                 next_threshold = data['unlock_count']
                 break
-        
+
         if next_threshold == -1:
             draw_message("All milestones already reached!")
             pygame.time.wait(2000)
@@ -113,15 +113,15 @@ def go_to_next_milestone(game_state):
             return
 
         draw_message(f"Catching {pokemon_to_catch} Pokémon...")
-        
+
         # Get uncaught Pokémon and catch them
         with game_state.conn:
             cursor = game_state.conn.execute(
-                "SELECT pokedex_id FROM pokemon WHERE caught = 0 ORDER BY RANDOM() LIMIT ?", 
+                "SELECT pokedex_id FROM pokemon WHERE caught = 0 ORDER BY RANDOM() LIMIT ?",
                 (pokemon_to_catch,)
             )
             pids_to_catch = [row[0] for row in cursor.fetchall()]
-            
+
             if len(pids_to_catch) < pokemon_to_catch:
                 draw_message("Not enough uncaught Pokémon!", color=(255,100,100))
                 pygame.time.wait(2000)
@@ -129,7 +129,7 @@ def go_to_next_milestone(game_state):
 
             for pid in pids_to_catch:
                 game_state.conn.execute(
-                    "UPDATE pokemon SET caught = 1, times_caught = 1 WHERE pokedex_id = ?",
+                    "UPDATE pokemon SET seen = 1 WHERE pokedex_id = ?",
                     (pid,)
                 )
 

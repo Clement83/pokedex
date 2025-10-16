@@ -2,7 +2,7 @@ import pygame
 import random
 from pathlib import Path
 from config import SHINY_RATE, REGIONS, REGION_MUSIC
-from db import get_caught_pokemon_count, update_pokemon_seen_status
+from db import get_caught_pokemon_count, get_seen_pokemon_count, update_pokemon_seen_status
 from .region_selection import RegionSelectionHandler
 from .encounter import EncounterHandler
 from .combat import CombatHandler
@@ -15,11 +15,11 @@ class HuntManager:
         self.screen = screen
         self.font = font
         self.game_state = game_state
-        
+
         self.target_pokemon_data = None
         self.is_shiny = False
         self.selected_region_name = None
-        
+
         # Handlers
         self.region_selection_handler = RegionSelectionHandler(screen, font, game_state)
         self.encounter_handler = EncounterHandler(screen, game_state)
@@ -41,8 +41,8 @@ class HuntManager:
                 except pygame.error as e:
                     print(f"Warning: Could not load attack sprite {sprite_file.name}: {e}")
 
-        caught_count = get_caught_pokemon_count(self.game_state.conn)
-        if caught_count == 0:
+        seen_count = get_seen_pokemon_count(self.game_state.conn)
+        if seen_count == 0:
             self.state = "ENCOUNTER"
             self.selected_region_name = "Kanto"
             starters = [p for p in self.game_state.pokemon_list if p[0] in [1, 4, 7]]
@@ -149,10 +149,10 @@ class HuntManager:
 
             elif self.state == "QUIT_HUNT":
                 return "main_menu"
-                
+
             elif self.state == "QUIT":
                 return "quit"
-                
+
             else:
                 print(f"Unknown hunt state: {self.state}")
                 running = False

@@ -1,7 +1,14 @@
 import pygame
 import random
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, REGIONS, KEY_MAPPINGS
-from db import get_user_preference, set_user_preference
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, REGIONS, KEY_MAPPINGS, GENERATION_THRESHOLDS
+from db import get_user_preference, set_user_preference, get_seen_pokemon_count
+from config import GENERATION_THRESHOLDS
+
+def get_seen_unlock_count_for_region(region_name):
+    for gen, data in GENERATION_THRESHOLDS.items():
+        if data.get('unlocked_region') == region_name:
+            return data.get('unlock_count', 0)
+    return 0 # Default if not found, get_seen_pokemon_count
 import controls
 from sprites import load_sprite
 from ui import draw_rounded_rect
@@ -55,8 +62,14 @@ class RegionSelectionHandler:
                         if idx < num_regions:
                             selected_region_name = region_names[idx]
                             region_data = REGIONS[selected_region_name]
-                            if region_data["min_id"] >= self.game_state.current_max_pokedex_id:
-                                continue
+
+                            # Check unlock condition based on seen_count
+                            seen_count = get_seen_pokemon_count(self.game_state.conn)
+                            required_seen_count = get_seen_unlock_count_for_region(selected_region_name)
+
+                            if seen_count < required_seen_count:
+                                continue # Region is locked, cannot select
+
                             set_user_preference(self.game_state.conn, "last_selected_region", selected_region_name)
                             return "encounter", selected_region_name
 
@@ -127,7 +140,7 @@ class RegionSelectionHandler:
                 end_center = (end_pos[0] + IMAGE_SIZE // 2, end_pos[1] + IMAGE_SIZE // 2)
                 curr_center_x = int(start_center[0] + (end_center[0] - start_center[0]) * progress)
                 curr_center_y = int(start_center[1] + (end_center[1] - start_center[1]) * progress)
-                
+
                 scaled_img = pygame.transform.smoothscale(unlocked_image, (curr_size, curr_size))
                 img_rect = scaled_img.get_rect(center=(curr_center_x, curr_center_y))
                 self.screen.blit(scaled_img, img_rect)
@@ -146,7 +159,11 @@ class RegionSelectionHandler:
             x = start_x + col * (IMAGE_SIZE + GRID_PADDING)
             y = GRID_START_Y + row * (IMAGE_SIZE + GRID_PADDING)
             self.screen.blit(images[name], (x, y))
-            if REGIONS[name]["min_id"] >= self.game_state.current_max_pokedex_id:
+            # Check if region is locked based on seen_count
+            seen_count = get_seen_pokemon_count(self.game_state.conn)
+            required_seen_count = get_seen_unlock_count_for_region(name)
+
+            if seen_count < required_seen_count:
                 overlay = pygame.Surface((IMAGE_SIZE, IMAGE_SIZE), pygame.SRCALPHA)
                 overlay.fill((0, 0, 0, 150))
                 self.screen.blit(overlay, (x, y))
@@ -157,10 +174,13 @@ class RegionSelectionHandler:
         idx = sel_row * GRID_COLS + sel_col
         if idx < len(region_names):
             name = region_names[idx]
-            is_locked = REGIONS[name]["min_id"] >= self.game_state.current_max_pokedex_id
+            # Check if region is locked based on seen_count
+            seen_count = get_seen_pokemon_count(self.game_state.conn)
+            required_seen_count = get_seen_unlock_count_for_region(name)
+            is_locked = seen_count < required_seen_count
             text = f"{name} - LOCKED" if is_locked else name
             color = (255, 100, 100) if is_locked else (255, 255, 255)
-            
+
             rendered_text = self.font.render(text, True, color)
             rect = rendered_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 10))
             self.screen.blit(rendered_text, rect)
