@@ -3,6 +3,12 @@ import math
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, LIST_VERTICAL_OFFSET, STATS_AREA_HEIGHT, REGIONS, STATS_FONT_SIZE
 from sprites import load_pokeball_sprites, load_masterball_sprite
 
+def get_region_from_id(pokedex_id):
+    for region, data in REGIONS.items():
+        if data["min_id"] <= pokedex_id < data["max_id"]:
+            return region
+    return None
+
 # Charger les sprites de la pokeball
 pokeball_img, pokeball_grayscale_img = load_pokeball_sprites(FONT_SIZE)
 masterball_img = load_masterball_sprite(FONT_SIZE)
@@ -157,6 +163,21 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
     if current_sprite:
         rect = current_sprite.get_rect(center=(335, 145 - LIST_VERTICAL_OFFSET))
         screen.blit(current_sprite, rect)
+
+    # Display region if seen
+    if selected_index < len(pokemon_list):
+        pid, _, _, _, _, _, _, _, seen = pokemon_list[selected_index]
+        if seen:
+            region = get_region_from_id(pid)
+            if region:
+                small_font = pygame.font.SysFont("Arial", 16, bold=True)
+                region_text_surface = small_font.render(region, True, (100, 100, 100))
+                
+                # Calculate x position for right alignment
+                text_x = (210 + 250) - region_text_surface.get_width() - 10 # 10 pixels padding from the right edge
+                text_y = 10 # Keep y as 10 for top alignment
+
+                draw_text(screen, region, text_x, text_y, small_font, (100, 100, 100))
 
     # Affiche le compteur de captures pour le Pokémon sélectionné
     if selected_index < len(pokemon_list):
