@@ -25,8 +25,8 @@ BUTTON_SIZE = 40
 MIN_PROMPT_SPACING = BUTTON_SIZE # Minimum spacing between prompts to avoid overlap
 
 # Speed multipliers based on catch rate
-SPEED_MULTIPLIER_RARE = 1.2  # catch_rate < 100
-SPEED_MULTIPLIER_LEGENDARY = 1.5  # catch_rate < 45
+SPEED_MULTIPLIER_RARE = 1.5  # catch_rate < 100
+SPEED_MULTIPLIER_LEGENDARY = 2  # catch_rate < 45
 
 def create_arrow_surface(direction, size, color):
     """Draws a simple arrow on a new surface."""

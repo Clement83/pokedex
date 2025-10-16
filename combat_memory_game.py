@@ -5,7 +5,7 @@ import controls
 from ui import draw_hp_bar, draw_rounded_rect
 
 # Game settings
-SEQUENCE_LENGTH = 4  # Fixed length of 4 steps
+# SEQUENCE_LENGTH will be determined dynamically based on pokemon difficulty
 
 TIME_PER_INPUT_MS = 3000  # 3 seconds per input
 SHOW_DURATION_MS = 500
@@ -71,6 +71,14 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     game_over = False
 
     # --- Setup ---
+    catch_rate = full_pokemon_data.get('catch_rate', 255)
+    if catch_rate < 45: # Hard/Legendary
+        SEQUENCE_LENGTH = 6
+    elif catch_rate < 100: # Medium
+        SEQUENCE_LENGTH = 5
+    else: # Easy
+        SEQUENCE_LENGTH = 4
+
     possible_inputs = [("UP", KEY_MAPPINGS["UP"]), ("DOWN", KEY_MAPPINGS["DOWN"]), ("LEFT", KEY_MAPPINGS["LEFT"]), ("RIGHT", KEY_MAPPINGS["RIGHT"])]
     sequence = [random.choice(possible_inputs) for _ in range(SEQUENCE_LENGTH)]
     player_input_index = 0
