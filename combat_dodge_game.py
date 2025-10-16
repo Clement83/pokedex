@@ -6,7 +6,7 @@ import controls
 from ui import draw_hp_bar
 
 # Game settings
-SURVIVAL_TIME_MS = 15000  # 15 seconds
+# SURVIVAL_TIME_MS will be determined dynamically based on pokemon difficulty
 PLAYER_SPEED = 5
 PROJECTILE_SPEED = 4
 PROJECTILE_ADD_RATE = 20  # Lower is faster, adds a projectile every X frames
@@ -74,6 +74,16 @@ class Projectile(pygame.sprite.Sprite):
 
 def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_image, pokemon_types, full_pokemon_data):
     clock = pygame.time.Clock()
+
+    # Determine survival time based on rarity from the full pokemon data
+    catch_rate = full_pokemon_data.get('catch_rate', 255)
+    if catch_rate < 45: # Hard/Legendary
+        survival_time_ms = 20000 # 20 seconds
+    elif catch_rate < 100: # Medium
+        survival_time_ms = 15000 # 15 seconds
+    else: # Easy
+        survival_time_ms = 10000 # 10 seconds
+
     start_time = pygame.time.get_ticks()
 
     game_surface = pygame.Surface(screen.get_size())
@@ -120,7 +130,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             projectiles.update()
 
             # Check if time is up
-            if not time_is_up and pygame.time.get_ticks() - start_time >= SURVIVAL_TIME_MS:
+            if not time_is_up and pygame.time.get_ticks() - start_time >= survival_time_ms:
                 time_is_up = True
 
             # Add new projectiles only if time is not up

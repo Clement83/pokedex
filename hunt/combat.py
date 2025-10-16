@@ -15,7 +15,7 @@ class CombatHandler:
 
     def run(self, pokemon_sprite, dresseur_back_sprite, background_image, pokemon_types, full_pokemon_data):
         """Runs the combat mini-game."""
-        combat_minigames = [combat_memory_game.run] # [combat_dodge_game.run, combat_qte_game.run, combat_memory_game.run]
+        combat_minigames = [combat_dodge_game.run] # [combat_dodge_game.run, combat_qte_game.run, combat_memory_game.run]
         selected_game = random.choice(combat_minigames)
 
         result = selected_game(
