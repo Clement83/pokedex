@@ -3,7 +3,7 @@ import random
 from pathlib import Path
 import subprocess
 import os
-from db import get_pokemon_data, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked, get_pokemon_list
+from db import get_pokemon_data, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked, get_pokemon_list, get_seen_pokemon_count
 from config import REGIONS, KEY_MAPPINGS, SCREEN_WIDTH, SCREEN_HEIGHT
 import controls
 import catch_game
@@ -78,6 +78,7 @@ def handle_input(game_state, event):
             # Après être revenu de la chasse, mettez à jour les statistiques générales.
             game_state.caught_count = get_caught_pokemon_count(game_state.conn)
             game_state.shiny_count = get_shiny_pokemon_count(game_state.conn)
+            game_state.seen_count = get_seen_pokemon_count(game_state.conn)
             unlocked_regions = 0
             for region_name, data in REGIONS.items():
                 if data["min_id"] < game_state.current_max_pokedex_id:

@@ -184,17 +184,45 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
 
 def draw_general_stats(screen, game_state, stats_font):
-    # Placeholder for now, will implement after db.py changes
     caught_count = game_state.caught_count if hasattr(game_state, 'caught_count') else 0
     shiny_count = game_state.shiny_count if hasattr(game_state, 'shiny_count') else 0
+    seen_count = game_state.seen_count if hasattr(game_state, 'seen_count') else 0
     unlocked_regions_count = game_state.unlocked_regions_count if hasattr(game_state, 'unlocked_regions_count') else 0
     total_pokemon = len(game_state.pokemon_list) if hasattr(game_state, 'pokemon_list') else 0
 
-    stats_y_start = SCREEN_HEIGHT - STATS_AREA_HEIGHT + 5 # Start drawing stats from here
+    # Define colors and fonts
+    bg_color = (240, 240, 250) # Light grey, matching the sprite panel
+    border_color = (100, 100, 100) # Grey border
+    text_color = (0, 0, 0) # Black
+    
+    stats_font_size = 14
+    try:
+        stats_font = pygame.font.SysFont("Arial", stats_font_size, bold=True)
+    except:
+        pass # Use default font
 
-    draw_text(screen, f"Caught: {caught_count}/{total_pokemon}", 220, stats_y_start, stats_font, (255, 255, 255))
-    draw_text(screen, f"Shiny: {shiny_count}", 220, stats_y_start + STATS_FONT_SIZE + 2, stats_font, (255, 255, 255))
-    draw_text(screen, f"Regions Unlocked: {unlocked_regions_count}/{len(REGIONS)}", 220, stats_y_start + (STATS_FONT_SIZE + 2) * 2, stats_font, (255, 255, 255))
+    # Main frame for the stats area
+    stats_area_rect = pygame.Rect(210, 260, 250, 55)
+    draw_rounded_rect(screen, bg_color, stats_area_rect, radius=12, border=2, border_color=border_color)
+
+    # Layout constants
+    padding_x = 10
+    padding_y = 5
+    col_width = (stats_area_rect.width - padding_x * 2) // 2
+    
+    col1_x = stats_area_rect.left + padding_x
+    col2_x = col1_x + col_width
+    
+    row1_y = stats_area_rect.top + padding_y + 2
+    row2_y = row1_y + stats_font_size + 6
+
+    # Column 1: Seen & Caught
+    draw_text(screen, f"Vus: {seen_count}/{total_pokemon}", col1_x, row1_y, stats_font, text_color)
+    draw_text(screen, f"Capturés: {caught_count}", col1_x, row2_y, stats_font, text_color)
+
+    # Column 2: Shiny & Regions
+    draw_text(screen, f"Shinies: {shiny_count}", col2_x, row1_y, stats_font, text_color)
+    draw_text(screen, f"Régions: {unlocked_regions_count}/{len(REGIONS)}", col2_x, row2_y, stats_font, text_color)
 
 
 def draw_detail_view(game_state):
