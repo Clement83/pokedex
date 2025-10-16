@@ -187,7 +187,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
             if region:
                 small_font = pygame.font.SysFont("Arial", 16, bold=True)
                 region_text_surface = small_font.render(region, True, (100, 100, 100))
-                
+
                 # Calculate x position for right alignment
                 text_x = (210 + 250) - region_text_surface.get_width() - 10 # 10 pixels padding from the right edge
                 text_y = 10 # Keep y as 10 for top alignment
@@ -220,7 +220,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
             bubble_pos_x = panel_right_x + panel_right_width - bubble_width - 10 # 10 pixels de padding depuis la droite
             bubble_pos_y = panel_right_y + panel_right_height - bubble_height - 10 # 10 pixels de padding depuis le bas
-            
+
             bubble_rect = pygame.Rect(bubble_pos_x, bubble_pos_y, bubble_width, bubble_height)
 
             draw_rounded_rect(screen, (0, 0, 0, 180), bubble_rect, radius=10) # Fond noir semi-transparent
@@ -240,7 +240,7 @@ def draw_general_stats(screen, game_state, stats_font):
     bg_color = (240, 240, 250) # Light grey, matching the sprite panel
     border_color = (100, 100, 100) # Grey border
     text_color = (0, 0, 0) # Black
-    
+
     stats_font_size = 14
     try:
         stats_font = pygame.font.SysFont("Arial", stats_font_size, bold=True)
@@ -255,15 +255,15 @@ def draw_general_stats(screen, game_state, stats_font):
     padding_x = 10
     padding_y = 5
     col_width = (stats_area_rect.width - padding_x * 2) // 2
-    
+
     col1_x = stats_area_rect.left + padding_x
     col2_x = col1_x + col_width
-    
+
     row1_y = stats_area_rect.top + padding_y + 2
     row2_y = row1_y + stats_font_size + 6
 
     # Column 1: Seen & Caught
-    draw_text(screen, f"Vus: {seen_count}/{total_pokemon}", col1_x, row1_y, stats_font, text_color)
+    draw_text(screen, f"Vus: {seen_count}/{total_pokemon + 1}", col1_x, row1_y, stats_font, text_color)
     draw_text(screen, f"Capturés: {caught_count}", col1_x, row2_y, stats_font, text_color)
 
     # Column 2: Shiny & Regions
