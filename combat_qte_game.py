@@ -8,12 +8,21 @@ from ui import draw_hp_bar
 # Game settings
 QTE_BUTTONS = ["UP", "DOWN", "LEFT", "RIGHT"]
 PROMPT_SPEED_BASE = 3
-PROMPT_SPAWN_INTERVAL_MS = 1000 # How often new prompts appear
+# Predefined timing patterns for QTE prompts to create rhythmic sequences
+QTE_TIMING_PATTERN = [
+    150, 100, 250, 100, 150, 800, 100, 150, 100, 250,  # Fast, then slow break
+    400, 150, 100, 750, 150, 100, 250, 150, 100, 900,  # Mixed with slow breaks
+    500, 150, 100, 250, 150, 700, 300, 400, 150, 100,   # Varied, with slow breaks
+    200, 100, 150, 100, 200, 850, 100, 150, 100, 200,   # Another fast, then slow
+    600, 200, 100, 700, 200, 100, 200, 200, 100, 950,   # Some longer, some fast, with slow
+    700, 200, 100, 250, 200, 800, 300, 500, 200, 100    # Varied, with slow breaks
+]
 HIT_ZONE_X = SCREEN_WIDTH // 2 - 25 # Center of the screen
 HIT_ZONE_WIDTH = 50
 MAX_MISSES = 3
 SUCCESS_THRESHOLD = 10 # Number of successful hits to win
 BUTTON_SIZE = 40
+MIN_PROMPT_SPACING = BUTTON_SIZE # Minimum spacing between prompts to avoid overlap
 
 # Speed multipliers based on catch rate
 SPEED_MULTIPLIER_RARE = 1.2  # catch_rate < 100
@@ -149,7 +158,8 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             button_surfaces[btn_type] = create_button_surface(btn_type, BUTTON_SIZE, (255, 255, 255))
 
     active_prompts = pygame.sprite.Group()
-    next_prompt_time = pygame.time.get_ticks() + PROMPT_SPAWN_INTERVAL_MS
+    current_pattern_index = random.randint(0, len(QTE_TIMING_PATTERN) - 1)
+    next_prompt_time = pygame.time.get_ticks() + QTE_TIMING_PATTERN[current_pattern_index]
 
     score = 0
     misses = 0
@@ -206,11 +216,24 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
 
         if not game_over:
             # --- Prompt Spawning ---
+            # --- Prompt Spawning ---
             if current_time >= next_prompt_time:
-                random_button = random.choice(QTE_BUTTONS)
-                new_prompt = QTEPrompt(random_button, button_surfaces[random_button], SCREEN_WIDTH, pokemon_rect.centery)
-                active_prompts.add(new_prompt)
-                next_prompt_time = current_time + PROMPT_SPAWN_INTERVAL_MS
+                can_spawn_physically = True
+                if active_prompts:
+                    rightmost_prompt = max(active_prompts, key=lambda p: p.rect.right)
+                    # Check if the new prompt would overlap or be too close to the rightmost existing prompt
+                    # The new prompt's left edge would be SCREEN_WIDTH - BUTTON_SIZE / 2
+                    if rightmost_prompt.rect.right + MIN_PROMPT_SPACING > SCREEN_WIDTH - BUTTON_SIZE / 2:
+                        can_spawn_physically = False
+
+                if can_spawn_physically:
+                    random_button = random.choice(QTE_BUTTONS)
+                    new_prompt = QTEPrompt(random_button, button_surfaces[random_button], SCREEN_WIDTH, pokemon_rect.centery)
+                    active_prompts.add(new_prompt)
+
+                # ALWAYS update next_prompt_time, regardless of whether a prompt was actually spawned
+                current_pattern_index = (current_pattern_index + 1) % len(QTE_TIMING_PATTERN)
+                next_prompt_time = current_time + QTE_TIMING_PATTERN[current_pattern_index]
 
             # --- Update Prompts ---
             active_prompts.update(prompt_speed)
