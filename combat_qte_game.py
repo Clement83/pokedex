@@ -89,7 +89,7 @@ class QTEPrompt(pygame.sprite.Sprite):
                 current_image.fill((0, 255, 0, 128), special_flags=pygame.BLEND_RGBA_ADD) # Green overlay for hit
             else:
                 self.hit_effect_active = False # Effect ended
-        
+
         if in_click_zone and not self.hit_effect_active: # Apply click zone effect only if not already hitting
             current_image.fill(CLICK_ZONE_EFFECT_COLOR, special_flags=pygame.BLEND_RGBA_ADD) # Yellow overlay for click zone
 
@@ -108,7 +108,7 @@ class Feedback:
         elapsed_time = pygame.time.get_ticks() - self.start_time
         if elapsed_time > self.duration:
             return False # Indicate that this feedback is expired
-        
+
         # Move upwards and fade out slightly
         self.position[1] -= 0.5 # Move up
         return True
@@ -122,7 +122,7 @@ class Feedback:
         # Create a surface with alpha channel for the text
         text_surf = font.render(self.text, True, self.color)
         text_surf.set_alpha(alpha)
-        
+
         text_rect = text_surf.get_rect(center=self.position)
         screen.blit(text_surf, text_rect)
 
@@ -150,13 +150,13 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
 
     active_prompts = pygame.sprite.Group()
     next_prompt_time = pygame.time.get_ticks() + PROMPT_SPAWN_INTERVAL_MS
-    
+
     score = 0
     misses = 0
     player_hp_percent = 100.0
     game_over = False
     active_feedback = [] # List to hold active feedback messages
-    
+
     pokemon_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
     pokemon_rect = pokemon_sprite.get_rect(center=pokemon_pos)
 
@@ -179,10 +179,8 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         # --- Event Handling ---
         for event in pygame.event.get():
             controls.process_joystick_input(game_state, event)
-            if event.type == pygame.QUIT: return "quit"
             if event.type == pygame.KEYDOWN:
-                if event.key in KEY_MAPPINGS["QUIT"]: return "quit"
-                
+
                 if not game_over:
                     pressed_button_type = None
                     if event.key in KEY_MAPPINGS["UP"]: pressed_button_type = "UP"

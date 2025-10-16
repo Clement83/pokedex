@@ -2,7 +2,7 @@ import pygame
 import random
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 import controls
-from ui import draw_hp_bar
+from ui import draw_hp_bar, draw_rounded_rect
 
 # Game settings
 SEQUENCE_LENGTH = 4  # Fixed length of 4 steps
@@ -14,32 +14,29 @@ PAUSE_DURATION_MS = 250
 ARROW_SIZE = 50
 
 def create_arrow_surface(direction, size, color):
-    """Draws a simple arrow on a new surface."""
+    """Draws a Pokémon-style arrow on a new surface."""
     surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    
+    # Background
+    bg_color = (23, 23, 115) # Dark blue
+    border_color = (179, 179, 255) # Light blue
+    draw_rounded_rect(surf, bg_color, surf.get_rect(), radius=8, border=3, border_color=border_color)
+
+    # Arrow
     s = size
-    padding = int(s * 0.2)
-    thickness = 3
+    padding = int(s * 0.25)
+    arrow_color = (255, 255, 0) # Bright yellow
 
     if direction == "UP":
-        start_pos = (s / 2, s - padding)
-        end_pos = (s / 2, padding)
-        arrow_head = [(padding, padding * 2), (s - padding, padding * 2)]
+        points = [(s/2, padding), (s - padding, s/2), (padding, s/2)]
     elif direction == "DOWN":
-        start_pos = (s / 2, padding)
-        end_pos = (s / 2, s - padding)
-        arrow_head = [(padding, s - padding * 2), (s - padding, s - padding * 2)]
+        points = [(s/2, s - padding), (s - padding, s/2), (padding, s/2)]
     elif direction == "LEFT":
-        start_pos = (s - padding, s / 2)
-        end_pos = (padding, s / 2)
-        arrow_head = [(padding * 2, padding), (padding * 2, s - padding)]
+        points = [(padding, s/2), (s/2, padding), (s/2, s - padding)]
     elif direction == "RIGHT":
-        start_pos = (padding, s / 2)
-        end_pos = (s - padding, s / 2)
-        arrow_head = [(s - padding * 2, padding), (s - padding * 2, s - padding)]
+        points = [(s - padding, s/2), (s/2, padding), (s/2, s - padding)]
 
-    pygame.draw.line(surf, color, start_pos, end_pos, thickness)
-    pygame.draw.line(surf, color, end_pos, arrow_head[0], thickness)
-    pygame.draw.line(surf, color, end_pos, arrow_head[1], thickness)
+    pygame.draw.polygon(surf, arrow_color, points)
     return surf
 
 def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_image, pokemon_types, full_pokemon_data):

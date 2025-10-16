@@ -35,6 +35,16 @@ class HuntManager:
         self.pokemon_types = None
         self.full_pokemon_data = None
 
+        # Load attack sprites
+        self.game_state.attack_sprites = {}
+        attack_sprites_path = self.game_state.BASE_DIR / "app/data/assets/attacks"
+        if attack_sprites_path.is_dir():
+            for sprite_file in attack_sprites_path.glob("*.png"):
+                try:
+                    self.game_state.attack_sprites[sprite_file.name] = pygame.image.load(sprite_file).convert_alpha()
+                except pygame.error as e:
+                    print(f"Warning: Could not load attack sprite {sprite_file.name}: {e}")
+
         caught_count = get_caught_pokemon_count(self.game_state.conn)
 
         if caught_count == 0:
