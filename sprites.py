@@ -1,5 +1,6 @@
 import pygame
 from pathlib import Path
+from config import TYPE_ICONS_DIR
 
 sprite_cache = {}
 
@@ -40,6 +41,17 @@ def load_masterball_sprite(size):
         masterball_img = pygame.transform.scale(masterball_img, (size, size))
         return masterball_img
     except pygame.error:
+        return None
+
+def load_type_icon(type_name, size):
+    BASE_DIR = Path.cwd()
+    icon_path = BASE_DIR / TYPE_ICONS_DIR / f"{type_name.lower()}.png"
+    try:
+        icon_img = pygame.image.load(icon_path)
+        icon_img = pygame.transform.scale(icon_img, (size, size))
+        return icon_img
+    except pygame.error:
+        print(f"Warning: Could not load type icon for {type_name} at {icon_path}")
         return None
 
 def apply_shadow_effect(image):

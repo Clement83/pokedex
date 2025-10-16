@@ -109,3 +109,5 @@ REGION_MUSIC = {
     "Paldea": ["spl-elite4.mp3"],
     "Orre": ["colosseum-miror-b.mp3", "xd-miror-b.mp3"],
 }
+
+TYPE_ICONS_DIR = "app/data/assets/type"

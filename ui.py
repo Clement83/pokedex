@@ -1,7 +1,8 @@
+import db
 import pygame
 import math
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, LIST_VERTICAL_OFFSET, STATS_AREA_HEIGHT, REGIONS, STATS_FONT_SIZE
-from sprites import load_pokeball_sprites, load_masterball_sprite
+from sprites import load_pokeball_sprites, load_masterball_sprite, load_type_icon
 
 def get_region_from_id(pokedex_id):
     for region, data in REGIONS.items():
@@ -166,6 +167,20 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
     # Display region if seen
     if selected_index < len(pokemon_list):
+        # Display first type icon if seen
+        pid, _, _, _, _, _, _, _, seen = pokemon_list[selected_index]
+        if seen:
+            pokemon_data = db.get_pokemon_data(game_state.conn, pid)
+            if pokemon_data and pokemon_data.get("types"):
+                first_type_name = pokemon_data["types"][0]["name"]
+                type_icon = load_type_icon(first_type_name, int(FONT_SIZE * 1.5)) # Use FONT_SIZE * 1.5 for icon size
+                if type_icon:
+                    # Position the icon at the top-left of the right panel
+                    # Right panel starts at (210, 5)
+                    icon_x = 210 + 10 # 10 pixels padding from left
+                    icon_y = 5 + 5   # 5 pixels padding from top
+                    screen.blit(type_icon, (icon_x, icon_y))
+
         pid, _, _, _, _, _, _, _, seen = pokemon_list[selected_index]
         if seen:
             region = get_region_from_id(pid)
@@ -193,10 +208,20 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
             bubble_font = pygame.font.SysFont("Arial", 16, bold=True)
             text_surface = bubble_font.render(count_text, True, (255, 255, 255))
 
-            # Positionne la bulle en haut à gauche du panneau de droite
-            bubble_pos_x = 215
-            bubble_pos_y = 10
-            bubble_rect = pygame.Rect(bubble_pos_x, bubble_pos_y, text_surface.get_width() + 12, text_surface.get_height() + 6)
+            # Positionne la bulle en bas à droite du panneau de droite (210,5,250,250)
+            # Le panneau de droite a une largeur de 250 et une hauteur de 250, et commence à x=210, y=5
+            panel_right_x = 210
+            panel_right_y = 5
+            panel_right_width = 250
+            panel_right_height = 250
+
+            bubble_width = text_surface.get_width() + 12
+            bubble_height = text_surface.get_height() + 6
+
+            bubble_pos_x = panel_right_x + panel_right_width - bubble_width - 10 # 10 pixels de padding depuis la droite
+            bubble_pos_y = panel_right_y + panel_right_height - bubble_height - 10 # 10 pixels de padding depuis le bas
+            
+            bubble_rect = pygame.Rect(bubble_pos_x, bubble_pos_y, bubble_width, bubble_height)
 
             draw_rounded_rect(screen, (0, 0, 0, 180), bubble_rect, radius=10) # Fond noir semi-transparent
             text_rect = text_surface.get_rect(center=bubble_rect.center)
