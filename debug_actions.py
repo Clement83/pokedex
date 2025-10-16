@@ -68,7 +68,7 @@ def reset_game_state(game_state):
         # --- Reset Game State ---
         draw_message("Resetting game state...")
         with game_state.conn:
-            game_state.conn.execute("UPDATE pokemon SET caught=0, is_shiny=0, times_caught=0")
+            game_state.conn.execute("UPDATE pokemon SET caught=0, is_shiny=0, seen=0, times_caught=0")
             game_state.conn.execute("DELETE FROM user_preferences")
         draw_message("Reset complete. Restarting...")
         pygame.time.wait(2000)
