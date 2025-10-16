@@ -14,27 +14,29 @@ PAUSE_DURATION_MS = 250
 ARROW_SIZE = 50
 
 def create_arrow_surface(direction, size, color):
-    """Draws a Pokémon-style arrow on a new surface."""
+    """Draws a new, cleaner Pokémon-style arrow."""
     surf = pygame.Surface((size, size), pygame.SRCALPHA)
     
+    # Style
+    bg_color = (255, 255, 255) # White background
+    arrow_color = (74, 144, 226) # Medium blue
+    border_color = arrow_color
+
     # Background
-    bg_color = (23, 23, 115) # Dark blue
-    border_color = (179, 179, 255) # Light blue
     draw_rounded_rect(surf, bg_color, surf.get_rect(), radius=8, border=3, border_color=border_color)
 
-    # Arrow
+    # Arrow (Chevron-style)
     s = size
-    padding = int(s * 0.25)
-    arrow_color = (255, 255, 0) # Bright yellow
+    padding = int(s * 0.3)
 
     if direction == "UP":
-        points = [(s/2, padding), (s - padding, s/2), (padding, s/2)]
+        points = [(padding, s * 0.6), (s/2, s * 0.3), (s - padding, s * 0.6), (s/2, s*0.45)]
     elif direction == "DOWN":
-        points = [(s/2, s - padding), (s - padding, s/2), (padding, s/2)]
+        points = [(padding, s * 0.4), (s/2, s * 0.7), (s - padding, s * 0.4), (s/2, s*0.55)]
     elif direction == "LEFT":
-        points = [(padding, s/2), (s/2, padding), (s/2, s - padding)]
+        points = [(s * 0.6, padding), (s * 0.3, s/2), (s * 0.6, s - padding), (s*0.45, s/2)]
     elif direction == "RIGHT":
-        points = [(s - padding, s/2), (s/2, padding), (s/2, s - padding)]
+        points = [(s * 0.4, padding), (s * 0.7, s/2), (s * 0.4, s - padding), (s*0.55, s/2)]
 
     pygame.draw.polygon(surf, arrow_color, points)
     return surf
