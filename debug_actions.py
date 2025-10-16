@@ -7,7 +7,7 @@ import glob
 from pathlib import Path
 from datetime import datetime
 from config import GENERATION_THRESHOLDS
-from db import get_caught_pokemon_count
+from db import get_caught_pokemon_count, get_seen_pokemon_count
 
 def update_and_restart(game_state):
     """Performs a git pull and restarts the application."""
@@ -90,7 +90,7 @@ def go_to_next_milestone(game_state):
         pygame.display.flip()
 
     try:
-        caught_count = get_caught_pokemon_count(game_state.conn)
+        caught_count = get_seen_pokemon_count(game_state.conn)
         next_threshold = -1
 
         # Find the next unlock count
