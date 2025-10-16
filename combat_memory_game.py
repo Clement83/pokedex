@@ -41,6 +41,23 @@ def create_arrow_surface(direction, size, color):
     pygame.draw.polygon(surf, arrow_color, points)
     return surf
 
+def draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y):
+    total_width = len(sequence) * (ARROW_SIZE + 10) - 10
+    start_x = (SCREEN_WIDTH - total_width) // 2
+    for i in range(len(sequence)):
+        box_rect = pygame.Rect(start_x + i * (ARROW_SIZE + 10), progress_y, ARROW_SIZE, ARROW_SIZE)
+        
+        is_flashing_box = i == flash_box_index and flash_duration > 0
+        if is_flashing_box and (flash_duration // 4) % 2 == 0:
+            pygame.draw.rect(screen, (255, 0, 0), box_rect)
+        elif i < player_input_index:
+            pygame.draw.rect(screen, (0, 255, 0), box_rect)
+            arrow_name = sequence[i][0]
+            arrow_img = arrow_surfaces[arrow_name]
+            screen.blit(arrow_img, arrow_img.get_rect(center=box_rect.center))
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), box_rect, 2)
+
 def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_image, pokemon_types, full_pokemon_data):
     """Runs the fixed sequence memory mini-game."""
     clock = pygame.time.Clock()
@@ -103,7 +120,8 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                     if event.key in expected_keys:
                         player_input_index += 1
                         if player_input_index == len(sequence):
-                            return "win"
+                            game_phase = "WIN_FLASH"
+                            phase_timer = current_time
                     else:
                         handle_mistake()
 
@@ -129,13 +147,18 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                 if current_time - phase_timer > SHOW_DURATION_MS + PAUSE_DURATION_MS:
                     sequence_index += 1
                     phase_timer = current_time
-            else:
+            else: # sequence_index >= len(sequence)
                 game_phase = "INPUT"
                 phase_timer = current_time
+                flash_box_index = -1 # Reset flash
+                flash_duration = 0   # Reset flash
         elif game_phase == "INPUT":
             if not game_over and current_time - phase_timer > time_limit:
                 player_hp = 0
                 game_over = True
+        elif game_phase == "WIN_FLASH":
+            if current_time - phase_timer > 1000: # 1 second delay
+                return "win"
 
         # --- Drawing ---
         if background_image:
@@ -152,32 +175,42 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             text = font.render("Mémorisez la séquence !", True, (255, 255, 255))
             screen.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
 
-        elif game_phase == "SHOWING" and sequence_index < len(sequence):
-            if current_time - phase_timer < SHOW_DURATION_MS:
-                arrow_name = sequence[sequence_index][0]
-                arrow_img = arrow_surfaces[arrow_name]
-                screen.blit(arrow_img, arrow_img.get_rect(center=arrow_pos))
+        elif game_phase == "SHOWING":
+            progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40 # Define progress_y here for SHOWING phase
+            draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
+
+            if sequence_index < len(sequence):
+                if current_time - phase_timer < SHOW_DURATION_MS:
+                    arrow_name = sequence[sequence_index][0]
+                    arrow_img = arrow_surfaces[arrow_name]
+                    screen.blit(arrow_img, arrow_img.get_rect(center=arrow_pos))
 
         elif game_phase == "INPUT":
             turn_text = font.render("À vous !", True, (255, 255, 255))
             screen.blit(turn_text, turn_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
             
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
+            draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
+        elif game_phase == "WIN_FLASH":
+            text = font.render("Séquence réussie !", True, (0, 255, 0))
+            screen.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+
+            progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
             total_width = len(sequence) * (ARROW_SIZE + 10) - 10
             start_x = (SCREEN_WIDTH - total_width) // 2
             for i in range(len(sequence)):
                 box_rect = pygame.Rect(start_x + i * (ARROW_SIZE + 10), progress_y, ARROW_SIZE, ARROW_SIZE)
                 
-                is_flashing_box = i == flash_box_index and flash_duration > 0
-                if is_flashing_box and (flash_duration // 4) % 2 == 0:
-                    pygame.draw.rect(screen, (255, 0, 0), box_rect)
-                elif i < player_input_index:
+                # Green flashing logic
+                if (current_time // 100) % 2 == 0: # Flash every 100ms
                     pygame.draw.rect(screen, (0, 255, 0), box_rect)
-                    arrow_name = sequence[i][0]
-                    arrow_img = arrow_surfaces[arrow_name]
-                    screen.blit(arrow_img, arrow_img.get_rect(center=box_rect.center))
                 else:
-                    pygame.draw.rect(screen, (80, 80, 80), box_rect, 2)
+                    pygame.draw.rect(screen, (0, 150, 0), box_rect) # Darker green when off
+                
+                # Draw arrows on top of flashing boxes
+                arrow_name = sequence[i][0]
+                arrow_img = arrow_surfaces[arrow_name]
+                screen.blit(arrow_img, arrow_img.get_rect(center=box_rect.center))
 
 
         # Draw player HP bar
