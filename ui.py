@@ -331,7 +331,7 @@ def draw_detail_view(game_state):
 
     # Radar des stats à droite (sans cadre)
     stats = current_pokemon_data.get("stats") or {}
-    if stats and caught:
+    if stats and seen:
         draw_stats_radar(screen, stats, center=(310, 140), radius=65, font=font)
 
     # Infos complémentaires en bas

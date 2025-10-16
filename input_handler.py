@@ -36,13 +36,13 @@ def _run_git_pull(game_state):
             check=True,
             encoding='utf-8'
         )
-        
+
         output = result.stdout
         if "Already up to date." in output:
             draw_message("Déjà à jour.")
         else:
             draw_message("Mise à jour terminée. Redémarrage requis.")
-        
+
         print("--- 'git pull' réussi ! ---")
         print(output)
         pygame.time.wait(2000)
@@ -124,9 +124,9 @@ def handle_input(game_state, event):
                 game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
                 if game_state.current_pokemon_data:
                     game_state.state = "detail"
-                    # Only play cry if the Pokémon has been caught
-                    is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][5]
-                    if is_pokemon_caught:
+                    # Only play cry if the Pokémon has been seen
+                    is_pokemon_seen = game_state.pokemon_list[game_state.selected_index][8]
+                    if is_pokemon_seen:
                         pokemon_name_en = game_state.pokemon_list[game_state.selected_index][2]
                         cry_path = game_state.BASE_DIR / "pokemon_audio" / "cries" / f"{pokemon_name_en.lower()}.mp3"
                         if cry_path.exists():
@@ -154,8 +154,8 @@ def handle_input(game_state, event):
                     game_state.current_pokemon_data = get_pokemon_data(game_state.conn, pid)
             elif event.key in KEY_MAPPINGS["CONFIRM"]:
                 if game_state.current_pokemon_data:
-                    is_pokemon_caught = game_state.pokemon_list[game_state.selected_index][5] # Get caught status
-                    if is_pokemon_caught:
+                    is_pokemon_seen = game_state.pokemon_list[game_state.selected_index][8] # Get caught status
+                    if is_pokemon_seen:
                         pokemon_name = game_state.pokemon_list[game_state.selected_index][2] # Get name_en from pokemon_list
                         cry_path = game_state.BASE_DIR / "pokemon_audio" / "cries" / f"{pokemon_name.lower()}.mp3"
                         if cry_path.exists():
