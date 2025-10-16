@@ -11,6 +11,59 @@ def draw_text(surface, text, x, y, font, color=(0,0,0)):
     img = font.render(text, True, color)
     surface.blit(img, (x, y))
 
+def draw_pokemon_style_text(surface, text, center_pos, font, text_color, outline_color, outline_width=2, with_frame=False):
+    """Draws text with a Pokémon-style outline and an optional frame."""
+    text_surf = font.render(text, True, text_color)
+    text_rect = text_surf.get_rect()
+    
+    outline_surf = font.render(text, True, outline_color)
+
+    if with_frame:
+        pokeball_width = pokeball_img.get_width() if pokeball_img else 0
+        padding_h = 20  # Horizontal padding inside frame
+        padding_v = 10  # Vertical padding inside frame
+        
+        # Calculate frame size to fit text and pokeballs
+        frame_width = text_rect.width + pokeball_width * 2 + padding_h * 4
+        frame_height = text_rect.height + padding_v * 2
+        
+        frame_rect = pygame.Rect(0, 0, frame_width, frame_height)
+        frame_rect.center = center_pos
+        
+        # Draw the frame
+        draw_rounded_rect(surface, (255, 255, 255), frame_rect, radius=12, border=3, border_color=(200, 0, 0))
+        
+        # Position and draw pokeballs
+        if pokeball_img:
+            pokeball_y = frame_rect.centery - pokeball_img.get_height() // 2
+            surface.blit(pokeball_img, (frame_rect.left + padding_h, pokeball_y))
+            
+            right_pokeball_x = frame_rect.right - padding_h - pokeball_width
+            surface.blit(pokeball_img, (right_pokeball_x, pokeball_y))
+
+        # Position and draw text in the center of the frame
+        text_x = frame_rect.centerx - text_rect.width // 2
+        text_y = frame_rect.centery - text_rect.height // 2
+        text_pos = (text_x, text_y)
+
+        # Draw outline
+        surface.blit(outline_surf, (text_pos[0] - outline_width, text_pos[1] - outline_width))
+        surface.blit(outline_surf, (text_pos[0] + outline_width, text_pos[1] - outline_width))
+        surface.blit(outline_surf, (text_pos[0] - outline_width, text_pos[1] + outline_width))
+        surface.blit(outline_surf, (text_pos[0] + outline_width, text_pos[1] + outline_width))
+        # Draw text
+        surface.blit(text_surf, text_pos)
+
+    else: # No frame
+        text_rect.center = center_pos
+        # Draw outline
+        surface.blit(outline_surf, (text_rect.x - outline_width, text_rect.y - outline_width))
+        surface.blit(outline_surf, (text_rect.x + outline_width, text_rect.y - outline_width))
+        surface.blit(outline_surf, (text_rect.x - outline_width, text_rect.y + outline_width))
+        surface.blit(outline_surf, (text_rect.x + outline_width, text_rect.y + outline_width))
+        # Draw text
+        surface.blit(text_surf, text_rect)
+
 def draw_rounded_rect(surface, color, rect, radius=8, border=0, border_color=(0,0,0)):
     rect = pygame.Rect(rect)
     shape_surf = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -129,27 +182,16 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
     # Display game_state.message if active
     if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
-        # Create a semi-transparent overlay
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180)) # Black with 180 alpha
-        screen.blit(overlay, (0, 0))
-
-        # Define message box dimensions and position
-        msg_box_width = SCREEN_WIDTH - 80
-        msg_box_height = 100
-        msg_rect = pygame.Rect(40, SCREEN_HEIGHT // 2 - msg_box_height // 2, msg_box_width, msg_box_height)
-        
-        # Draw the rounded rectangle background for the message
-        draw_rounded_rect(screen, (240, 240, 255), msg_rect, radius=15, border=2, border_color=(20,20,20))
-        
-        # Render the message text
         try:
             big_font = pygame.font.Font(None, 40)
         except: 
-            big_font = font # Fallback to default font if big_font fails
-        message_text = big_font.render(game_state.message, True, (0, 0, 139)) # Dark blue color for messages
-        message_text_rect = message_text.get_rect(center=msg_rect.center)
-        screen.blit(message_text, message_text_rect)
+            big_font = font # Fallback
+        
+        center_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2) # Centered on screen
+        text_color = (255, 255, 0)   # Yellow text
+        outline_color = (0, 0, 139) # Dark blue outline
+
+        draw_pokemon_style_text(screen, game_state.message, center_pos, big_font, text_color, outline_color, with_frame=True)
 
 def draw_general_stats(screen, game_state, stats_font):
     # Placeholder for now, will implement after db.py changes
