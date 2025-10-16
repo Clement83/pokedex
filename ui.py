@@ -15,29 +15,29 @@ def draw_pokemon_style_text(surface, text, center_pos, font, text_color, outline
     """Draws text with a Pokémon-style outline and an optional frame."""
     text_surf = font.render(text, True, text_color)
     text_rect = text_surf.get_rect()
-    
+
     outline_surf = font.render(text, True, outline_color)
 
     if with_frame:
         pokeball_width = pokeball_img.get_width() if pokeball_img else 0
         padding_h = 20  # Horizontal padding inside frame
         padding_v = 10  # Vertical padding inside frame
-        
+
         # Calculate frame size to fit text and pokeballs
         frame_width = text_rect.width + pokeball_width * 2 + padding_h * 4
         frame_height = text_rect.height + padding_v * 2
-        
+
         frame_rect = pygame.Rect(0, 0, frame_width, frame_height)
         frame_rect.center = center_pos
-        
+
         # Draw the frame
         draw_rounded_rect(surface, (255, 255, 255), frame_rect, radius=12, border=3, border_color=(200, 0, 0))
-        
+
         # Position and draw pokeballs
         if pokeball_img:
             pokeball_y = frame_rect.centery - pokeball_img.get_height() // 2
             surface.blit(pokeball_img, (frame_rect.left + padding_h, pokeball_y))
-            
+
             right_pokeball_x = frame_rect.right - padding_h - pokeball_width
             surface.blit(pokeball_img, (right_pokeball_x, pokeball_y))
 
@@ -135,7 +135,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
     start_y = 20 # Revert list to original position
     for i in range(scroll_offset, min(scroll_offset + max_visible, len(pokemon_list))):
-        pid, name, name_en, _, _, caught, is_shiny, _ = pokemon_list[i]
+        pid, name, name_en, _, _, caught, is_shiny, _, seen = pokemon_list[i]
         y = start_y + (i - scroll_offset) * FONT_SIZE
 
         if i == selected_index:
@@ -143,14 +143,15 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
         color = (0, 0, 0) if i != selected_index else (200, 30, 30)
 
-        if is_shiny and masterball_img:
-            screen.blit(masterball_img, (15, y))
-        elif caught and pokeball_img:
-            screen.blit(pokeball_img, (15, y))
-        elif pokeball_grayscale_img:
-            screen.blit(pokeball_grayscale_img, (15, y))
+        if seen:
+            if caught and is_shiny and masterball_img:
+                screen.blit(masterball_img, (15, y))
+            elif caught and pokeball_img:
+                screen.blit(pokeball_img, (15, y))
+            elif pokeball_grayscale_img:
+                screen.blit(pokeball_grayscale_img, (15, y))
 
-        display_name = name if caught else "???"
+        display_name = name if seen else "???"
         draw_text(screen, f"{pid:03d} {display_name}", 15 + FONT_SIZE + 5, y, font, color)
 
     if current_sprite:
@@ -159,8 +160,8 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
 
     # Affiche le compteur de captures pour le Pokémon sélectionné
     if selected_index < len(pokemon_list):
-        # Le 7ème élément (index 6) est times_caught
-        times_caught = pokemon_list[selected_index][6]
+        # Le 8ème élément (index 7) est times_caught
+        times_caught = pokemon_list[selected_index][7]
 
         if times_caught > 0:
             # Formate le nombre : 2 chiffres, avec un maximum de 99
@@ -180,18 +181,7 @@ def draw_list_view(screen, pokemon_list, selected_index, scroll_offset, max_visi
             text_rect = text_surface.get_rect(center=bubble_rect.center)
             screen.blit(text_surface, text_rect)
 
-    # Display game_state.message if active
-    if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
-        try:
-            big_font = pygame.font.Font(None, 40)
-        except: 
-            big_font = font # Fallback
-        
-        center_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2) # Centered on screen
-        text_color = (255, 255, 0)   # Yellow text
-        outline_color = (0, 0, 139) # Dark blue outline
 
-        draw_pokemon_style_text(screen, game_state.message, center_pos, big_font, text_color, outline_color, with_frame=True)
 
 def draw_general_stats(screen, game_state, stats_font):
     # Placeholder for now, will implement after db.py changes
@@ -212,8 +202,10 @@ def draw_detail_view(game_state):
     current_pokemon_data = game_state.current_pokemon_data
     current_sprite = game_state.current_sprite
     font = game_state.font
-    caught = game_state.pokemon_list[game_state.selected_index][5]
-    is_shiny = game_state.pokemon_list[game_state.selected_index][6]
+    selected_pokemon = game_state.pokemon_list[game_state.selected_index]
+    caught = selected_pokemon[5]
+    is_shiny = selected_pokemon[6]
+    seen = selected_pokemon[8]
 
     small_font = pygame.font.SysFont("Arial", FONT_SIZE - 2)
     # Fond dégradé vertical
@@ -225,18 +217,19 @@ def draw_detail_view(game_state):
 
     # Bandeau en haut : nom à gauche, types à droite
     draw_rounded_rect(screen, (255,255,255), (10,10,SCREEN_WIDTH-20,50), radius=12, border=2)
-    name_fr = current_pokemon_data.get("name", {}).get("fr", "???") if caught else "???"
+    name_fr = current_pokemon_data.get("name", {}).get("fr", "???") if seen else "???"
     pid = current_pokemon_data.get("pokedex_id", "?")
-    types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])] if caught else ["?"]
+    types = [t.get("name", "?") for t in (current_pokemon_data.get("types") or [])] if seen else ["?"]
 
     icon_x = 20
     text_x = icon_x + FONT_SIZE + 5
-    if is_shiny and masterball_img:
-        screen.blit(masterball_img, (icon_x, 25))
-    elif caught and pokeball_img:
-        screen.blit(pokeball_img, (icon_x, 25))
-    else:
-        screen.blit(pokeball_grayscale_img, (icon_x, 25))
+    if seen:
+        if is_shiny and masterball_img:
+            screen.blit(masterball_img, (icon_x, 25))
+        elif caught and pokeball_img:
+            screen.blit(pokeball_img, (icon_x, 25))
+        else: # Seen but not caught
+            screen.blit(pokeball_grayscale_img, (icon_x, 25))
 
     draw_text(screen, f"{pid:03d} - {name_fr}", text_x, 25, font, (30,30,120))
     type_text = " / ".join(types)
@@ -248,12 +241,17 @@ def draw_detail_view(game_state):
 
     if current_sprite:
         sprite_big = pygame.transform.smoothscale(current_sprite, (128, 128))
-        rect = sprite_big.get_rect(center=(150, 140))
-        screen.blit(sprite_big, rect)
+        if not seen: # If not seen, make it darker
+            sprite_to_draw = sprite_big.copy()
+            sprite_to_draw.set_alpha(128)
+        else:
+            sprite_to_draw = sprite_big
+        rect = sprite_to_draw.get_rect(center=(150, 140))
+        screen.blit(sprite_to_draw, rect)
 
     # Poids et taille à gauche du sprite
-    height = current_pokemon_data.get("height", "?") if caught else "?"
-    weight = current_pokemon_data.get("weight", "?") if caught else "?"
+    height = current_pokemon_data.get("height", "?") if seen else "?"
+    weight = current_pokemon_data.get("weight", "?") if seen else "?"
     draw_text(screen, f"{height}", 20, 120, small_font, (100,100,100))
     draw_text(screen, f"{weight}", 20, 140, small_font, (100,100,100))
 
@@ -263,13 +261,13 @@ def draw_detail_view(game_state):
         draw_stats_radar(screen, stats, center=(310, 140), radius=65, font=font)
 
     # Infos complémentaires en bas
-    talents = [t.get("name", "?") for t in (current_pokemon_data.get("talents") or [])] if caught else ["?"]
+    talents = [t.get("name", "?") for t in (current_pokemon_data.get("talents") or [])] if seen else ["?"]
     draw_rounded_rect(screen, (255,255,255), (30,230,370,40), radius=10, border=2)
     draw_text(screen, "Talents: " + ", ".join(talents), 40, 240, font)
 
     # Evolution text scrolling logic
     evol = (current_pokemon_data.get("evolution", {}) or {}).get("next") or []
-    evol_text_content = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict)) if caught else "" # Empty string if no evolutions, to handle "Aucune" separately
+    evol_text_content = ", ".join(e.get("name", "?") for e in evol if isinstance(e, dict)) if seen else "" # Empty string if no evolutions, to handle "Aucune" separately
 
     draw_rounded_rect(screen, (255,255,255), (30,277,370,40), radius=10, border=2)
 
@@ -314,3 +312,16 @@ def draw_detail_view(game_state):
             game_state.evolution_scroll_active = False
             game_state.evolution_text_surface = None
             draw_text(screen, scrollable_text, 40 + prefix_width, 290, font)
+
+    # Display game_state.message if active
+    if game_state.message and pygame.time.get_ticks() < game_state.message_timer:
+        try:
+            big_font = pygame.font.Font(None, 40)
+        except:
+            big_font = font # Fallback
+
+        center_pos = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2) # Centered on screen
+        text_color = (255, 255, 0)   # Yellow text
+        outline_color = (0, 0, 139) # Dark blue outline
+
+        draw_pokemon_style_text(screen, game_state.message, center_pos, big_font, text_color, outline_color, with_frame=True)

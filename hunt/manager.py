@@ -2,7 +2,7 @@ import pygame
 import random
 from pathlib import Path
 from config import SHINY_RATE, REGIONS, REGION_MUSIC
-from db import get_caught_pokemon_count
+from db import get_caught_pokemon_count, update_pokemon_seen_status
 from .region_selection import RegionSelectionHandler
 from .encounter import EncounterHandler
 from .combat import CombatHandler
@@ -48,6 +48,7 @@ class HuntManager:
             starters = [p for p in self.game_state.pokemon_list if p[0] in [1, 4, 7]]
             if starters:
                 self.target_pokemon_data = random.choice(starters)
+                update_pokemon_seen_status(self.game_state.conn, self.target_pokemon_data[0])
             else:
                 self.state = "REGION_SELECTION"
                 return
@@ -73,6 +74,7 @@ class HuntManager:
                     available_pokemon = [p for p in self.game_state.pokemon_list if region_data["min_id"] <= p[0] < region_data["max_id"]]
                     if available_pokemon:
                         self.target_pokemon_data = random.choice(available_pokemon)
+                        update_pokemon_seen_status(self.game_state.conn, self.target_pokemon_data[0])
                         self.is_shiny = random.random() < SHINY_RATE
                         self.state = "ENCOUNTER"
                         if self.selected_region_name in REGION_MUSIC and REGION_MUSIC[self.selected_region_name]:
@@ -142,8 +144,8 @@ class HuntManager:
                 return self.result_handler.handle_success(self.target_pokemon_data, self.is_shiny)
 
             elif self.state == "FLED":
-                self.result_handler.handle_fled(self.target_pokemon_data)
-                self.state = "QUIT_HUNT"
+                result = self.result_handler.handle_fled(self.target_pokemon_data)
+                return result
 
             elif self.state == "QUIT_HUNT":
                 return "main_menu"
