@@ -45,7 +45,7 @@ JOYSTICK_MAPPINGS = {
         10: "LEFT",  # Left Bumper (not used yet)
         11: "RIGHT", # Right Bumper (not used yet)
         # 12: "QUIT",  # Select button
-        # 17: "GIT_PULL",
+        17: "GIT_PULL",
         14: "VOLUME_DOWN",
         15: "VOLUME_UP",
     },

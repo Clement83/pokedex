@@ -11,6 +11,12 @@ import stabilize_game
 from sprites import load_sprite
 import hunt # Import the new hunt module
 
+# --- Debug combination state for keyboard ---
+_keyboard_debug_combo_start_time = {}
+_keyboard_debug_combo_active = {}
+_keyboard_pressed_keys = set()
+DEBUG_HOLD_DURATION = 5000  # 5 seconds in milliseconds
+
 def _run_git_pull(game_state):
     """Executes git pull and displays feedback on the screen."""
     screen = game_state.screen
@@ -63,10 +69,35 @@ def _run_git_pull(game_state):
         pygame.time.wait(3000)
 
 def handle_input(game_state, event):
+    global _keyboard_debug_combo_start_time, _keyboard_debug_combo_active, _keyboard_pressed_keys
     now = pygame.time.get_ticks()
 
     if event.type == pygame.KEYDOWN:
-        if event.key in KEY_MAPPINGS["GIT_PULL"]:
+        _keyboard_pressed_keys.add(event.key)
+
+        # --- Debug Actions Check (require holding for 5 seconds) ---
+        # Check for combinations with F1 key
+        if pygame.K_F1 in _keyboard_pressed_keys:
+            if pygame.K_F2 in _keyboard_pressed_keys:  # F1 + F2 (update and restart)
+                combo_key = "update_restart"
+                if combo_key not in _keyboard_debug_combo_start_time:
+                    _keyboard_debug_combo_start_time[combo_key] = now
+                    _keyboard_debug_combo_active[combo_key] = False
+                return
+            elif pygame.K_F3 in _keyboard_pressed_keys:  # F1 + F3 (reset game)
+                combo_key = "reset_game"
+                if combo_key not in _keyboard_debug_combo_start_time:
+                    _keyboard_debug_combo_start_time[combo_key] = now
+                    _keyboard_debug_combo_active[combo_key] = False
+                return
+            elif pygame.K_F4 in _keyboard_pressed_keys:  # F1 + F4 (next milestone)
+                combo_key = "next_milestone"
+                if combo_key not in _keyboard_debug_combo_start_time:
+                    _keyboard_debug_combo_start_time[combo_key] = now
+                    _keyboard_debug_combo_active[combo_key] = False
+                return
+
+        if event.key in KEY_MAPPINGS["GIT_PULL"] and pygame.K_F1 not in _keyboard_pressed_keys:
             _run_git_pull(game_state)
             # After pulling, the app should ideally be restarted.
             # For now, we just continue the loop.
@@ -167,10 +198,77 @@ def handle_input(game_state, event):
                                 print(f"Error playing cry: {e}")
 
     elif event.type == pygame.KEYUP:
+        if event.key in _keyboard_pressed_keys:
+            _keyboard_pressed_keys.discard(event.key)
+
+        # Reset debug combo timers when keys are released
+        if event.key in [pygame.K_F1, pygame.K_F2, pygame.K_F3, pygame.K_F4]:
+            _keyboard_debug_combo_start_time.clear()
+            _keyboard_debug_combo_active.clear()
+
         if event.key in KEY_MAPPINGS["DOWN"]:
             game_state.key_down_pressed = False
         elif event.key in KEY_MAPPINGS["UP"]:
             game_state.key_up_pressed = False
+
+def check_keyboard_debug_combos(game_state):
+    """
+    Checks if keyboard debug combinations have been held long enough and triggers actions.
+    Should be called in the main game loop.
+    """
+    global _keyboard_debug_combo_start_time, _keyboard_debug_combo_active
+    import debug_actions
+
+    if not _keyboard_debug_combo_start_time:
+        return
+
+    now = pygame.time.get_ticks()
+    screen = game_state.screen
+    font = game_state.font
+
+    for combo_key, start_time in list(_keyboard_debug_combo_start_time.items()):
+        elapsed = now - start_time
+
+        # Draw progress bar
+        if elapsed < DEBUG_HOLD_DURATION:
+            progress = elapsed / DEBUG_HOLD_DURATION
+            bar_width = 200
+            bar_height = 20
+            bar_x = (screen.get_width() - bar_width) // 2
+            bar_y = screen.get_height() - 40
+
+            # Draw background
+            pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height))
+            # Draw progress
+            pygame.draw.rect(screen, (255, 200, 0), (bar_x, bar_y, int(bar_width * progress), bar_height))
+            # Draw border
+            pygame.draw.rect(screen, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 2)
+
+            # Draw text
+            combo_names = {
+                "update_restart": "Git Pull & Restart",
+                "reset_game": "Reset Game",
+                "next_milestone": "Next Milestone"
+            }
+            text = font.render(f"Hold for: {combo_names.get(combo_key, 'Debug Action')}", True, (255, 255, 255))
+            text_rect = text.get_rect(center=(screen.get_width() // 2, bar_y - 15))
+            screen.blit(text, text_rect)
+
+        # Execute action if held long enough
+        elif not _keyboard_debug_combo_active.get(combo_key, False):
+            _keyboard_debug_combo_active[combo_key] = True
+
+            if combo_key == "update_restart":
+                debug_actions.update_and_restart(game_state)
+            elif combo_key == "reset_game":
+                debug_actions.reset_game_state(game_state)
+            elif combo_key == "next_milestone":
+                debug_actions.go_to_next_milestone(game_state)
+
+            # Clear the combo after execution
+            _keyboard_debug_combo_start_time.clear()
+            _keyboard_debug_combo_active.clear()
+            break
 
 def handle_continuous_input(game_state):
     now = pygame.time.get_ticks()

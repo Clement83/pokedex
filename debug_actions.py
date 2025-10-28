@@ -92,10 +92,15 @@ def go_to_next_milestone(game_state):
     try:
         caught_count = get_seen_pokemon_count(game_state.conn)
         next_threshold = -1
+        current_gen = None
+        current_max_id = None
 
-        # Find the next unlock count
+        # Find the current generation and next unlock count
         for gen, data in sorted(GENERATION_THRESHOLDS.items(), key=lambda item: item[1]['unlock_count']):
-            if data['unlock_count'] > caught_count:
+            if data['unlock_count'] <= caught_count:
+                current_gen = gen
+                current_max_id = data['max_id']
+            elif data['unlock_count'] > caught_count:
                 next_threshold = data['unlock_count']
                 break
 
@@ -103,6 +108,22 @@ def go_to_next_milestone(game_state):
             draw_message("All milestones already reached!")
             pygame.time.wait(2000)
             return
+
+        # Determine min_id for current milestone
+        if current_gen is None:
+            # No generation unlocked yet, use starters (gen 1)
+            min_id = 1
+            max_id = GENERATION_THRESHOLDS[1]['max_id']
+        else:
+            # Find previous gen's max_id to get min_id
+            prev_max_id = 0
+            for gen, data in sorted(GENERATION_THRESHOLDS.items(), key=lambda item: item[0]):
+                if gen < current_gen:
+                    prev_max_id = data['max_id']
+                elif gen == current_gen:
+                    break
+            min_id = prev_max_id + 1
+            max_id = current_max_id
 
         target_caught_count = next_threshold - 1
         pokemon_to_catch = target_caught_count - caught_count
@@ -114,16 +135,16 @@ def go_to_next_milestone(game_state):
 
         draw_message(f"Catching {pokemon_to_catch} Pokémon...")
 
-        # Get uncaught Pokémon and catch them
+        # Get uncaught Pokémon from current milestone only
         with game_state.conn:
             cursor = game_state.conn.execute(
-                "SELECT pokedex_id FROM pokemon WHERE caught = 0 ORDER BY RANDOM() LIMIT ?",
-                (pokemon_to_catch,)
+                "SELECT pokedex_id FROM pokemon WHERE seen = 0 AND pokedex_id BETWEEN ? AND ? ORDER BY RANDOM() LIMIT ?",
+                (min_id, max_id, pokemon_to_catch)
             )
             pids_to_catch = [row[0] for row in cursor.fetchall()]
 
             if len(pids_to_catch) < pokemon_to_catch:
-                draw_message("Not enough uncaught Pokémon!", color=(255,100,100))
+                draw_message("Not enough unseen Pokémon!", color=(255,100,100))
                 pygame.time.wait(2000)
                 return
 

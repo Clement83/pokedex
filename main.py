@@ -24,7 +24,7 @@ def main():
                     game_state.play_next_menu_song()
                 else:
                     game_state.play_next_menu_song()
-            
+
             controls.process_joystick_input(game_state, event)
             input_handler.handle_input(game_state, event) # Pass event to input handler
 
@@ -35,7 +35,7 @@ def main():
                 game_state.state = "list"
             else:
                 game_state.state = "dresseur_selection"
-        
+
         elif game_state.state == "dresseur_selection":
             result = dresseur_selection.run(game_state.screen, game_state.font, game_state)
             if result == "quit":
@@ -45,10 +45,12 @@ def main():
 
         elif game_state.state in ["list", "detail"]:
             handle_continuous_input(game_state) # Handle continuous input for scrolling
+            controls.check_debug_combos(game_state) # Check if debug combos are held
+            input_handler.check_keyboard_debug_combos(game_state) # Check keyboard debug combos
             update_sprite(game_state)
             update_animations(game_state)
             render(game_state)
-        
+
         elif game_state.state == "quit":
             game_state.running = False
 
