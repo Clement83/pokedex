@@ -21,7 +21,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
     if pokeball_sprite:
         pokeball_sprite = pygame.transform.scale(pokeball_sprite, (20, 20))
     BASE_DIR = Path.cwd()
-    
+
     dresseur_front_sprite = None
     if game_state.dresseur:
         dresseur_front_path = BASE_DIR / "app" / "data" / "assets" / "dresseurs" / game_state.dresseur / "face.png"
@@ -74,12 +74,12 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                         angle = min(max_angle, angle + 2)
                     elif event.key in KEY_MAPPINGS["CONFIRM"]:
                         charging = True
-                    elif event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
+                    elif event.key in KEY_MAPPINGS["QUIT"]:
                         return "back"
                 elif event.type == pygame.KEYUP:
                     if event.key in KEY_MAPPINGS["CONFIRM"] and charging:
                         launched = True
-            
+
             if charging:
                 power = min(max_power, power + charging_speed * dt)
 
@@ -103,7 +103,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                     norm_vec = [dir_vec[0] / distance, dir_vec[1] / distance]
                     pokemon_pos[0] += norm_vec[0] * move_dist
                     pokemon_pos[1] += norm_vec[1] * move_dist
-            
+
             if background_image:
                 screen.blit(background_image, (0, 0))
             else:
@@ -143,7 +143,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
                 pokeball_width = pokeball_sprite.get_width()
                 for i in range(remaining_attempts):
                     screen.blit(pokeball_sprite, (10 + i * (pokeball_width + 5), 10))
-            
+
             # Draw the depleted HP bar
             draw_hp_bar(screen, 10, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
 
@@ -183,7 +183,7 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
             if pokeball_sprite:
                 rect = pokeball_sprite.get_rect(center=(int(pos[0]), int(pos[1])))
                 screen.blit(pokeball_sprite, rect)
-            
+
             # Draw the depleted HP bar during the throw as well
             draw_hp_bar(screen, 10, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
 
@@ -193,12 +193,12 @@ def run(screen, font, pokemon_sprite, pokeball_sprite, region_name, dresseur_spr
             if abs(pos[0] - pokemon_pos[0]) < 32 and abs(pos[1] - pokemon_pos[1]) < 32:
                 hit = True
                 break
-        
+
         attempts += 1
         if hit:
             caught = True
             result = "caught"
         else:
             result = "miss"
-            
+
     return result, dresseur_front_sprite

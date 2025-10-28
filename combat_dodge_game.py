@@ -112,7 +112,6 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         for event in pygame.event.get():
             controls.process_joystick_input(game_state, event)
             if event.type == pygame.KEYDOWN:
-                if event.key in KEY_MAPPINGS["CANCEL"]: return "lose"
                 if not game_over:
                     if event.key in KEY_MAPPINGS["UP"]: keys["up"] = True
                     if event.key in KEY_MAPPINGS["DOWN"]: keys["down"] = True

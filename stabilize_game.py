@@ -87,7 +87,7 @@ def draw_victory_animation(screen, font, pokeball_sprite, background_image, dres
             text_surf = large_font.render("ATTRAPÉ !", True, (255, 255, 0))
             outline_surf = large_font.render("ATTRAPÉ !", True, (0, 0, 139))
             text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT * 0.2))
-            
+
             screen.blit(outline_surf, (text_rect.x - 2, text_rect.y - 2))
             screen.blit(outline_surf, (text_rect.x + 2, text_rect.y - 2))
             screen.blit(outline_surf, (text_rect.x - 2, text_rect.y + 2))
@@ -111,12 +111,12 @@ def draw_lose_animation(screen, pokeball_sprite, game_state):
 
         progress = elapsed / duration
         new_size = (int(original_size[0] * (1 - progress)), int(original_size[1] * (1 - progress)))
-        
+
         if new_size[0] <= 0 or new_size[1] <= 0:
             break
 
         scaled_sprite = pygame.transform.scale(pokeball_sprite, new_size)
-        
+
         screen.fill((200, 220, 255))
         pokeball_rect = scaled_sprite.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         screen.blit(scaled_sprite, pokeball_rect)
@@ -140,7 +140,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
         x = int(pokemon_start[0] + (pokemon_end[0] - pokemon_start[0]) * progress)
         y = int(pokemon_start[1] + (pokemon_end[1] - pokemon_start[1]) * progress)
         size = int(start_size + (end_size - start_size) * progress)
-        
+
         # Draw background and dresseur sprite
         if background_image:
             screen.blit(background_image, (0, 0))
@@ -177,7 +177,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
             progress = t / bounce_frames
             x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
             y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress - bounce_height * math.sin(math.pi * progress))
-            
+
             # Draw background and dresseur sprite
             if background_image:
                 screen.blit(background_image, (0, 0))
@@ -198,7 +198,7 @@ def intro_animation(screen, pokeball_sprite, pokemon_sprite, background_image, d
         progress = t / 30
         x = int(start_pos[0] + (end_pos[0] - start_pos[0]) * progress)
         y = int(start_pos[1] + (end_pos[1] - start_pos[1]) * progress)
-        
+
         # Draw background and dresseur sprite
         if background_image:
             screen.blit(background_image, (0, 0))
@@ -225,13 +225,13 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
     timing_hits = 0
     lives = 3
-    
+
     # --- Poké-Lock Gameplay Variables ---
     track_height = SCREEN_HEIGHT // 2 + 100  # Moved lower
     pokeball_y = track_height
     pokeball_x = 0
     pokeball_speed = 5
-    
+
     moving_pokeball_sprite = game_state.pokeball_img_small
     if moving_pokeball_sprite is None:
         moving_pokeball_sprite = pygame.transform.scale(pokeball_sprite, (25, 25))
@@ -240,13 +240,13 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
     target_zone_height = 40
     target_zone_x = (SCREEN_WIDTH - target_zone_width) // 2
     target_zone_rect = pygame.Rect(target_zone_x, track_height - target_zone_height // 2, target_zone_width, target_zone_height)
-    
+
     shake_angle = 0
     shake_speed = 5
     shake_magnitude = 5
 
     clock = pygame.time.Clock()
-    
+
     while True:
         for event in pygame.event.get():
             controls.process_joystick_input(game_state, event)
@@ -265,14 +265,14 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
                         if lives == 0:
                             draw_lose_animation(screen, pokeball_sprite, game_state)
                             return "failed"
-                if event.key in KEY_MAPPINGS["CANCEL"] or event.key in KEY_MAPPINGS["QUIT"]:
+                if event.key in KEY_MAPPINGS["QUIT"]:
                     pygame.mixer.music.stop()
                     return "back"
 
         pokeball_x += pokeball_speed
         if pokeball_x > SCREEN_WIDTH or pokeball_x < 0:
             pokeball_speed = -pokeball_speed
-        
+
         time_in_seconds = pygame.time.get_ticks() / 1000.0
         shake_angle = math.sin(time_in_seconds * shake_speed) * shake_magnitude
         shake_offset_x = math.cos(time_in_seconds * shake_speed * 0.7) * shake_magnitude
@@ -290,12 +290,12 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
         if dresseur_front_sprite:
             screen.blit(dresseur_front_sprite, (10, SCREEN_HEIGHT - dresseur_front_sprite.get_height() - 10))
-        
+
         if pokeball_sprite:
             rotated_pokeball = pygame.transform.rotate(pokeball_sprite, shake_angle)
             pokeball_rect = rotated_pokeball.get_rect(center=(SCREEN_WIDTH // 2 + shake_offset_x, SCREEN_HEIGHT // 2 + shake_offset_y))
             screen.blit(rotated_pokeball, pokeball_rect)
-        
+
         # --- Draw New UI Elements ---
         glow_color = (255, 80, 80, 60)  # Reddish glow
         for i in range(5, 0, -1):
@@ -328,7 +328,3 @@ def run(screen, font, pokeball_sprite, pokemon_sprite, background_image, dresseu
 
         pygame.display.flip()
         clock.tick(60)
-
-
-
-

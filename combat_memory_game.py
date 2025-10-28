@@ -16,7 +16,7 @@ ARROW_SIZE = 50
 def create_arrow_surface(direction, size, color):
     """Draws a new, cleaner Pokémon-style arrow."""
     surf = pygame.Surface((size, size), pygame.SRCALPHA)
-    
+
     # Style
     bg_color = (255, 255, 255) # White background
     arrow_color = (74, 144, 226) # Medium blue
@@ -46,7 +46,7 @@ def draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, f
     start_x = (SCREEN_WIDTH - total_width) // 2
     for i in range(len(sequence)):
         box_rect = pygame.Rect(start_x + i * (ARROW_SIZE + 10), progress_y, ARROW_SIZE, ARROW_SIZE)
-        
+
         is_flashing_box = i == flash_box_index and flash_duration > 0
         if is_flashing_box and (flash_duration // 4) % 2 == 0:
             pygame.draw.rect(screen, (255, 0, 0), box_rect)
@@ -121,8 +121,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             if event.type == pygame.QUIT: return "quit"
             if event.type == pygame.KEYDOWN:
                 if event.key in KEY_MAPPINGS["QUIT"]: return "quit"
-                if event.key in KEY_MAPPINGS["CANCEL"]: return "lose"
-                
+
                 if game_phase == "INPUT" and player_input_index < len(sequence) and not game_over:
                     expected_keys = sequence[player_input_index][1]
                     if event.key in expected_keys:
@@ -137,10 +136,10 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         target_hp_percent = (player_hp / max_player_hp) * 100
         if player_hp_percent > target_hp_percent:
             player_hp_percent -= 1.0
-        
+
         if flash_duration > 0:
             flash_duration -= 1
-        
+
         if game_over and player_hp_percent <= target_hp_percent:
             pygame.time.wait(500)
             return "lose"
@@ -176,7 +175,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
 
         if dresseur_sprite:
             screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
-        
+
         screen.blit(pokemon_sprite, pokemon_rect)
 
         if game_phase == "INTRO":
@@ -196,7 +195,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         elif game_phase == "INPUT":
             turn_text = font.render("À vous !", True, (255, 255, 255))
             screen.blit(turn_text, turn_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
-            
+
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
             draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
         elif game_phase == "WIN_FLASH":
@@ -208,13 +207,13 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             start_x = (SCREEN_WIDTH - total_width) // 2
             for i in range(len(sequence)):
                 box_rect = pygame.Rect(start_x + i * (ARROW_SIZE + 10), progress_y, ARROW_SIZE, ARROW_SIZE)
-                
+
                 # Green flashing logic
                 if (current_time // 100) % 2 == 0: # Flash every 100ms
                     pygame.draw.rect(screen, (0, 255, 0), box_rect)
                 else:
                     pygame.draw.rect(screen, (0, 150, 0), box_rect) # Darker green when off
-                
+
                 # Draw arrows on top of flashing boxes
                 arrow_name = sequence[i][0]
                 arrow_img = arrow_surfaces[arrow_name]
