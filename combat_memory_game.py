@@ -4,6 +4,23 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
 import controls
 from ui import draw_hp_bar, draw_rounded_rect
 
+def draw_pokemon_text(surface, text, center_pos, font_size=48, color=(255, 215, 0), outline_color=(0, 0, 0), outline_width=3):
+    """Draw text with Pokemon-style yellow color and black outline."""
+    big_font = pygame.font.Font(None, font_size)
+
+    # Draw outline
+    for dx in range(-outline_width, outline_width + 1):
+        for dy in range(-outline_width, outline_width + 1):
+            if dx != 0 or dy != 0:
+                outline_surf = big_font.render(text, True, outline_color)
+                outline_rect = outline_surf.get_rect(center=(center_pos[0] + dx, center_pos[1] + dy))
+                surface.blit(outline_surf, outline_rect)
+
+    # Draw main text
+    text_surf = big_font.render(text, True, color)
+    text_rect = text_surf.get_rect(center=center_pos)
+    surface.blit(text_surf, text_rect)
+
 # Game settings
 # SEQUENCE_LENGTH will be determined dynamically based on pokemon difficulty
 
@@ -190,8 +207,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         game_surface.blit(pokemon_sprite, pokemon_rect)
 
         if game_phase == "INTRO":
-            text = font.render("Mémorisez la séquence !", True, (255, 255, 255))
-            game_surface.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+            draw_pokemon_text(game_surface, "Mémorisez la séquence !", (SCREEN_WIDTH // 2, 100))
 
         elif game_phase == "SHOWING":
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40 # Define progress_y here for SHOWING phase
@@ -204,14 +220,12 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                     game_surface.blit(arrow_img, arrow_img.get_rect(center=arrow_pos))
 
         elif game_phase == "INPUT":
-            turn_text = font.render("À vous !", True, (255, 255, 255))
-            game_surface.blit(turn_text, turn_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+            draw_pokemon_text(game_surface, "À vous !", (SCREEN_WIDTH // 2, 100))
 
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
             draw_sequence_boxes(game_surface, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
         elif game_phase == "WIN_FLASH":
-            text = font.render("Séquence réussie !", True, (0, 255, 0))
-            game_surface.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+            draw_pokemon_text(game_surface, "Séquence réussie !", (SCREEN_WIDTH // 2, 100), color=(0, 255, 0))
 
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
             total_width = len(sequence) * (ARROW_SIZE + 10) - 10
