@@ -68,6 +68,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     player_hp_percent = 100.0
     flash_box_index = -1
     flash_duration = 0
+    shake_duration = 0
     game_over = False
 
     # --- Setup ---
@@ -98,10 +99,11 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     arrow_pos = (pokemon_rect.centerx, pokemon_rect.top - ARROW_SIZE // 2)
 
     def handle_mistake():
-        nonlocal player_hp, game_over, flash_box_index, flash_duration, player_input_index, game_phase, sequence_index, phase_timer
+        nonlocal player_hp, game_over, flash_box_index, flash_duration, player_input_index, game_phase, sequence_index, phase_timer, shake_duration
         player_hp -= 1
         flash_box_index = player_input_index
         flash_duration = 30  # frames
+        shake_duration = 20
         player_input_index = 0
         if player_hp <= 0:
             player_hp = 0
@@ -167,40 +169,49 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             if current_time - phase_timer > 1000: # 1 second delay
                 return "win"
 
+        # Screen shake logic
+        shake_offset = (0, 0)
+        if shake_duration > 0:
+            shake_duration -= 1
+            if shake_duration > 0:
+                shake_offset = (random.randint(-7, 7), random.randint(-7, 7))
+
         # --- Drawing ---
+        game_surface = pygame.Surface(screen.get_size())
+
         if background_image:
-            screen.blit(background_image, (0, 0))
+            game_surface.blit(background_image, (0, 0))
         else:
-            screen.fill((20, 20, 30))
+            game_surface.fill((20, 20, 30))
 
         if dresseur_sprite:
-            screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
+            game_surface.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
 
-        screen.blit(pokemon_sprite, pokemon_rect)
+        game_surface.blit(pokemon_sprite, pokemon_rect)
 
         if game_phase == "INTRO":
             text = font.render("Mémorisez la séquence !", True, (255, 255, 255))
-            screen.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+            game_surface.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
 
         elif game_phase == "SHOWING":
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40 # Define progress_y here for SHOWING phase
-            draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
+            draw_sequence_boxes(game_surface, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
 
             if sequence_index < len(sequence):
                 if current_time - phase_timer < SHOW_DURATION_MS:
                     arrow_name = sequence[sequence_index][0]
                     arrow_img = arrow_surfaces[arrow_name]
-                    screen.blit(arrow_img, arrow_img.get_rect(center=arrow_pos))
+                    game_surface.blit(arrow_img, arrow_img.get_rect(center=arrow_pos))
 
         elif game_phase == "INPUT":
             turn_text = font.render("À vous !", True, (255, 255, 255))
-            screen.blit(turn_text, turn_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+            game_surface.blit(turn_text, turn_text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
 
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
-            draw_sequence_boxes(screen, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
+            draw_sequence_boxes(game_surface, sequence, player_input_index, flash_box_index, flash_duration, arrow_surfaces, font, progress_y)
         elif game_phase == "WIN_FLASH":
             text = font.render("Séquence réussie !", True, (0, 255, 0))
-            screen.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
+            game_surface.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 100)))
 
             progress_y = SCREEN_HEIGHT - ARROW_SIZE - 40
             total_width = len(sequence) * (ARROW_SIZE + 10) - 10
@@ -210,20 +221,23 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
 
                 # Green flashing logic
                 if (current_time // 100) % 2 == 0: # Flash every 100ms
-                    pygame.draw.rect(screen, (0, 255, 0), box_rect)
+                    pygame.draw.rect(game_surface, (0, 255, 0), box_rect)
                 else:
-                    pygame.draw.rect(screen, (0, 150, 0), box_rect) # Darker green when off
+                    pygame.draw.rect(game_surface, (0, 150, 0), box_rect) # Darker green when off
 
                 # Draw arrows on top of flashing boxes
                 arrow_name = sequence[i][0]
                 arrow_img = arrow_surfaces[arrow_name]
-                screen.blit(arrow_img, arrow_img.get_rect(center=box_rect.center))
+                game_surface.blit(arrow_img, arrow_img.get_rect(center=box_rect.center))
 
 
         # Draw player HP bar
-        draw_hp_bar(screen, player_hp_percent, pos=(20, 20), size=(150, 20), font=font)
+        draw_hp_bar(game_surface, player_hp_percent, pos=(20, 20), size=(150, 20), font=font)
         # Draw pokemon HP bar
-        draw_hp_bar(screen, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
+        draw_hp_bar(game_surface, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
+
+        # Blit the game surface to the main screen with the shake offset
+        screen.blit(game_surface, shake_offset)
 
         pygame.display.flip()
         clock.tick(60)

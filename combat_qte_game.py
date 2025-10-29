@@ -164,6 +164,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
     score = 0
     misses = 0
     player_hp_percent = 100.0
+    shake_duration = 0
     game_over = False
     active_feedback = [] # List to hold active feedback messages
 
@@ -212,6 +213,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                                 break
                         if not hit_found:
                             misses += 1
+                            shake_duration = 20
                             active_feedback.append(Feedback("MISS!", (255, 0, 0), click_zone_rect.center, 700))
 
         if not game_over:
@@ -241,6 +243,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             for prompt in list(active_prompts):
                 if prompt.rect.right < click_zone_rect.left and not prompt.hit:
                     misses += 1
+                    shake_duration = 20
                     prompt.kill()
                 elif prompt.hit and not prompt.hit_effect_active:
                     prompt.kill()
@@ -251,17 +254,26 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             if misses >= MAX_MISSES:
                 game_over = True
 
+        # Screen shake logic
+        shake_offset = (0, 0)
+        if shake_duration > 0:
+            shake_duration -= 1
+            if shake_duration > 0:
+                shake_offset = (random.randint(-7, 7), random.randint(-7, 7))
+
         # --- Drawing ---
+        game_surface = pygame.Surface(screen.get_size())
+
         if background_image:
-            screen.blit(background_image, (0, 0))
+            game_surface.blit(background_image, (0, 0))
         else:
-            screen.fill((20, 20, 30))
+            game_surface.fill((20, 20, 30))
 
         if dresseur_sprite:
-            screen.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
+            game_surface.blit(dresseur_sprite, (10, SCREEN_HEIGHT - dresseur_sprite.get_height() - 10))
 
         # Draw Pokémon
-        screen.blit(pokemon_sprite, pokemon_rect)
+        game_surface.blit(pokemon_sprite, pokemon_rect)
 
         # # Draw hit zone (stylized target)
         # pygame.draw.line(screen, (255, 255, 0), (hit_zone_rect.centerx, hit_zone_rect.top), (hit_zone_rect.centerx, hit_zone_rect.bottom), 3)
@@ -272,20 +284,23 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
         # Draw active prompts
         for prompt in active_prompts:
             in_click_zone = click_zone_rect.colliderect(prompt.rect)
-            prompt.draw(screen, in_click_zone=in_click_zone)
+            prompt.draw(game_surface, in_click_zone=in_click_zone)
 
         # Draw the Pokemon HP bar
-        draw_hp_bar(screen, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
+        draw_hp_bar(game_surface, 100, pos=(SCREEN_WIDTH - 160, 20), size=(150, 20), font=font)
 
         # Draw the Player HP bar
-        draw_hp_bar(screen, player_hp_percent, pos=(20, 20), size=(150, 20), font=font)
+        draw_hp_bar(game_surface, player_hp_percent, pos=(20, 20), size=(150, 20), font=font)
 
         # Draw and update feedback messages
         for feedback in list(active_feedback): # Iterate over a copy to allow modification
             if feedback.update():
-                feedback.draw(screen, font)
+                feedback.draw(game_surface, font)
             else:
                 active_feedback.remove(feedback)
+
+        # Blit the game surface to the main screen with the shake offset
+        screen.blit(game_surface, shake_offset)
 
         pygame.display.flip()
         clock.tick(60)
