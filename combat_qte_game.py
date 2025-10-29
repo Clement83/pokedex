@@ -79,8 +79,11 @@ class QTEPrompt(pygame.sprite.Sprite):
         self.image = image_surface
         self.rect = self.image.get_rect(center=(start_x, y_pos))
         self.hit = False # To track if this prompt has been successfully hit
+        self.missed = False # To track if this prompt has been missed
         self.hit_effect_active = False
         self.hit_effect_start_time = 0
+        self.miss_effect_active = False
+        self.miss_effect_start_time = 0
 
     def update(self, speed):
         self.rect.x -= speed
@@ -89,8 +92,24 @@ class QTEPrompt(pygame.sprite.Sprite):
         self.hit_effect_active = True
         self.hit_effect_start_time = pygame.time.get_ticks()
 
+    def trigger_miss_effect(self):
+        self.miss_effect_active = True
+        self.miss_effect_start_time = pygame.time.get_ticks()
+        self.missed = True
+
     def draw(self, screen, in_click_zone=False):
         current_image = self.original_image.copy()
+
+        if self.miss_effect_active:
+            elapsed_time = pygame.time.get_ticks() - self.miss_effect_start_time
+            if elapsed_time < HIT_EFFECT_DURATION_MS:
+                # Red overlay + fade out effect
+                alpha_fade = int(255 * (1 - elapsed_time / HIT_EFFECT_DURATION_MS))
+                current_image.fill((255, 0, 0, min(128, alpha_fade)), special_flags=pygame.BLEND_RGBA_ADD)
+                current_image.set_alpha(alpha_fade)
+            else:
+                self.miss_effect_active = False # Effect ended
+                return # Don't draw if effect is finished
 
         if self.hit_effect_active:
             elapsed_time = pygame.time.get_ticks() - self.hit_effect_start_time
@@ -99,7 +118,7 @@ class QTEPrompt(pygame.sprite.Sprite):
             else:
                 self.hit_effect_active = False # Effect ended
 
-        if in_click_zone and not self.hit_effect_active: # Apply click zone effect only if not already hitting
+        if in_click_zone and not self.hit_effect_active and not self.miss_effect_active: # Apply click zone effect only if not already hitting/missing
             current_image.fill(CLICK_ZONE_EFFECT_COLOR, special_flags=pygame.BLEND_RGBA_ADD) # Yellow overlay for click zone
 
         screen.blit(current_image, self.rect)
@@ -212,6 +231,11 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                                 hit_found = True
                                 break
                         if not hit_found:
+                            # Find any prompt in the click zone and mark it as missed
+                            for prompt in active_prompts:
+                                if click_zone_rect.colliderect(prompt.rect) and not prompt.hit and not prompt.missed:
+                                    prompt.trigger_miss_effect()
+                                    break
                             misses += 1
                             shake_duration = 20
                             active_feedback.append(Feedback("MISS!", (255, 0, 0), click_zone_rect.center, 700))
@@ -241,11 +265,15 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
             active_prompts.update(prompt_speed)
 
             for prompt in list(active_prompts):
-                if prompt.rect.right < click_zone_rect.left and not prompt.hit:
-                    misses += 1
-                    shake_duration = 20
+                if prompt.rect.right < click_zone_rect.left:
+                    if not prompt.hit and not prompt.missed:
+                        # Only count as miss if not already missed
+                        misses += 1
+                        shake_duration = 20
                     prompt.kill()
                 elif prompt.hit and not prompt.hit_effect_active:
+                    prompt.kill()
+                elif prompt.missed and not prompt.miss_effect_active:
                     prompt.kill()
 
             # --- Win/Lose Conditions ---
