@@ -1,8 +1,10 @@
-import pygame
-import random
 import math
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, KEY_MAPPINGS
+import random
+
+import pygame
+
 import controls
+from config import KEY_MAPPINGS, SCREEN_HEIGHT, SCREEN_WIDTH
 from ui import draw_hp_bar
 
 # Game settings
@@ -19,7 +21,7 @@ QTE_TIMING_PATTERN = [
 ]
 HIT_ZONE_X = SCREEN_WIDTH // 2 - 25 # Center of the screen
 HIT_ZONE_WIDTH = 50
-MAX_MISSES = 3
+MAX_MISSES = 5
 SUCCESS_THRESHOLD = 10 # Number of successful hits to win
 BUTTON_SIZE = 40
 MIN_PROMPT_SPACING = BUTTON_SIZE # Minimum spacing between prompts to avoid overlap
@@ -222,6 +224,7 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
 
                     if pressed_button_type:
                         hit_found = False
+                        # First, check for hit in the click zone
                         for prompt in active_prompts:
                             if click_zone_rect.colliderect(prompt.rect) and prompt.button_type == pressed_button_type and not prompt.hit:
                                 score += 1
@@ -230,12 +233,23 @@ def run(screen, font, game_state, pokemon_sprite, dresseur_sprite, background_im
                                 prompt.hit = True
                                 hit_found = True
                                 break
+
                         if not hit_found:
-                            # Find any prompt in the click zone and mark it as missed
+                            # Check if we pressed the right button too early (prompt exists but not in zone yet)
+                            prompt_consumed = False
+                            for prompt in active_prompts:
+                                if prompt.button_type == pressed_button_type and not prompt.hit and not prompt.missed:
+                                    # Mark this prompt as missed so it won't cause another miss when it exits
+                                    prompt.trigger_miss_effect()
+                                    prompt_consumed = True
+                                    break
+
+                            # Mark ALL prompts in the click zone as missed (not just the first one)
+                            # This prevents losing multiple lives when several prompts are in the zone
                             for prompt in active_prompts:
                                 if click_zone_rect.colliderect(prompt.rect) and not prompt.hit and not prompt.missed:
                                     prompt.trigger_miss_effect()
-                                    break
+
                             misses += 1
                             shake_duration = 20
                             active_feedback.append(Feedback("MISS!", (255, 0, 0), click_zone_rect.center, 700))

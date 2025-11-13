@@ -1,11 +1,14 @@
-import pygame
 import random
+
+import pygame
+
 import combat_dodge_game
-import combat_qte_game
 import combat_memory_game
-from ui import draw_hp_bar
+import combat_qte_game
+from config import SCREEN_HEIGHT, SCREEN_WIDTH
 from transitions import play_lose_transition
-from config import SCREEN_WIDTH, SCREEN_HEIGHT
+from ui import draw_hp_bar
+
 
 class CombatHandler:
     def __init__(self, screen, font, game_state):
@@ -15,7 +18,7 @@ class CombatHandler:
 
     def run(self, pokemon_sprite, dresseur_back_sprite, background_image, pokemon_types, full_pokemon_data):
         """Runs the combat mini-game."""
-        combat_minigames = [combat_dodge_game.run, combat_qte_game.run, combat_memory_game.run]
+        combat_minigames = [combat_qte_game.run ] #, combat_dodge_game.run, combat_memory_game.run]
         selected_game = random.choice(combat_minigames)
 
         result = selected_game(
