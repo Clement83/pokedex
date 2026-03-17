@@ -5,6 +5,7 @@ from config import (
     AIR_RES, ROLL_RES,
     SHIFT_PERF, SHIFT_GOOD, SHIFT_MULT, SHIFT_BONUS_DUR,
     RACE_DISTANCE,
+    OVERHEAT_TIME, OVERHEAT_COOLDOWN, OVERHEAT_SPEED_PEN,
 )
 
 
@@ -44,6 +45,12 @@ class Car:
         self.perfect_shifts = 0
         self.good_shifts    = 0
         self.bad_shifts     = 0
+
+        # Surchauffe moteur
+        self.overheat_timer   = 0.0   # temps cumulé en zone rouge
+        self.cooldown_timer   = 0.0   # temps cumulé hors zone rouge
+        self.is_overheating   = False  # moteur actuellement surchauffé
+        self.smoke_intensity  = 0.0   # 0..1 pour l'effet visuel
 
     # ── Courbe de puissance ────────────────────────────────────────────────────
     def power_at_rpm(self, rpm: float) -> float:
@@ -133,6 +140,33 @@ class Car:
             net_accel *= 0.3
         if self.rpm >= self.max_rpm:
             net_accel *= 0.2
+
+        # ── Surchauffe moteur ─────────────────────────────────────────────────
+        in_red_zone = self.rpm >= self.max_rpm
+        if in_red_zone:
+            self.cooldown_timer = 0.0
+            if not self.is_overheating:
+                self.overheat_timer += dt
+                if self.overheat_timer >= OVERHEAT_TIME:
+                    self.is_overheating  = True
+                    self.overheat_timer  = OVERHEAT_TIME
+        else:
+            if self.overheat_timer > 0:
+                self.cooldown_timer += dt
+                cooldown_rate = OVERHEAT_TIME / OVERHEAT_COOLDOWN
+                self.overheat_timer = max(0.0, self.overheat_timer - dt * cooldown_rate)
+                if self.overheat_timer <= 0:
+                    self.is_overheating = False
+                    self.cooldown_timer = 0.0
+
+        # Intensité fumée (monte vite, descend lentement)
+        target_smoke = self.overheat_timer / OVERHEAT_TIME
+        self.smoke_intensity += (target_smoke - self.smoke_intensity) * min(1.0, dt * 3.0)
+        self.smoke_intensity  = max(0.0, min(1.0, self.smoke_intensity))
+
+        # Pénalité de puissance si surchauffe
+        if self.is_overheating:
+            net_accel *= OVERHEAT_SPEED_PEN
 
         self.speed = max(0.0, self.speed + net_accel * dt * 3.6)
         self.rpm   = self.calc_rpm(self.speed, self.gear)

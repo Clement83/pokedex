@@ -215,6 +215,36 @@ class TrackBackground:
 
 # ── Compte-tours ──────────────────────────────────────────────────────────────
 
+def draw_smoke(
+    surf: pygame.Surface,
+    car_cx: int,
+    car_top_y: int,
+    intensity: float,
+):
+    """
+    Dessine des volutes de fumée au-dessus de la voiture.
+    intensity : 0..1 (0 = pas de fumée, 1 = fumée maximale)
+    """
+    import random
+    rng = random.Random(int(pygame.time.get_ticks() / 80))  # graine temps → animation
+
+    n_puffs   = max(1, int(intensity * 6))
+    base_alpha = int(intensity * 140)
+
+    for i in range(n_puffs):
+        offset_x = rng.randint(-10, 10)
+        offset_y = rng.randint(0, int(25 * intensity))
+        radius   = rng.randint(5, max(5, int(12 * intensity) + 4))
+        alpha    = max(30, base_alpha - i * 18)
+
+        smoke_col = (180, 180, 180) if not (i % 3 == 0 and intensity > 0.6) else (100, 80, 60)
+
+        puff = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(puff, (*smoke_col, alpha), (radius, radius), radius)
+        surf.blit(puff, (car_cx - radius + offset_x,
+                          car_top_y - radius - offset_y - 8))
+
+
 def draw_tachometer(
     surf: pygame.Surface,
     cx: int, cy: int,

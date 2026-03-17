@@ -98,6 +98,12 @@ SHIFT_BONUS_DUR = 0.5  # secondes
 AIR_RES  = 0.0008
 ROLL_RES = 0.003
 
+# Surchauffe moteur
+OVERHEAT_TIME      = 3.0   # secondes en zone rouge avant surchauffe
+OVERHEAT_COOLDOWN  = 5.0   # secondes hors zone rouge pour refroidir complètement
+OVERHEAT_SPEED_PEN = 0.45  # multiplicateur de puissance quand surchauffe (−55 %)
+OVERHEAT_WARN_TIME = 1.0   # secondes avant surchauffe pour afficher l'alerte
+
 # ── Contrôles ────────────────────────────────────────────────────────────────
 # J1 : croix directionnelle / flèches clavier
 # J2 : boutons face ABXY    / touches N M , .

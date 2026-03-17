@@ -7,9 +7,10 @@ import math
 from config import (
     CARS, PLAYER_COLORS, CTRL, AXIS_DEAD,
     SCREEN_WIDTH, SCREEN_HEIGHT, RACE_DISTANCE,
+    OVERHEAT_TIME, OVERHEAT_WARN_TIME,
 )
 from car import Car
-from ui import TrackBackground, StartLights, draw_car_sprite, load_vehicle_sprites, draw_tachometer
+from ui import TrackBackground, StartLights, draw_car_sprite, load_vehicle_sprites, draw_tachometer, draw_smoke
 
 # ── Constantes de mise en page ────────────────────────────────────────────────
 PW = SCREEN_WIDTH // 2   # largeur d'un volet : 240px
@@ -154,7 +155,23 @@ def _draw_panel(
         fsurf = font_md.render(shift_flash['text'], True, shift_flash['color'])
         fsurf.set_alpha(alpha)
         surf.blit(fsurf, (ox + PW // 2 - fsurf.get_width() // 2, HUD_H + 8))
+    # ── Fumée moteur ──────────────────────────────────────────────
+    if car.smoke_intensity > 0.05:
+        draw_smoke(surf, player_x, player_blit_y, car.smoke_intensity)
 
+    # ── Alerte surchauffe ───────────────────────────────────────
+    overheat_warn = (not car.is_overheating
+                     and car.overheat_timer >= OVERHEAT_TIME - OVERHEAT_WARN_TIME)
+    if car.is_overheating or overheat_warn:
+        if car.is_overheating:
+            warn_text  = "SURCHAUFFE!"
+            warn_color = (255, 80, 0)
+        else:
+            warn_text  = "TEMP. CRITIQUE"
+            warn_color = (255, 200, 0)
+        warn_surf = font_md.render(warn_text, True, warn_color)
+        warn_y    = HUD_H + (28 if shift_flash['timer'] > 0 else 8)
+        surf.blit(warn_surf, (ox + PW // 2 - warn_surf.get_width() // 2, warn_y))
     # ── Arrivée ───────────────────────────────────────────────────────────────
     if car.has_finished:
         pos = finish_order.index(player_id) + 1 if player_id in finish_order else '?'
