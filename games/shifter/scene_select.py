@@ -3,8 +3,10 @@
 Retourne (idx_car_j1, idx_car_j2) ou None si on quitte.
 """
 import pygame
+import math
+import types
 from config import CARS, PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT, AXIS_DEAD
-from ui import load_vehicle_sprites, draw_car_sprite
+from ui import load_vehicle_sprites, draw_car_sprite, draw_cockpit
 
 # ── Palettes UI ───────────────────────────────────────────────────────────────
 BG_TOP    = (8,   8,  20)
@@ -100,10 +102,25 @@ def draw_panel(
     header = font_md.render(f"JOUEUR {player_id + 1}", True, p_col)
     panel_surf.blit(header, (pw // 2 - header.get_width() // 2, 8))
 
+    # ── Prévisualisation cockpit ──────────────────────────────────────────────
+    s = car_data["stats"]
+    preview_car = types.SimpleNamespace(
+        rpm=s["optRPM"] * (0.5 + 0.3 * math.sin(anim_t * 1.2)),
+        speed=80.0 + 50.0 * abs(math.sin(anim_t * 0.7)),
+        gear=3,
+        position=0.0,
+        race_time=0.0,
+        max_rpm=s["maxRPM"],
+        opt_rpm=s["optRPM"],
+        data=car_data,
+    )
+    cockpit_preview = pygame.Surface((pw, 66), pygame.SRCALPHA)
+    draw_cockpit(cockpit_preview, 0, preview_car, player_id, font_sm, font_md, p_col)
+    panel_surf.blit(cockpit_preview, (0, 26))
+
     # ── Voiture (dessin au centre) ────────────────────────────────────────────
     car_cx = pw // 2
     car_cy = 130
-    import math
     bob = int(math.sin(anim_t * 2.5) * 2)
     sprite = sprites[car_data["sprite_frame"]]
     draw_car_sprite(panel_surf, car_cx, car_cy + bob, sprite)
@@ -189,7 +206,6 @@ def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
     font_sm = pygame.font.SysFont("Arial", 11, bold=True)
     font_md = pygame.font.SysFont("Arial", 14, bold=True)
     font_lg = pygame.font.SysFont("Arial", 18, bold=True)
-    font_ti = pygame.font.SysFont("Arial", 20, bold=True)
 
     sprites = load_vehicle_sprites(170)
     car_sel = [0, 0]
@@ -248,9 +264,5 @@ def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
 
         # Séparateur central
         pygame.draw.line(screen, SEP_COL, (PW, 0), (PW, SCREEN_HEIGHT), 2)
-
-        # Titre
-        title = font_ti.render("CHOIX DES VOITURES", True, (200, 200, 255))
-        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, -2))
 
         pygame.display.flip()

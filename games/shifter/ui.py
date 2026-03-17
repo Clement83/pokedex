@@ -139,7 +139,7 @@ class TrackBackground:
     """
 
     # Nombre de segments mid intercalés entre start et end
-    MID_COUNT = 8
+    MID_COUNT = 4
 
     def __init__(self, panel_w: int, panel_h: int):
         self.pw = panel_w
@@ -466,7 +466,7 @@ def _cockpit_street(surf, ox, car, pid, font_sm, font_md, p_col):
     """Demi-cercle (180°) en bas de la bande. Style JDM street moderne."""
     _hud_bg(surf, ox, (0, 4, 14, 208))
 
-    cx, cy, r = ox + 120, _H_H + 6, 38
+    cx, cy, r = ox + 120, _H_H - 8, 38
     r_in, r_out = r - 9, r
 
     def t_ang(v):
@@ -514,6 +514,102 @@ def _cockpit_street(surf, ox, car, pid, font_sm, font_md, p_col):
     surf.blit(dist_s, (ox + 4, 50))
 
 
+def _cockpit_ghost(surf, ox, car, pid, font_sm, font_md, p_col):
+    """Compte-tours grand arc (demi-lune) gauche + compteur vitesse cercle droit. Style White Ghost."""
+    _hud_bg(surf, ox, (3, 4, 10, 218))
+
+    # ── Compte-tours (grand arc, centre sous la bande HUD) ───────────────────
+    tcx, tcy, tr = ox + 62, _H_H + 20, 68
+    tbw = 10            # épaisseur de la couronne
+    a_s, a_e = 172, 22  # angles départ/fin de l'arc
+    a_sw = a_s - a_e    # sweep = 150°
+
+    def tA(v):
+        return a_s - max(0.0, min(1.0, v / car.max_rpm)) * a_sw
+
+    def tP(deg, r_):
+        rad = math.radians(deg)
+        return (int(tcx + r_ * math.cos(rad)), int(tcy - r_ * math.sin(rad)))
+
+    def tBand(col, v0, v1, n=36):
+        a0, a1 = tA(v0), tA(v1)
+        for i in range(n):
+            d1 = a0 + (a1 - a0) * i / n
+            d2 = a0 + (a1 - a0) * (i + 1) / n
+            pygame.draw.polygon(surf, col,
+                                [tP(d1, tr - tbw), tP(d1, tr),
+                                 tP(d2, tr),        tP(d2, tr - tbw)])
+
+    tBand((22, 22, 30), 0, car.max_rpm)
+    red_s = car.opt_rpm + _SG
+    tBand((148, 20, 20), red_s, car.max_rpm)
+    tBand((158, 138, 0), car.opt_rpm - _SG, car.opt_rpm - _SP)
+    tBand((158, 138, 0), car.opt_rpm + _SP, red_s)
+    tBand((0, 168, 54),  car.opt_rpm - _SP, car.opt_rpm + _SP)
+
+    for k in range(0, int(car.max_rpm) + 1, int(car.max_rpm // 7)):
+        deg = tA(k)
+        pygame.draw.line(surf, (80, 80, 105), tP(deg, tr - tbw - 1), tP(deg, tr + 1), 1)
+
+    ndeg = tA(car.rpm)
+    pygame.draw.line(surf, (255, 255, 255), tP(ndeg, int(tr * 0.25)), tP(ndeg, int(tr * 0.90)), 2)
+    pygame.draw.circle(surf, (255, 255, 255), tP(ndeg, int(tr * 0.90)), 2)
+    _draw_thin_arc(surf, p_col, tcx, tcy, tr + 2, a_s, a_e, 1)
+
+    rpm_s = font_sm.render(f"{car.rpm / 1000:.1f}k", True, (135, 135, 168))
+    surf.blit(rpm_s, (ox + 5, 50))
+
+    # ── Compteur de vitesse (cercle à droite) ─────────────────────────────────
+    scx, scy, sr = ox + 183, 31, 26
+    sbw = 6
+    ss, ssw = 225, 210  # arc start, sweep
+
+    def sA(v):
+        return ss - max(0.0, min(1.0, v / 220.0)) * ssw
+
+    def sP(deg, r_):
+        rad = math.radians(deg)
+        return (int(scx + r_ * math.cos(rad)), int(scy - r_ * math.sin(rad)))
+
+    def sBand(col, v0, v1, n=28):
+        a0, a1 = sA(v0), sA(v1)
+        for i in range(n):
+            d1 = a0 + (a1 - a0) * i / n
+            d2 = a0 + (a1 - a0) * (i + 1) / n
+            pygame.draw.polygon(surf, col,
+                                [sP(d1, sr - sbw), sP(d1, sr),
+                                 sP(d2, sr),        sP(d2, sr - sbw)])
+
+    sBand((22, 22, 30), 0, 220)
+    pygame.draw.circle(surf, (14, 14, 22), (scx, scy), sr - sbw - 1)
+
+    for k in range(0, 241, 40):
+        deg = sA(k)
+        pygame.draw.line(surf, (72, 72, 95), sP(deg, sr - sbw - 1), sP(deg, sr + 1), 1)
+
+    sdeg = sA(car.speed)
+    pygame.draw.line(surf, (228, 232, 255), sP(sdeg, int(sr * 0.22)), sP(sdeg, int(sr * 0.88)), 2)
+    pygame.draw.circle(surf, (228, 232, 255), sP(sdeg, int(sr * 0.88)), 2)
+    pygame.draw.circle(surf, (185, 190, 215), (scx, scy), 3)
+    _draw_thin_arc(surf, p_col, scx, scy, sr + 1, ss, ss - ssw, 1)
+
+    spd_s = font_md.render(str(int(car.speed)), True, (215, 228, 255))
+    surf.blit(spd_s, (scx - spd_s.get_width() // 2, scy - spd_s.get_height() // 2 + 1))
+    kph_s = font_sm.render("km/h", True, (70, 80, 118))
+    surf.blit(kph_s, (scx - kph_s.get_width() // 2, scy + 9))
+
+    # ── Rapport de boîte + infos ──────────────────────────────────────────────
+    g_s = font_md.render(str(car.gear), True, p_col)
+    surf.blit(g_s, (ox + 138 - g_s.get_width() // 2, 20))
+    surf.blit(font_sm.render("GEAR", True, (55, 55, 82)), (ox + 125, 37))
+
+    surf.blit(font_sm.render(f"J{pid + 1}", True, p_col), (ox + 4, 3))
+    t_s = font_sm.render(f"{car.race_time:.2f}s", True, (158, 162, 198))
+    d_s = font_sm.render(f"{int(car.position)}m",  True, (98, 102, 138))
+    surf.blit(t_s, (ox + _H_W - t_s.get_width() - 4, 3))
+    surf.blit(d_s, (ox + _H_W - d_s.get_width() - 4, 15))
+
+
 _COCKPIT_FUNCS = {
     "sport":   _cockpit_sport,
     "rally":   _cockpit_rally,
@@ -521,6 +617,7 @@ _COCKPIT_FUNCS = {
     "retro":   _cockpit_retro,
     "race":    _cockpit_race,
     "street":  _cockpit_street,
+    "ghost":   _cockpit_ghost,
 }
 
 

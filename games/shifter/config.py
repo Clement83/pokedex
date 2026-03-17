@@ -3,7 +3,7 @@ import pygame
 SCREEN_WIDTH  = 480
 SCREEN_HEIGHT = 320
 FPS           = 60
-RACE_DISTANCE = 800  # mètres
+RACE_DISTANCE = 400  # mètres
 
 # Couleur de chaque joueur
 PLAYER_COLORS = [
@@ -63,7 +63,7 @@ CARS = [
         "col":   (208, 208, 213),
         "acc":   (255, 255, 255),
         "sprite_frame": 3,
-        "hud":   "digital",
+        "hud":   "ghost",
         "stats": dict(power=330, weight=1300, gears=5, maxRPM=7800, optRPM=7000, shiftT=0.13),
         "curve": [(1000,75),(2000,145),(3000,210),(4000,275),(5000,315),(6000,330),(7000,330),(7800,300)],
         "ratios": [3.3, 2.1, 1.55, 1.15, 0.9],
