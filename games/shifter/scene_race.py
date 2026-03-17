@@ -10,7 +10,7 @@ from config import (
     OVERHEAT_TIME, OVERHEAT_WARN_TIME,
 )
 from car import Car
-from ui import TrackBackground, StartLights, draw_car_sprite, load_vehicle_sprites, draw_tachometer, draw_smoke
+from ui import TrackBackground, StartLights, draw_car_sprite, load_vehicle_sprites, draw_cockpit, draw_smoke
 
 # ── Constantes de mise en page ────────────────────────────────────────────────
 PW = SCREEN_WIDTH // 2   # largeur d'un volet : 240px
@@ -105,36 +105,8 @@ def _draw_panel(
         draw_car_sprite(surf, opp_x, opp_blit_y, opp_sprite)
     draw_car_sprite(surf, player_x, player_blit_y, player_sprite)
 
-    # ── Fond semi-transparent du HUD en haut ───────────────────────────────────
-    hud_bg = pygame.Surface((PW, HUD_H), pygame.SRCALPHA)
-    hud_bg.fill((0, 0, 0, 190))
-    surf.blit(hud_bg, (ox, 0))
-
-    # ── Compte-tours (petit, en haut au centre) ────────────────────────────────
-    draw_tachometer(
-        surf,
-        ox + PW // 2, HUD_TACHO_CY,
-        TACHO_R,
-        car.rpm, car.max_rpm, car.opt_rpm,
-        car.gear,
-        font_sm, font_md,
-        p_col,
-    )
-
-    # ── Infos texte dans le HUD ────────────────────────────────────────────────
-    # Gauche : nom joueur + vitesse
-    name_surf = font_sm.render(f"J{player_id + 1}", True, p_col)
-    surf.blit(name_surf, (ox + 4, 4))
-
-    spd_txt = font_sm.render(f"{int(car.speed)} km/h", True, (220, 220, 220))
-    surf.blit(spd_txt, (ox + 4, 16))
-
-    dist_txt = font_sm.render(f"{int(car.position)}m", True, (140, 140, 170))
-    surf.blit(dist_txt, (ox + 4, 28))
-
-    # Droite : chrono
-    time_txt = font_sm.render(f"{car.race_time:.2f}s", True, (180, 180, 200))
-    surf.blit(time_txt, (ox + PW - time_txt.get_width() - 4, 4))
+    # ── Cockpit HUD (style propre à la voiture) ────────────────────────────────
+    draw_cockpit(surf, ox, car, player_id, font_sm, font_md, p_col)
 
     # ── Barre de progression (bas du HUD) ─────────────────────────────────────
     prog_y   = HUD_H - 8

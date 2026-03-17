@@ -67,26 +67,27 @@ class Car:
     def calc_rpm(self, speed: float, gear: int) -> float:
         if speed < 1:
             return 1000.0
-        # Constante abaissée (25 au lieu de 40) : chaque vitesse couvre
-        # une plage de speed plus large → moins de shifts à spammer
-        rpm = speed * self.ratios[gear - 1] * 25.0
-        return max(1000.0, min(rpm, self.max_rpm + 500))
+        # K=45 : donne des vitesses maxi par rapport réalistes
+        # ex. Green Machine G1 ratio=3.5 maxRPM=8000 → max 50.8 km/h en 1re
+        rpm = speed * self.ratios[gear - 1] * 45.0
+        return max(1000.0, min(rpm, self.max_rpm))
 
     # ── Changements de vitesse ─────────────────────────────────────────────────
     def shift_up(self):
         if self.gear < self.max_gears and not self.is_shifting:
-            self.is_shifting = True
             old_rpm = self.rpm
             self.gear += 1
-            self.rpm *= 0.7
+            # RPM exact déduit du rapport réel, pas un factor fixe
+            self.rpm = self.calc_rpm(self.speed, self.gear)
             self._eval_shift(old_rpm)
+            self.is_shifting    = True
             self.shift_cooldown = self.shift_time
 
     def shift_down(self):
         if self.gear > 1 and not self.is_shifting:
-            self.is_shifting = True
-            self.gear -= 1
-            self.rpm = min(self.rpm * 1.4, self.max_rpm)
+            self.is_shifting    = True
+            self.gear          -= 1
+            self.rpm            = self.calc_rpm(self.speed, self.gear)
             self.shift_cooldown = self.shift_time
 
     def _eval_shift(self, rpm_before: float):
@@ -123,12 +124,14 @@ class Car:
                 self.shift_bonus   = 1.0
                 self.shift_quality = None
 
-        # ── Physique (identique au Car.js) ────────────────────────────────────
+        # ── Physique ──────────────────────────────────────────────────────────
         power_hp = self.power_at_rpm(self.rpm) * self.shift_bonus
         power_w  = power_hp * 745.7
-        vel_ms   = self.speed / 3.6
+        # Plancher à 6 m/s pour éviter la singularité v→0 au départ
+        # (correspond à ~1g de force maxi au lancement)
+        vel_ms   = max(self.speed / 3.6, 6.0)
 
-        wheel_force = power_w / vel_ms if vel_ms > 0.1 else power_w * 10.0
+        wheel_force = power_w / vel_ms
         accel       = wheel_force / self.weight
 
         air_drag     = AIR_RES  * self.speed ** 2
@@ -138,8 +141,11 @@ class Car:
 
         if self.is_shifting:
             net_accel *= 0.3
+
+        # Limiteur RPM dur : on ne peut plus accélérer quand le rapport est
+        # à fond de régime → chaque vitesse a une vitesse maxi bornée
         if self.rpm >= self.max_rpm:
-            net_accel *= 0.2
+            net_accel = 0.0
 
         # ── Surchauffe moteur ─────────────────────────────────────────────────
         in_red_zone = self.rpm >= self.max_rpm

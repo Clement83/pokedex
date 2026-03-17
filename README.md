@@ -1,46 +1,33 @@
-# Pokédex Pi Zero
+# Arcade Multi-Jeux
 
-Ce projet est une application Pokédex développée en Python avec Pygame, conçue pour fonctionner sur un Raspberry Pi Zero.
+Console d'arcade multi-jeux tournant sur un **Odroid Go Advance** (écran 480×320, manette intégrée). Deux jeux sont disponibles depuis un launcher commun.
 
-## Fonctionnalités
-- Affichage d'une liste de Pokémon avec sprites
-- Vue détail avec statistiques, types, talents et évolutions
-- Affichage radar des statistiques
-- Navigation au clavier (flèches, entrée, échappement)
-- Utilisation d'une base de données SQLite pour les données Pokémon
+## Fonctionnel
 
-## Installation
-1. Clonez le dépôt :
-   ```sh
-   git clone https://github.com/Clement83/pokedex.git
-   ```
-2. Installez les dépendances Python :
-   ```sh
-   pip install pygame
-   ```
-3. Placez le fichier `pokedex.db` et le dossier `app/data/sprites/` dans le dossier du projet.
+**Launcher** : écran d'accueil avec tuiles de sélection (image de couverture par jeu). Navigation clavier et joystick.
 
-## Utilisation
-Lancez l'application avec :
-```sh
-python main.py
+**Jeux disponibles :**
+- `pokedex/` — Pokédex interactif avec chasse aux Pokémon, mini-jeux de combat et capture, progression par régions (Kanto → Paldea).
+- `shifter/` — Drag race 1/4 mile en split-screen 2 joueurs, physique moteur complète, 6 voitures.
+
+**POC web :** `poc/shifter/` — prototype Phaser.js de Shifter (jusqu'à 8 joueurs), sert de référence de conception.
+
+## Technique
+
+```
+main.py          ← Point d'entrée universel (pygame)
+launcher.py      ← UI menu de sélection (classe Launcher)
+games/
+  pokedex/       ← Jeu Pokédex (voir games/pokedex/README.md)
+  shifter/       ← Jeu Shifter  (voir games/shifter/README.md)
+poc/shifter/     ← Prototype web Phaser.js
 ```
 
-## Structure du projet
-- `main.py` : Application principale
-- `pokedex.db` : Base de données SQLite
-- `app/data/sprites/` : Sprites des Pokémon
-- `.gitignore` : Fichiers à ignorer par git
+- **Runtime :** Python 3, pygame
+- **Lancement :** `python main.py` (active le venv si présent)
+- **Isolation des jeux :** `main.py` utilise `importlib` + `chdir` pour charger chaque jeu dans son propre contexte, puis nettoie `sys.modules` au retour.
+- **Cible matérielle :** Odroid Go Advance — 480×320 px, 1 joystick analogique + boutons ABXY + Select/Start.
 
-## Contrôles
-- Flèche haut/bas : Naviguer dans la liste
-- Entrée : Afficher le détail du Pokémon sélectionné
-- Échap : Retour ou quitter
-
-## Sources
-Les assets (sprites, données) proviennent du site [Tyradex](https://tyradex.vercel.app/), qui récupère ses données de [Poképédia](https://www.pokepedia.fr/).
-Les assets audio proviennent du site [Pokemon Showdown](https://play.pokemonshowdown.com/). Tous les droits leur sont réservés.
-
-## Disclaimer
-Ce projet est non officiel et n'est pas affilié à The Pokémon Company, Nintendo ou Game Freak. Les noms, images et données Pokémon sont la propriété de leurs détenteurs respectifs et sont utilisés ici à des fins éducatives et non commerciales.
+## Sources & Disclaimer
+Sprites/données Pokémon : [Tyradex](https://tyradex.vercel.app/) / [Poképédia](https://www.pokepedia.fr/). Audio : [Pokémon Showdown](https://play.pokemonshowdown.com/). Assets voitures : Kenny Racing Pack. Projet non officiel, usage éducatif uniquement.
 
