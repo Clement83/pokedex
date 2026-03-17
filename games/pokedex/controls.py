@@ -36,13 +36,6 @@ def process_joystick_input(game_state, event):
         if 12 in game_state.pressed_buttons:
             now = pygame.time.get_ticks()
 
-            if 13 in game_state.pressed_buttons: # Select + F10 (update and restart)
-                combo_key = "update_restart"
-                if combo_key not in _debug_combo_start_time:
-                    _debug_combo_start_time[combo_key] = now
-                    _debug_combo_active[combo_key] = False
-                return # Stop processing to avoid other actions
-
             if 14 in game_state.pressed_buttons: # Select + PageDown (reset game)
                 combo_key = "reset_game"
                 if combo_key not in _debug_combo_start_time:
@@ -150,7 +143,6 @@ def check_debug_combos(game_state):
 
             # Draw text
             combo_names = {
-                "update_restart": "Git Pull & Restart",
                 "reset_game": "Reset Game",
                 "next_milestone": "Next Milestone"
             }
@@ -162,9 +154,7 @@ def check_debug_combos(game_state):
         elif not _debug_combo_active.get(combo_key, False):
             _debug_combo_active[combo_key] = True
 
-            if combo_key == "update_restart":
-                debug_actions.update_and_restart(game_state)
-            elif combo_key == "reset_game":
+            if combo_key == "reset_game":
                 debug_actions.reset_game_state(game_state)
             elif combo_key == "next_milestone":
                 debug_actions.go_to_next_milestone(game_state)

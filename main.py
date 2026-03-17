@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import subprocess
 import importlib
 from pathlib import Path
 
@@ -72,12 +73,29 @@ def main():
     launcher = Launcher(screen, GAMES, BASE_DIR)
     launcher.render()
 
+    UPDATE_HOLD_DURATION = 5000  # 5 secondes
+    _launcher_pressed = set()
+    _update_combo_start = None
+    font_ui = pygame.font.SysFont("Arial", 14)
+
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 continue
+
+            # ── Combo Select(12) + bouton 13 : git pull & restart ──────────────
+            if event.type == pygame.JOYBUTTONDOWN:
+                _launcher_pressed.add(event.button)
+                if 12 in _launcher_pressed and 13 in _launcher_pressed:
+                    if _update_combo_start is None:
+                        _update_combo_start = pygame.time.get_ticks()
+            elif event.type == pygame.JOYBUTTONUP:
+                _launcher_pressed.discard(event.button)
+                if event.button in (12, 13):
+                    _update_combo_start = None
+            # ──────────────────────────────────────────────────────────────────
 
             result = launcher.handle_event(event)
 
@@ -98,6 +116,47 @@ def main():
 
         if running:
             launcher.render()
+
+            # ── Barre de progression du combo update ──────────────────────────
+            if _update_combo_start is not None:
+                elapsed = pygame.time.get_ticks() - _update_combo_start
+                w, h = screen.get_size()
+                if elapsed >= UPDATE_HOLD_DURATION:
+                    screen.fill((0, 0, 0))
+                    msg = font_ui.render("Mise à jour via 'git pull'...", True, (255, 255, 255))
+                    screen.blit(msg, ((w - msg.get_width()) // 2, h // 2))
+                    pygame.display.flip()
+                    try:
+                        git_result = subprocess.run(
+                            ['git', 'pull'],
+                            cwd=str(BASE_DIR),
+                            capture_output=True, text=True, check=True, encoding='utf-8'
+                        )
+                        screen.fill((0, 0, 0))
+                        msg = font_ui.render("Mise à jour terminée. Redémarrage...", True, (100, 255, 100))
+                        screen.blit(msg, ((w - msg.get_width()) // 2, h // 2))
+                        pygame.display.flip()
+                        pygame.time.wait(1500)
+                        os.execv(sys.executable, ['python'] + sys.argv)
+                    except Exception as e:
+                        screen.fill((0, 0, 0))
+                        msg = font_ui.render(f"Erreur: {e}", True, (255, 100, 100))
+                        screen.blit(msg, ((w - msg.get_width()) // 2, h // 2))
+                        pygame.display.flip()
+                        pygame.time.wait(2000)
+                    _update_combo_start = None
+                else:
+                    progress = elapsed / UPDATE_HOLD_DURATION
+                    bar_w, bar_h = 200, 20
+                    bar_x = (w - bar_w) // 2
+                    bar_y = h - 40
+                    pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_w, bar_h))
+                    pygame.draw.rect(screen, (255, 200, 0), (bar_x, bar_y, int(bar_w * progress), bar_h))
+                    pygame.draw.rect(screen, (255, 255, 255), (bar_x, bar_y, bar_w, bar_h), 2)
+                    text = font_ui.render("Maintenir : Git Pull & Restart", True, (255, 255, 255))
+                    screen.blit(text, ((w - text.get_width()) // 2, bar_y - 15))
+            # ──────────────────────────────────────────────────────────────────
+
             pygame.display.flip()
 
         clock.tick(60)
