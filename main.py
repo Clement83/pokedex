@@ -1,63 +1,110 @@
 import pygame
-from state import GameState
-from game_logic import update_sprite, render, update_animations
-import input_handler
-from input_handler import handle_continuous_input # Import the new function
-import controls # Import the controls module
-from db import add_caught_column, create_user_preferences_table, get_user_preference
-from ui import create_list_view_background
-import dresseur_selection
+import sys
+import os
+import importlib
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+
+SCREEN_WIDTH = 480
+SCREEN_HEIGHT = 320
+
+GAMES = [
+    {
+        "title": "Pokédex",
+        "description": "Attrape et explore les Pokémon",
+        "image": str(BASE_DIR / "games" / "pokedex" / "app" / "data" / "assets" / "splash.png"),
+        "path": str(BASE_DIR / "games" / "pokedex"),
+        "entry": "main",
+    },
+    {
+        "title": "Shifter",
+        "description": "Drag Race 2 joueurs – style NFS Underground",
+        "image": str(BASE_DIR / "games" / "shifter" / "asset" / "cover" / "cover.jpg"),
+        "path": str(BASE_DIR / "games" / "shifter"),
+        "entry": "main",
+    },
+]
+
+
+def launch_game(game):
+    """Lance un jeu : chdir dans son dossier, importe son main et l'exécute."""
+    game_path = Path(game["path"])
+    entry = game.get("entry", "main")
+
+    if not (game_path / f"{entry}.py").exists():
+        return
+
+    original_cwd = Path.cwd()
+    original_syspath = sys.path.copy()
+    original_modules = set(sys.modules.keys())
+
+    try:
+        os.chdir(game_path)
+        sys.path.insert(0, str(game_path))
+
+        pygame.quit()
+
+        mod = importlib.import_module(entry)
+        mod.main()
+
+    finally:
+        # Nettoyer les modules chargés par le jeu
+        for key in list(sys.modules.keys()):
+            if key not in original_modules:
+                del sys.modules[key]
+        sys.path[:] = original_syspath
+        os.chdir(original_cwd)
+
 
 def main():
-    create_user_preferences_table()
-    add_caught_column()
-    game_state = GameState()
-    game_state.list_view_background = create_list_view_background()
-    game_state.play_next_menu_song()  # Start music
+    pygame.init()
+    pygame.joystick.init()
+    joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+    if joysticks:
+        print(f"Manette détectée : {joysticks[0].get_name()}")
 
-    while game_state.running:
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Game Launcher")
+    clock = pygame.time.Clock()
+
+    from launcher import Launcher
+    launcher = Launcher(screen, GAMES, BASE_DIR)
+    launcher.render()
+
+    running = True
+    while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                game_state.running = False
-            if event.type == game_state.MUSIC_END_EVENT:
-                if game_state.music_state == 'victory':
-                    game_state.play_next_menu_song()
+                running = False
+                continue
+
+            result = launcher.handle_event(event)
+
+            if result is not None:
+                if result == -1:
+                    running = False
                 else:
-                    game_state.play_next_menu_song()
+                    game = GAMES[result]
+                    launch_game(game)
 
-            controls.process_joystick_input(game_state, event)
-            input_handler.handle_input(game_state, event) # Pass event to input handler
+                    # Réinitialiser pygame et le launcher après le retour du jeu
+                    pygame.init()
+                    pygame.joystick.init()
+                    joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+                    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+                    pygame.display.set_caption("Game Launcher")
+                    launcher = Launcher(screen, GAMES, BASE_DIR)
 
-        if game_state.state == "init":
-            dresseur = get_user_preference(game_state.conn, "dresseur")
-            if dresseur:
-                game_state.dresseur = dresseur
-                game_state.state = "list"
-            else:
-                game_state.state = "dresseur_selection"
+        if running:
+            launcher.render()
+            pygame.display.flip()
 
-        elif game_state.state == "dresseur_selection":
-            result = dresseur_selection.run(game_state.screen, game_state.font, game_state)
-            if result == "quit":
-                game_state.running = False
-            else:
-                game_state.state = result
-
-        elif game_state.state in ["list", "detail"]:
-            handle_continuous_input(game_state) # Handle continuous input for scrolling
-            controls.check_debug_combos(game_state) # Check if debug combos are held
-            input_handler.check_keyboard_debug_combos(game_state) # Check keyboard debug combos
-            update_sprite(game_state)
-            update_animations(game_state)
-            render(game_state)
-
-        elif game_state.state == "quit":
-            game_state.running = False
-
-        game_state.clock.tick(60)
+        clock.tick(60)
 
     pygame.quit()
-    game_state.conn.close()
+    sys.exit()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
