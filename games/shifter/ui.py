@@ -249,6 +249,48 @@ def draw_smoke(
                           car_top_y - radius - offset_y - 8))
 
 
+def draw_boost_flame(
+    surf: pygame.Surface,
+    car_cx: int,
+    car_cy: int,
+    sprite: pygame.Surface,
+    boost_progress: float,
+):
+    """
+    Flamme bleue à l'échappement (arrière gauche) pendant un boost PERFECT.
+    boost_progress : 0..1  (1 = début du boost, 0 = extinction)
+    """
+    import random
+    rng = random.Random(int(pygame.time.get_ticks() / 40))
+
+    w = sprite.get_width()
+    h = sprite.get_height()
+
+    # Point d'échappement : bas-arrière de la voiture
+    ex = car_cx - w // 2 + w // 10
+    ey = car_cy + h // 4
+
+    max_len = int(26 * boost_progress) + 6
+
+    # 3 couches de l'extérieur vers le cœur :
+    # bleu vif → bleu cyan → blanc bleuté
+    layers = [
+        ((35,  110, 255), 1.0,  210),
+        ((100, 200, 255), 0.72, 170),
+        ((215, 240, 255), 0.45, 230),
+    ]
+
+    for color, size_f, base_alpha in layers:
+        fl = max(4, int(max_len * size_f) + rng.randint(-2, 2))
+        fh = max(3, int(9 * boost_progress * size_f) + rng.randint(-1, 1))
+        alpha = max(20, int(base_alpha * boost_progress))
+        fx = rng.randint(0, 3)
+        fy = rng.randint(-2, 2)
+        fsrf = pygame.Surface((fl, fh * 2), pygame.SRCALPHA)
+        pygame.draw.ellipse(fsrf, (*color, alpha), fsrf.get_rect())
+        surf.blit(fsrf, (ex - fl // 2 - fx, ey - fh + fy))
+
+
 # ── Constantes internes cockpit ───────────────────────────────────────────────
 _H_W = 240   # largeur d'un panel (= PW dans scene_race)
 _H_H = 62    # hauteur de la bande HUD

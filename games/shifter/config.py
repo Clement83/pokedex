@@ -243,7 +243,7 @@ CARS = [
 # Zones de shift (delta RPM autour de l'optimal)
 SHIFT_PERF     = 200   # ±200 RPM = PERFECT (vert)
 SHIFT_GOOD     = 500   # ±500 RPM = GOOD    (jaune)
-SHIFT_MULT     = {'PERFECT': 1.05, 'GOOD': 1.00, 'BAD': 0.90}
+SHIFT_MULT     = {'PERFECT': 1.20, 'GOOD': 1.00, 'BAD': 0.90}
 SHIFT_BONUS_DUR = 0.5  # secondes
 
 # Physique (identique au POC JS)

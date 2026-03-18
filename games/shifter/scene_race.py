@@ -9,10 +9,10 @@ from typing import Optional
 from config import (
     CARS, PLAYER_COLORS, CTRL, AXIS_DEAD,
     SCREEN_WIDTH, SCREEN_HEIGHT, RACE_DISTANCE,
-    OVERHEAT_TIME, OVERHEAT_WARN_TIME,
+    OVERHEAT_TIME, OVERHEAT_WARN_TIME, SHIFT_BONUS_DUR,
 )
 from car import Car
-from ui import TrackBackground, StartLights, draw_car_sprite, load_car_sprite, draw_cockpit, draw_smoke
+from ui import TrackBackground, StartLights, draw_car_sprite, load_car_sprite, draw_cockpit, draw_smoke, draw_boost_flame
 from quit_combo import QuitCombo
 from engine_sound import EngineSound
 import music_player
@@ -135,6 +135,11 @@ def _draw_panel(
         fsurf = font_md.render(shift_flash['text'], True, shift_flash['color'])
         fsurf.set_alpha(alpha)
         surf.blit(fsurf, (ox + PW // 2 - fsurf.get_width() // 2, HUD_H + 8))
+    # ── Flamme boost (PERFECT shift) ────────────────────────────────
+    if car.shift_bonus_timer > 0 and car.shift_quality == 'PERFECT':
+        boost_progress = car.shift_bonus_timer / SHIFT_BONUS_DUR
+        draw_boost_flame(surf, player_x, player_blit_y, player_sprite, boost_progress)
+
     # ── Fumée moteur ──────────────────────────────────────────────
     if car.smoke_intensity > 0.05:
         draw_smoke(surf, player_x, player_blit_y, car.smoke_intensity)
