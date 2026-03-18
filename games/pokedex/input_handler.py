@@ -117,7 +117,10 @@ def handle_input(game_state, event):
             game_state.unlocked_regions_count = unlocked_regions
 
             if hunt_result == "quit":
-                print(f"[Pokemon] hunt retourne : quit, on reste dans la liste")
+                import sys, os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+                from logger import log
+                log(f"[Pokemon] hunt retourne : quit, on reste dans la liste", "warning")
                 game_state.state = "list"  # rester dans le jeu
             elif hunt_result == "main_menu": # Go back to list view
                 game_state.state = "list"

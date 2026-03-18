@@ -7,13 +7,16 @@ import controls # Import the controls module
 from db import add_caught_column, create_user_preferences_table, get_user_preference
 from ui import create_list_view_background
 import dresseur_selection
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from logger import log
 
 def main():
     create_user_preferences_table()
     add_caught_column()
-    print("[Pokemon] GameState init...")
+    log("[Pokemon] GameState init...")
     game_state = GameState()
-    print(f"[Pokemon] Demarrage, state={game_state.state!r}")
+    log(f"[Pokemon] Demarrage, state={game_state.state!r}, joysticks={len(game_state.joysticks)}")
     game_state.list_view_background = create_list_view_background()
     game_state.play_next_menu_song()  # Start music
 
@@ -40,7 +43,7 @@ def main():
 
         elif game_state.state == "dresseur_selection":
             result = dresseur_selection.run(game_state.screen, game_state.font, game_state)
-            print(f"[Pokemon] dresseur_selection retourne : {result!r}")
+            log(f"[Pokemon] dresseur_selection retourne : {result!r}")
             if result in ("quit", None):
                 game_state.state = "dresseur_selection"  # rester sur la sélection
             else:
@@ -59,6 +62,7 @@ def main():
 
         game_state.clock.tick(60)
 
+    log("[Pokemon] Boucle principale terminée (game_state.running=False)")
     pygame.quit()
     game_state.conn.close()
 

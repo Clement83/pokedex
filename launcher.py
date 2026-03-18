@@ -1,5 +1,6 @@
 import pygame
 import os
+import socket
 from pathlib import Path
 
 
@@ -38,6 +39,18 @@ class Launcher:
         self._axis_moved = False
         # Carousel : position actuelle du scroll (pixels), interpolée vers la cible
         self._scroll_x = 0.0  # démarre centré sur le 1er jeu
+        self._ip = self._get_ip()
+
+    @staticmethod
+    def _get_ip() -> str:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "no network"
 
     def update(self, dt: float):
         """Anime le scroll du carousel vers la tuile sélectionnée."""
@@ -249,3 +262,7 @@ class Launcher:
         hint_font = pygame.font.SysFont("Arial", 11)
         hint = hint_font.render("◄ ► naviguer    A/Entrée sélectionner    B/Échap quitter", True, (100, 100, 100))
         self.screen.blit(hint, ((w - hint.get_width()) // 2, h - hint.get_height() - 4))
+
+        # ── IP en bas à gauche (discret) ────────────────────────────────────
+        ip_surf = hint_font.render(self._ip, True, (55, 55, 55))
+        self.screen.blit(ip_surf, (4, h - ip_surf.get_height() - 4))

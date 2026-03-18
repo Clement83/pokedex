@@ -4,6 +4,7 @@ import os
 import subprocess
 import importlib
 from pathlib import Path
+from logger import log
 
 BASE_DIR = Path(__file__).parent
 
@@ -39,8 +40,10 @@ def launch_game(game):
     """Lance un jeu : chdir dans son dossier, importe son main et l'exécute."""
     game_path = Path(game["path"])
     entry = game.get("entry", "main")
+    log(f"[Launcher] Lancement de '{game.get('title')}' ({game_path})")  
 
     if not (game_path / f"{entry}.py").exists():
+        log(f"[Launcher] ERREUR : {game_path}/{entry}.py introuvable", "error")
         return
 
     original_cwd = Path.cwd()
@@ -58,13 +61,15 @@ def launch_game(game):
 
         mod = importlib.import_module(entry)
         try:
+            log(f"[Launcher] mod.main() start")
             mod.main()
+            log(f"[Launcher] mod.main() retour normal")
         except SystemExit:
-            pass  # Le jeu a appelé sys.exit() – on revient simplement au launcher
+            log(f"[Launcher] mod.main() sys.exit() intercepté", "warning")
         except Exception as e:
             import traceback
-            print(f"[Launcher] Crash du jeu '{game.get('title')}' : {e}", file=sys.stderr)
-            traceback.print_exc()
+            log(f"[Launcher] CRASH '{game.get('title')}' : {e}", "error")
+            log(traceback.format_exc(), "error")
 
     finally:
         # Nettoyer les modules chargés par le jeu

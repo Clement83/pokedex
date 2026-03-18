@@ -47,6 +47,10 @@ def run(screen, font, game_state):
         for event in pygame.event.get():
             controls.process_joystick_input(game_state, event)
             if event.type == pygame.QUIT:
+                import sys, os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+                from logger import log
+                log("[Pokemon/dresseur] QUIT event recu", "warning")
                 return "quit"
             if event.type == pygame.KEYDOWN:
                 if event.key in KEY_MAPPINGS["LEFT"]:
@@ -57,6 +61,10 @@ def run(screen, font, game_state):
                     show_face = not show_face
                 elif event.key in KEY_MAPPINGS["CONFIRM"]:
                     selected_dresseur_name = dresseur_sprites[selected_dresseur_index]["name"]
+                    import sys, os
+                    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+                    from logger import log
+                    log(f"[Pokemon/dresseur] CONFIRM appuye, dresseur={selected_dresseur_name!r}")
                     set_user_preference(game_state.conn, "dresseur", selected_dresseur_name)
                     game_state.dresseur = selected_dresseur_name
                     return "list"
