@@ -4,6 +4,7 @@ Retourne la liste de résultats triés ou None si on quitte.
 """
 import pygame
 import math
+from typing import Optional
 from config import (
     CARS, PLAYER_COLORS, CTRL, AXIS_DEAD,
     SCREEN_WIDTH, SCREEN_HEIGHT, RACE_DISTANCE,
@@ -169,7 +170,7 @@ def _draw_panel(
 
 # ── Boucle principale ─────────────────────────────────────────────────────────
 
-def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment: str = "tokio1") -> list | None:
+def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment: str = "tokio1") -> Optional[list]:
     """
     Retourne le classement [{'player_id', 'car', 'time', 'rank'}]
     ou None si on quitte.

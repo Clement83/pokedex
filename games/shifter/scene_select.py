@@ -5,6 +5,7 @@ Retourne (idx_car_j1, idx_car_j2) ou None si on quitte.
 import pygame
 import math
 import types
+from typing import Optional
 from config import CARS, PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT, AXIS_DEAD
 from ui import load_car_sprite, draw_car_sprite, draw_cockpit
 
@@ -214,7 +215,7 @@ def draw_panel(
 
 # ── Boucle principale ─────────────────────────────────────────────────────────
 
-def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
+def run(screen: pygame.Surface, joysticks: list) -> Optional[tuple]:
     """
     Retourne (car_idx_j1, car_idx_j2) quand les 2 joueurs sont prêts,
     ou None si on quitte.
