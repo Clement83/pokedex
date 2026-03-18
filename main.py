@@ -54,7 +54,14 @@ def launch_game(game):
         pygame.quit()
 
         mod = importlib.import_module(entry)
-        mod.main()
+        try:
+            mod.main()
+        except SystemExit:
+            pass  # Le jeu a appelé sys.exit() – on revient simplement au launcher
+        except Exception as e:
+            import traceback
+            print(f"[Launcher] Crash du jeu '{game.get('title')}' : {e}", file=sys.stderr)
+            traceback.print_exc()
 
     finally:
         # Nettoyer les modules chargés par le jeu

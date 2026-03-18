@@ -25,7 +25,9 @@ def main():
     pygame.display.set_caption("Shifter – Drag Race 2J")
 
     # ── Écran d'accueil ───────────────────────────────────────────────────────
-    _show_splash(screen)
+    if _show_splash(screen) == "quit":
+        pygame.quit()
+        return
 
     # ── Boucle principale ─────────────────────────────────────────────────────
     while True:
@@ -64,8 +66,7 @@ def _show_splash(screen: pygame.Surface):
         events = pygame.event.get()
         for e in events:
             if e.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                return "quit"
             if e.type in (pygame.KEYDOWN, pygame.JOYBUTTONDOWN):
                 return   # n'importe quelle touche → continuer
 
