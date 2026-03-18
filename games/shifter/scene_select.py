@@ -49,9 +49,13 @@ class ActionDetector:
         if hat and hat in hats_just:
             return True
 
-        btn = spec.get('btn')
-        if btn is not None and btn in btns_just:
-            return True
+        # Support 'btns' (liste) et 'btn' (entier, rétrocompat)
+        btn_list = spec.get('btns', [])
+        if 'btn' in spec:
+            btn_list = btn_list + [spec['btn']]
+        for btn in btn_list:
+            if btn in btns_just:
+                return True
 
         return False
 
@@ -175,7 +179,7 @@ def draw_panel(
     if player_id == 0:
         hints = "← → voiture   ↑ Prêt"
     else:
-        hints = "Y X voiture   A Prêt"
+        hints = "Y A voiture   X Prêt"
     h_surf = font_sm.render(hints, True, TEXT_DIM)
     panel_surf.blit(h_surf, (pw // 2 - h_surf.get_width() // 2, 240))
 

@@ -262,32 +262,33 @@ OVERHEAT_WARN_TIME = 1.0   # secondes avant surchauffe pour afficher l'alerte
 #
 # En sélection :
 #   J1 → LEFT / RIGHT pour changer de voiture, UP pour confirmer « Prêt »
-#   J2 → Y(btn3) / X(btn2) pour changer, A(btn0) pour confirmer
+#   J1 → croix directionnelle (hat) OU joystick (axes) OU boutons dpad (8=haut, 9=bas, 10=gauche, 11=droite)
+#   J2 → Y(btn3) / A(btn0) pour changer véhicule, X(btn2) pour confirmer/montée, B(btn1) pour descente
 #
 # En course :
 #   J1 → UP   = passer vitesse sup  |  DOWN  = passer vitesse inf
-#   J2 → A(0) = passer vitesse sup  |  B(1)  = passer vitesse inf
+#   J2 → X(2) = passer vitesse sup  |  B(1)  = passer vitesse inf
 #
 # Manette : axes 0=horizontal, 1=vertical (deadzone 0.7)
 #           hat  : (x, y) où x=-1 gauche, x=1 droit, y=1 haut, y=-1 bas
-#           btns : 0=A, 1=B, 2=X, 3=Y
+#           btns : 0=A, 1=B, 2=X, 3=Y  /  8=↑, 9=↓, 10=←, 11=→ (dpad Odroid)
 
 CTRL = {
-    # ── Joueur 1 (croix) ──────────────────────────────────────────────────────
-    'sel_prev_j1':  {'keys': [pygame.K_LEFT],   'hat': (-1,  0), 'axis': (0, -1)},
-    'sel_next_j1':  {'keys': [pygame.K_RIGHT],  'hat': ( 1,  0), 'axis': (0,  1)},
-    'sel_conf_j1':  {'keys': [pygame.K_UP, pygame.K_RETURN], 'hat': (0, 1), 'axis': (1, -1)},
-    'sel_tier_j1':  {'keys': [pygame.K_DOWN],   'hat': (0, -1)},
-    'race_up_j1':   {'keys': [pygame.K_UP],     'hat': (0,  1), 'axis': (1, -1)},
-    'race_down_j1': {'keys': [pygame.K_DOWN],   'hat': (0, -1), 'axis': (1,  1)},
+    # ── Joueur 1 (croix + joystick gauche + dpad buttons) ────────────────────
+    'sel_prev_j1':  {'keys': [pygame.K_LEFT],  'hat': (-1,  0), 'axis': (0, -1), 'btns': [10]},
+    'sel_next_j1':  {'keys': [pygame.K_RIGHT], 'hat': ( 1,  0), 'axis': (0,  1), 'btns': [11]},
+    'sel_conf_j1':  {'keys': [pygame.K_UP, pygame.K_RETURN], 'hat': (0, 1), 'axis': (1, -1), 'btns': [8]},
+    'sel_tier_j1':  {'keys': [pygame.K_DOWN],  'hat': (0, -1), 'btns': [9]},
+    'race_up_j1':   {'keys': [pygame.K_UP],    'hat': (0,  1), 'axis': (1, -1), 'btns': [8]},
+    'race_down_j1': {'keys': [pygame.K_DOWN],  'hat': (0, -1), 'axis': (1,  1), 'btns': [9]},
 
-    # ── Joueur 2 (boutons) ────────────────────────────────────────────────────
-    'sel_prev_j2':  {'keys': [pygame.K_COMMA],  'btn': 3},   # Y
-    'sel_next_j2':  {'keys': [pygame.K_PERIOD], 'btn': 2},   # X
-    'sel_conf_j2':  {'keys': [pygame.K_n],      'btn': 0},   # A
-    'sel_tier_j2':  {'keys': [pygame.K_m],      'btn': 1},   # B
-    'race_up_j2':   {'keys': [pygame.K_n],      'btn': 0},   # A
-    'race_down_j2': {'keys': [pygame.K_m],      'btn': 1},   # B
+    # ── Joueur 2 (boutons A/B/X/Y) ────────────────────────────────────────────
+    'sel_prev_j2':  {'keys': [pygame.K_COMMA],  'btns': [3]},   # Y → véhicule précédent
+    'sel_next_j2':  {'keys': [pygame.K_PERIOD], 'btns': [0]},   # A → véhicule suivant
+    'sel_conf_j2':  {'keys': [pygame.K_n],      'btns': [2]},   # X → prêt
+    'sel_tier_j2':  {'keys': [pygame.K_m],      'btns': [1]},   # B → changer tier
+    'race_up_j2':   {'keys': [pygame.K_n],      'btns': [2]},   # X → montée de vitesse
+    'race_down_j2': {'keys': [pygame.K_m],      'btns': [1]},   # B → descente de vitesse
 
     # ── Général ───────────────────────────────────────────────────────────────
     'quit':         {'keys': [pygame.K_ESCAPE]},

@@ -37,9 +37,13 @@ def _just_pressed(events, action_key: str) -> bool:
     for k in spec.get('keys', []):
         if k in keys:
             return True
-    btn = spec.get('btn')
-    if btn is not None and btn in btns:
-        return True
+    # Support 'btns' (liste) et 'btn' (entier, rétrocompat)
+    btn_list = spec.get('btns', [])
+    if 'btn' in spec:
+        btn_list = btn_list + [spec['btn']]
+    for btn in btn_list:
+        if btn in btns:
+            return True
     hat = spec.get('hat')
     if hat and hat in hats:
         return True
