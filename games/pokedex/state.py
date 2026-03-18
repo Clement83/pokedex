@@ -1,10 +1,15 @@
 import pygame
 import random
+import sys, os as _os
 from pathlib import Path
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, GENERATION_THRESHOLDS
 from db import get_connection, get_pokemon_list, get_caught_pokemon_count, get_shiny_pokemon_count, mew_is_unlocked, get_seen_pokemon_count
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FONT_SIZE, GENERATION_THRESHOLDS, REGIONS, STATS_AREA_HEIGHT
 from sprites import load_pokeball_sprites
+_root = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..'))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+import music_player
 
 class GameState:
     def __init__(self):
@@ -79,7 +84,8 @@ class GameState:
 
         self.pressed_buttons = set()
         self.music_volume = 0.2
-        
+        music_player.set_volume(self.music_volume)  # synchronise le lecteur centralisé
+
         # Music handling
         self.MUSIC_END_EVENT = pygame.USEREVENT + 1
         pygame.mixer.music.set_endevent(self.MUSIC_END_EVENT)

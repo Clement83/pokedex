@@ -11,6 +11,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from logger import log
 from quit_combo import QuitCombo
+import music_player
 
 def main():
     create_user_preferences_table()
@@ -24,7 +25,11 @@ def main():
     game_state.quit_requested = False
 
     while game_state.running:
-        for event in pygame.event.get():
+        events = pygame.event.get()
+        music_player.tick(events)
+        game_state.music_volume = music_player.get_volume()
+
+        for event in events:
             if event.type == pygame.QUIT:
                 pass  # On ne quitte pas
             if event.type == game_state.MUSIC_END_EVENT:

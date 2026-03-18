@@ -1,6 +1,11 @@
 import pygame
 from config import KEY_MAPPINGS, JOYSTICK_MAPPINGS
 import debug_actions
+import sys, os as _os
+_root = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '..'))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+import music_player
 
 # --- State for axes and hats ---
 _axis_states = {}
@@ -51,12 +56,8 @@ def process_joystick_input(game_state, event):
                 return
 
         action = JOYSTICK_MAPPINGS["BUTTONS"].get(event.button)
-        if action == "VOLUME_UP":
-            game_state.music_volume = min(1.0, game_state.music_volume + 0.1)
-            pygame.mixer.music.set_volume(game_state.music_volume)
-        elif action == "VOLUME_DOWN":
-            game_state.music_volume = max(0.0, game_state.music_volume - 0.1)
-            pygame.mixer.music.set_volume(game_state.music_volume)
+        if action in ("VOLUME_UP", "VOLUME_DOWN"):
+            pass  # géré par music_player.tick() dans la boucle principale
         elif action:
             _post_key_event(action, pygame.KEYDOWN)
 
