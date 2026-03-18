@@ -51,6 +51,9 @@ def launch_game(game):
         os.chdir(game_path)
         sys.path.insert(0, str(game_path))
 
+        # Vider la queue d'événements AVANT de quitter pygame,
+        # les événements résiduels seront aussi vidés au démarrage de chaque jeu.
+        pygame.event.clear()
         pygame.quit()
 
         mod = importlib.import_module(entry)

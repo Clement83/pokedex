@@ -18,6 +18,7 @@ import scene_result
 def main():
     pygame.init()
     pygame.joystick.init()
+    pygame.event.clear()  # vider les événements résiduels du launcher
     joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
