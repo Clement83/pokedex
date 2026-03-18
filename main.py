@@ -53,15 +53,24 @@ def launch_game(game):
     try:
         os.chdir(game_path)
         sys.path.insert(0, str(game_path))
+        log(f"[Launcher] chdir OK, sys.path mis à jour")
 
-        # Vider la queue d'événements AVANT de quitter pygame,
-        # les événements résiduels seront aussi vidés au démarrage de chaque jeu.
+        # Vider la queue d'événements AVANT de quitter pygame
         pygame.event.clear()
         pygame.quit()
+        log(f"[Launcher] pygame.quit() OK")
 
-        mod = importlib.import_module(entry)
+        log(f"[Launcher] importlib.import_module('{entry}') start")
         try:
-            log(f"[Launcher] mod.main() start")
+            mod = importlib.import_module(entry)
+        except Exception as e:
+            import traceback
+            log(f"[Launcher] IMPORT CRASH '{game.get('title')}' : {e}", "error")
+            log(traceback.format_exc(), "error")
+            return
+
+        log(f"[Launcher] import OK, appel mod.main()")
+        try:
             mod.main()
             log(f"[Launcher] mod.main() retour normal")
         except SystemExit:
