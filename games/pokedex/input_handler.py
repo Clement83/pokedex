@@ -117,7 +117,8 @@ def handle_input(game_state, event):
             game_state.unlocked_regions_count = unlocked_regions
 
             if hunt_result == "quit":
-                game_state.running = False
+                print(f"[Pokemon] hunt retourne : quit, on reste dans la liste")
+                game_state.state = "list"  # rester dans le jeu
             elif hunt_result == "main_menu": # Go back to list view
                 game_state.state = "list"
             elif hunt_result == "detail":
@@ -168,7 +169,7 @@ def handle_input(game_state, event):
                             except pygame.error as e:
                                 print(f"Error playing cry: {e}")
             elif event.key in KEY_MAPPINGS["QUIT"]:
-                game_state.running = False
+                pass  # ne pas quitter
         elif game_state.state == "detail":
             if event.key in KEY_MAPPINGS["CANCEL"]:
                 game_state.state = "list"

@@ -11,7 +11,9 @@ import dresseur_selection
 def main():
     create_user_preferences_table()
     add_caught_column()
+    print("[Pokemon] GameState init...")
     game_state = GameState()
+    print(f"[Pokemon] Demarrage, state={game_state.state!r}")
     game_state.list_view_background = create_list_view_background()
     game_state.play_next_menu_song()  # Start music
 
@@ -38,8 +40,9 @@ def main():
 
         elif game_state.state == "dresseur_selection":
             result = dresseur_selection.run(game_state.screen, game_state.font, game_state)
-            if result == "quit":
-                game_state.running = False
+            print(f"[Pokemon] dresseur_selection retourne : {result!r}")
+            if result in ("quit", None):
+                game_state.state = "dresseur_selection"  # rester sur la sélection
             else:
                 game_state.state = result
 
