@@ -6,7 +6,10 @@ import importlib
 from pathlib import Path
 from logger import log
 
+import music_player as _music
+
 BASE_DIR = Path(__file__).parent
+_LAUNCHER_MUSIC_DIR = str(BASE_DIR / 'music')
 
 SCREEN_WIDTH = 480
 SCREEN_HEIGHT = 320
@@ -102,6 +105,8 @@ def main():
     pygame.display.set_caption("Game Launcher")
     clock = pygame.time.Clock()
 
+    _music.load_folder(_LAUNCHER_MUSIC_DIR)
+
     from launcher import Launcher
     launcher = Launcher(screen, GAMES, BASE_DIR)
     launcher.render()
@@ -114,8 +119,10 @@ def main():
     running = True
     while running:
         dt = clock.tick(60) / 1000.0
+        events = pygame.event.get()
+        _music.tick(events)
 
-        for event in pygame.event.get():
+        for event in events:
             if event.type == pygame.QUIT:
                 running = False
                 continue
@@ -139,6 +146,7 @@ def main():
                     running = False
                 else:
                     game = GAMES[result]
+                    _music.stop()
                     launch_game(game)
 
                     # Réinitialiser pygame et le launcher après le retour du jeu
@@ -150,6 +158,7 @@ def main():
                     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
                     pygame.display.set_caption("Game Launcher")
                     launcher = Launcher(screen, GAMES, BASE_DIR)
+                    _music.load_folder(_LAUNCHER_MUSIC_DIR)
 
         if running:
             launcher.update(dt)

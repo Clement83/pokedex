@@ -6,6 +6,7 @@ import pygame
 from config import PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT
 from ui import load_car_sprite
 from quit_combo import QuitCombo
+import music_player
 
 BG_COL   = (8,  8,  20)
 GOLD     = (255, 215,  0)
@@ -50,6 +51,7 @@ def run(screen: pygame.Surface, results: list) -> bool:
             if e.type == pygame.JOYBUTTONDOWN:
                 if e.button in (0, 1, 2, 3):   # n'importe quel bouton → rejouer
                     return True
+        music_player.tick(events)
 
         # ── Rendu ─────────────────────────────────────────────────────────────
         screen.fill(BG_COL)

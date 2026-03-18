@@ -15,6 +15,11 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS
 import scene_select
 import scene_race
 import scene_result
+import music_player
+
+_AUDIO_DIR = os.path.join(os.path.dirname(__file__), 'asset', 'audio')
+_MENU_DIR  = os.path.join(_AUDIO_DIR, 'menu')
+_RACE_DIR  = os.path.join(_AUDIO_DIR, 'race')
 
 
 def main():
@@ -24,6 +29,9 @@ def main():
     from logger import log
     try:
         log("[Shifter] main() démarre")
+        # Mixer : doit être configuré AVANT pygame.init()
+        # 22050 Hz · 16-bit signé · stéréo · buffer 512 → faible latence
+        pygame.mixer.pre_init(22050, -16, 2, 512)
         pygame.init()
         log("[Shifter] pygame.init() OK")
         pygame.joystick.init()
@@ -38,6 +46,7 @@ def main():
         log("[Shifter] fenêtre créée")
 
         # ── Écran d'accueil ───────────────────────────────────────────────────
+        music_player.load_folder(_MENU_DIR)
         log("[Shifter] _show_splash start")
         _show_splash(screen)
         log("[Shifter] _show_splash terminé")
@@ -58,6 +67,7 @@ def main():
             car_indices = result
 
             log(f"[Shifter] scene_race.run() start, voitures={car_indices}")
+            music_player.load_folder(_RACE_DIR)
             race_results = scene_race.run(screen, joysticks, car_indices)
             log(f"[Shifter] scene_race retourne : {type(race_results).__name__}")
             if race_results is None:
@@ -70,6 +80,8 @@ def main():
             if not replay:
                 log("[Shifter] scene_result → False, sortie boucle")
                 break
+            # Retour au menu : musique menu
+            music_player.load_folder(_MENU_DIR)
 
         log("[Shifter] boucle terminée, pygame.quit()")
         pygame.quit()
@@ -100,6 +112,7 @@ def _show_splash(screen: pygame.Surface):
         for e in events:
             if e.type in (pygame.KEYDOWN, pygame.JOYBUTTONDOWN):
                 return   # n'importe quelle touche → continuer
+        music_player.tick(events)
 
         # fond
         import math

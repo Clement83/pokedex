@@ -8,6 +8,7 @@ import types
 from typing import Optional
 from config import CARS, PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT, AXIS_DEAD
 from ui import load_car_sprite, draw_car_sprite, draw_cockpit
+import music_player
 from quit_combo import QuitCombo
 
 # ── Palettes UI ───────────────────────────────────────────────────────────────
@@ -251,6 +252,7 @@ def run(screen: pygame.Surface, joysticks: list) -> Optional[tuple]:
             quit.handle_event(e)
             if e.type == pygame.QUIT:
                 return None
+        music_player.tick(events)
 
         if not ready[0]:
             if det.check(events, 'sel_prev_j1') or det.check_axis(events, 'sel_prev_j1'):

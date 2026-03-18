@@ -2,6 +2,7 @@
 Scène de course – split-screen 2 joueurs côte à côte.
 Retourne la liste de résultats triés ou None si on quitte.
 """
+import os
 import pygame
 import math
 from typing import Optional
@@ -13,6 +14,8 @@ from config import (
 from car import Car
 from ui import TrackBackground, StartLights, draw_car_sprite, load_car_sprite, draw_cockpit, draw_smoke
 from quit_combo import QuitCombo
+from engine_sound import EngineSound
+import music_player
 
 # ── Constantes de mise en page ────────────────────────────────────────────────
 PW = SCREEN_WIDTH // 2   # largeur d'un volet : 240px
@@ -190,13 +193,18 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
     # ── Sprites véhicules (préchargement dans le cache) ─────────────────────────
     for c in cars:
         load_car_sprite(c.data["sprite"], 140)
+    # ── Sons moteur (synthèse procédurale) ────────────────────────────────────
+    # Joueur 0 → canaux 2/3, Joueur 1 → canaux 4/5
+    engine_sounds = [
+        EngineSound(cars[i].max_rpm, cat=cars[i].data['cat'], channels=(2 + i * 2, 3 + i * 2))
+        for i in range(2)
+    ]
     # ── Décors ────────────────────────────────────────────────────────────────
     tracks = [TrackBackground(PW, PH, environment) for _ in range(2)]
 
     # ── Feux de départ ────────────────────────────────────────────────────────
     lights = StartLights(SCREEN_WIDTH, SCREEN_HEIGHT)
     lights.start()
-
     # ── État ──────────────────────────────────────────────────────────────────
     race_started  = False
     finish_order  = []          # player_id dans l'ordre d'arrivée
@@ -223,9 +231,14 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
         for e in events:
             quit.handle_event(e)
             if e.type == pygame.QUIT:
+                for es in engine_sounds:
+                    es.stop()
                 return None
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+                for es in engine_sounds:
+                    es.stop()
                 return None
+        music_player.tick(events)
 
         # ── Feux ──────────────────────────────────────────────────────────────
         lights.update(dt)
@@ -233,6 +246,9 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
             race_started = True
             for c in cars:
                 c.start()
+            for es in engine_sounds:
+                es.start()
+
 
         # ── Inputs ────────────────────────────────────────────────────────────
         if race_started:
@@ -261,11 +277,13 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
         # ── Physique ──────────────────────────────────────────────────────────
         for i, c in enumerate(cars):
             c.update(dt)
+            engine_sounds[i].update(c.rpm, c.is_shifting, dt)
             tracks[i].update(c.position)
             if shift_flash[i]['timer'] > 0:
                 shift_flash[i]['timer'] -= dt
             if c.has_finished and (i not in finish_order):
                 finish_order.append(i)
+                engine_sounds[i].fade_out(1.4)
 
         # Temps d'attente post-arrivée
         if len(finish_order) == 2:
@@ -293,6 +311,8 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
         lights.draw(screen)
 
         if quit.update_and_draw(screen):
+            for es in engine_sounds:
+                es.stop()
             return None
         pygame.display.flip()
 
@@ -313,4 +333,6 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
             'car':       c,
             'rank':      rank,
         })
+    for es in engine_sounds:
+        es.stop()
     return results
