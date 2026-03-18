@@ -72,12 +72,14 @@ def launch_game(game):
             log(traceback.format_exc(), "error")
 
     finally:
+        log(f"[Launcher] finally : nettoyage modules pour '{game.get('title')}'")
         # Nettoyer les modules chargés par le jeu
         for key in list(sys.modules.keys()):
             if key not in original_modules:
                 del sys.modules[key]
         sys.path[:] = original_syspath
         os.chdir(original_cwd)
+        log(f"[Launcher] finally : nettoyage terminé")
 
 
 def main():

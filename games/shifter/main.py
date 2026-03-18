@@ -18,38 +18,70 @@ import scene_result
 
 
 def main():
-    pygame.init()
-    pygame.joystick.init()
-    joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-    pygame.event.pump()   # vider le buffer interne SDL
-    pygame.event.clear()  # éliminer tout résidu du launcher
+    import traceback as _tb
+    import sys as _sys, os as _os
+    _sys.path.insert(0, _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..')))
+    from logger import log
+    try:
+        log("[Shifter] main() démarre")
+        pygame.init()
+        log("[Shifter] pygame.init() OK")
+        pygame.joystick.init()
+        joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+        log(f"[Shifter] joysticks détectés : {len(joysticks)}")
+        pygame.event.pump()
+        pygame.event.clear()
+        log("[Shifter] event queue vidée")
 
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Shifter – Drag Race 2J")
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption("Shifter – Drag Race 2J")
+        log("[Shifter] fenêtre créée")
 
-    # ── Écran d'accueil ───────────────────────────────────────────────────────
-    _show_splash(screen)
+        # ── Écran d'accueil ───────────────────────────────────────────────────
+        log("[Shifter] _show_splash start")
+        _show_splash(screen)
+        log("[Shifter] _show_splash terminé")
 
-    # ── Boucle principale ─────────────────────────────────────────────────────
-    while True:
-        # Sélection des voitures
-        result = scene_select.run(screen, joysticks)
-        if result is None:
-            break
+        # ── Boucle principale ─────────────────────────────────────────────────
+        iteration = 0
+        while True:
+            iteration += 1
+            log(f"[Shifter] boucle itération #{iteration}")
 
-        car_indices = result  # (idx_j1, idx_j2)
+            log("[Shifter] scene_select.run() start")
+            result = scene_select.run(screen, joysticks)
+            log(f"[Shifter] scene_select retourne : {result!r}")
+            if result is None:
+                log("[Shifter] scene_select → None, sortie boucle")
+                break
 
-        # Course
-        race_results = scene_race.run(screen, joysticks, car_indices)
-        if race_results is None:
-            break
+            car_indices = result
 
-        # Résultats
-        replay = scene_result.run(screen, race_results)
-        if not replay:
-            break
+            log(f"[Shifter] scene_race.run() start, voitures={car_indices}")
+            race_results = scene_race.run(screen, joysticks, car_indices)
+            log(f"[Shifter] scene_race retourne : {type(race_results).__name__}")
+            if race_results is None:
+                log("[Shifter] scene_race → None, sortie boucle")
+                break
 
-    pygame.quit()
+            log("[Shifter] scene_result.run() start")
+            replay = scene_result.run(screen, race_results)
+            log(f"[Shifter] scene_result retourne : {replay!r}")
+            if not replay:
+                log("[Shifter] scene_result → False, sortie boucle")
+                break
+
+        log("[Shifter] boucle terminée, pygame.quit()")
+        pygame.quit()
+        log("[Shifter] main() retour normal")
+
+    except Exception:
+        log(f"[Shifter] EXCEPTION :\n{_tb.format_exc()}", "error")
+        try:
+            pygame.quit()
+        except Exception:
+            pass
+        raise
 
 
 def _show_splash(screen: pygame.Surface):

@@ -25,3 +25,6 @@ _logger = logging.getLogger("launcher")
 
 def log(msg: str, level: str = "info"):
     getattr(_logger, level.lower(), _logger.info)(msg)
+    # Forcer l'écriture immédiate sur disque (utile sur Odroid)
+    for h in _logger.handlers + logging.root.handlers:
+        h.flush()
