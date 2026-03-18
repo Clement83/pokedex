@@ -8,6 +8,7 @@ import types
 from typing import Optional
 from config import CARS, PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT, AXIS_DEAD
 from ui import load_car_sprite, draw_car_sprite, draw_cockpit
+from quit_combo import QuitCombo
 
 # ── Palettes UI ───────────────────────────────────────────────────────────────
 BG_TOP    = (8,   8,  20)
@@ -237,6 +238,7 @@ def run(screen: pygame.Surface, joysticks: list) -> Optional[tuple]:
     car_sel = [0, 0]
     ready   = [False, False]
     det     = ActionDetector()
+    quit    = QuitCombo()
     anim_t  = 0.0
 
     running = True
@@ -246,8 +248,9 @@ def run(screen: pygame.Surface, joysticks: list) -> Optional[tuple]:
         events = pygame.event.get()
 
         for e in events:
+            quit.handle_event(e)
             if e.type == pygame.QUIT:
-                pass  # On ne quitte pas
+                return None
 
         if not ready[0]:
             if det.check(events, 'sel_prev_j1') or det.check_axis(events, 'sel_prev_j1'):
@@ -286,5 +289,8 @@ def run(screen: pygame.Surface, joysticks: list) -> Optional[tuple]:
 
         # Séparateur central
         pygame.draw.line(screen, SEP_COL, (PW, 0), (PW, SCREEN_HEIGHT), 2)
+
+        if quit.update_and_draw(screen):
+            return None
 
         pygame.display.flip()
