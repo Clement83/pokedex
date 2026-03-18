@@ -10,6 +10,7 @@ import dresseur_selection
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from logger import log
+from quit_combo import QuitCombo
 
 def main():
     create_user_preferences_table()
@@ -19,6 +20,8 @@ def main():
     log(f"[Pokemon] Demarrage, state={game_state.state!r}, joysticks={len(game_state.joysticks)}")
     game_state.list_view_background = create_list_view_background()
     game_state.play_next_menu_song()  # Start music
+    game_state.quit_combo    = QuitCombo()
+    game_state.quit_requested = False
 
     while game_state.running:
         for event in pygame.event.get():
@@ -31,6 +34,7 @@ def main():
                     game_state.play_next_menu_song()
 
             controls.process_joystick_input(game_state, event)
+            game_state.quit_combo.handle_event(event)
             input_handler.handle_input(game_state, event) # Pass event to input handler
 
         if game_state.state == "init":
@@ -59,6 +63,9 @@ def main():
 
         elif game_state.state == "quit":
             pass  # On ne quitte pas
+
+        if game_state.quit_requested:
+            game_state.running = False
 
         game_state.clock.tick(60)
 

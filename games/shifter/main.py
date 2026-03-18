@@ -7,6 +7,7 @@ import os
 
 # S'assurer que le dossier courant est dans sys.path
 sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))  # racine projet
 
 import pygame
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS

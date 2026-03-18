@@ -11,6 +11,7 @@ from config import (
 )
 from car import Car
 from ui import TrackBackground, StartLights, draw_car_sprite, load_car_sprite, draw_cockpit, draw_smoke
+from quit_combo import QuitCombo
 
 # ── Constantes de mise en page ────────────────────────────────────────────────
 PW = SCREEN_WIDTH // 2   # largeur d'un volet : 240px
@@ -208,12 +209,14 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
     }
 
     # ── Boucle ────────────────────────────────────────────────────────────────
+    quit  = QuitCombo()
     running = True
     while running:
         dt     = min(clock.tick(60) / 1000.0, 0.05)
         events = pygame.event.get()
 
         for e in events:
+            quit.handle_event(e)
             if e.type == pygame.QUIT:
                 return None
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
@@ -284,6 +287,8 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment
         # Feux de départ (au-dessus de tout)
         lights.draw(screen)
 
+        if quit.update_and_draw(screen):
+            return None
         pygame.display.flip()
 
     # ── Construction du résultat ──────────────────────────────────────────────

@@ -9,6 +9,7 @@ from config import (
     BG_COLOR, PADDLE_J1, PADDLE_J2, TEXT_COLOR,
     CTRL,
 )
+from quit_combo import QuitCombo
 
 
 def run(screen, winner: int, joysticks) -> bool:
@@ -19,6 +20,7 @@ def run(screen, winner: int, joysticks) -> bool:
 
     joystick = joysticks[0] if joysticks else None
     btn_held = set()
+    quit     = QuitCombo()
 
     col   = (PADDLE_J1, PADDLE_J2)[winner]
     name  = f"Joueur {winner + 1}"
@@ -30,6 +32,7 @@ def run(screen, winner: int, joysticks) -> bool:
         events = pygame.event.get()
 
         for e in events:
+            quit.handle_event(e)
             if e.type == pygame.JOYBUTTONDOWN:
                 btn_held.add(e.button)
             if e.type == pygame.JOYBUTTONUP:
@@ -64,4 +67,6 @@ def run(screen, winner: int, joysticks) -> bool:
                           surf.get_width() + 12, surf.get_height() + 6),
                          2, border_radius=4)
 
+        if quit.update_and_draw(screen):
+            return False  # retour launcher sans rejouer
         pygame.display.flip()

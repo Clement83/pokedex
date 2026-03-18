@@ -5,6 +5,7 @@ Retourne True (rejouer) ou False (quitter).
 import pygame
 from config import PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT
 from ui import load_car_sprite
+from quit_combo import QuitCombo
 
 BG_COL   = (8,  8,  20)
 GOLD     = (255, 215,  0)
@@ -33,6 +34,7 @@ def run(screen: pygame.Surface, results: list) -> bool:
     winner = results[0]
     p_col  = PLAYER_COLORS[winner['player_id']]
     anim_t = 0.0
+    quit   = QuitCombo()
     # préchargement des sprites résultats dans le cache
 
     while True:
@@ -41,6 +43,7 @@ def run(screen: pygame.Surface, results: list) -> bool:
         events = pygame.event.get()
 
         for e in events:
+            quit.handle_event(e)
             if e.type == pygame.KEYDOWN:
                 if e.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_n, pygame.K_UP):
                     return True
@@ -145,4 +148,6 @@ def run(screen: pygame.Surface, results: list) -> bool:
         replay = font_sm.render("A / Entrée : Rejouer", True, (100, 220, 100))
         screen.blit(replay, (SCREEN_WIDTH // 2 - replay.get_width() // 2, hint_y))
 
+        if quit.update_and_draw(screen):
+            return False  # retour launcher sans rejouer
         pygame.display.flip()

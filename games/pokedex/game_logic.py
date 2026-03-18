@@ -78,6 +78,11 @@ def render(game_state):
     elif game_state.state == "detail" and game_state.current_pokemon_data:
         draw_detail_view(game_state)
 
+    # Overlay quitter (SELECT+START) – actif uniquement dans list/detail
+    if hasattr(game_state, 'quit_combo'):
+        if game_state.quit_combo.update_and_draw(game_state.screen):
+            game_state.quit_requested = True
+
     pygame.display.flip()
 
 def game_loop(game_state, input_handler):

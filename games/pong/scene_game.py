@@ -13,6 +13,7 @@ from config import (
     BALL_SIZE, BALL_SPEED_X, BALL_SPEED_Y, BALL_ACCEL, BALL_MAX_SPEED,
     WIN_SCORE, CTRL, AXIS_DEAD,
 )
+from quit_combo import QuitCombo
 
 PADDLE_X_J1 = 20
 PADDLE_X_J2 = SCREEN_WIDTH - 20 - PADDLE_W
@@ -81,6 +82,7 @@ def run(screen, joysticks):
     paddle_y   = [float(SCREEN_HEIGHT // 2 - PADDLE_H // 2)] * 2
     scores     = [0, 0]
     btn_held   = set()
+    quit       = QuitCombo()
 
     ball_x, ball_y, ball_vx, ball_vy = _reset_ball(random.randint(0, 1))
 
@@ -93,6 +95,7 @@ def run(screen, joysticks):
         events = pygame.event.get()
 
         for e in events:
+            quit.handle_event(e)
             if e.type == pygame.JOYBUTTONDOWN:
                 btn_held.add(e.button)
             if e.type == pygame.JOYBUTTONUP:
@@ -208,4 +211,6 @@ def run(screen, joysticks):
                               SCREEN_HEIGHT // 2 - 10))
 
         # Aide contrôles (discret, en bas)
+        if quit.update_and_draw(screen):
+            return None
         pygame.display.flip()

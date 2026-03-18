@@ -7,6 +7,7 @@ import os
 import math
 
 sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 import pygame
 from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BG_COLOR, PADDLE_J1, PADDLE_J2, TEXT_COLOR
