@@ -29,13 +29,13 @@ WIN_SCORE     = 7
 
 # ── Contrôles ────────────────────────────────────────────────────────────────
 #   J1 : flèches haut/bas  (+ hat joystick / axe 1)
-#   J2 : touche N = monter, touche M = descendre  (identique à Shifter)
-#        bouton 0 (A manette) = monter, bouton 1 (B manette) = descendre
+#   J2 : touche N = descendre, touche M = monter  (identique à Shifter A/B)
+#        bouton 0 (A manette) = descendre, bouton 1 (B manette) = monter
 CTRL = {
     'up_j1':   {'keys': [pygame.K_UP],   'hat': (0,  1), 'axis': (1, -1)},
     'down_j1': {'keys': [pygame.K_DOWN], 'hat': (0, -1), 'axis': (1,  1)},
-    'up_j2':   {'keys': [pygame.K_n],    'btn': 0},   # A  (comme Shifter)
-    'down_j2': {'keys': [pygame.K_m],    'btn': 1},   # B  (comme Shifter)
+    'up_j2':   {'keys': [pygame.K_m],    'btn': 1},   # B
+    'down_j2': {'keys': [pygame.K_n],    'btn': 0},   # A
     'quit':    {'keys': [pygame.K_ESCAPE]},
     'confirm': {'keys': [pygame.K_RETURN, pygame.K_SPACE], 'btn': 0},
 }

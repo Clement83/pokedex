@@ -10,8 +10,9 @@ class GameState:
     def __init__(self):
         pygame.init()
         pygame.joystick.init() # Initialize joystick module
-        pygame.event.clear()  # vider les événements résiduels du launcher
         self.joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+        pygame.event.pump()   # vider le buffer interne SDL
+        pygame.event.clear()  # éliminer tout résidu du launcher (dont les JOYDEVICEADDED)
         if self.joysticks:
             print(f"Found {len(self.joysticks)} joystick(s). Using the first one.")
             # self.joysticks[0].init() # init() is deprecated and called automatically

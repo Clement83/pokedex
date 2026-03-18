@@ -19,8 +19,9 @@ import scene_result
 def main():
     pygame.init()
     pygame.joystick.init()
-    pygame.event.clear()  # vider les événements résiduels du launcher
     joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+    pygame.event.pump()   # vider le buffer interne SDL
+    pygame.event.clear()  # éliminer tout résidu du launcher
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Shifter – Drag Race 2J")

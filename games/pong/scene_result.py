@@ -64,8 +64,4 @@ def run(screen, winner: int, joysticks) -> bool:
                           surf.get_width() + 12, surf.get_height() + 6),
                          2, border_radius=4)
 
-        hint = font_sm.render("A / Entrée : Rejouer", True, (60, 60, 80))
-        screen.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2,
-                           SCREEN_HEIGHT - 16))
-
         pygame.display.flip()

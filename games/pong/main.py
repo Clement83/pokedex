@@ -18,8 +18,9 @@ import scene_result
 def main():
     pygame.init()
     pygame.joystick.init()
-    pygame.event.clear()  # vider les événements résiduels du launcher
     joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+    pygame.event.pump()   # vider le buffer interne SDL
+    pygame.event.clear()  # éliminer tout résidu du launcher
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Pong – 2 Joueurs")
@@ -86,11 +87,6 @@ def _show_splash(screen: pygame.Surface, joysticks):
 
         sub = font_md.render("2 Joueurs", True, (140, 140, 180))
         screen.blit(sub, (SCREEN_WIDTH // 2 - sub.get_width() // 2, 120))
-
-        ctrl1 = font_sm.render("J1 : ↑ ↓  (flèches)", True, PADDLE_J1)
-        ctrl2 = font_sm.render("J2 : N (haut)   M (bas)   /   A / B", True, PADDLE_J2)
-        screen.blit(ctrl1, (SCREEN_WIDTH // 2 - ctrl1.get_width() // 2, 155))
-        screen.blit(ctrl2, (SCREEN_WIDTH // 2 - ctrl2.get_width() // 2, 169))
 
         if int(anim * 2) % 2 == 0:
             msg = font_sm.render("Appuie sur un bouton pour commencer", True, (100, 100, 140))

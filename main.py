@@ -129,6 +129,8 @@ def main():
                     pygame.init()
                     pygame.joystick.init()
                     joysticks = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+                    pygame.event.pump()
+                    pygame.event.clear()  # éviter de re-lancer un jeu avec des événements résiduels
                     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
                     pygame.display.set_caption("Game Launcher")
                     launcher = Launcher(screen, GAMES, BASE_DIR)

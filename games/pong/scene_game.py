@@ -208,9 +208,4 @@ def run(screen, joysticks):
                               SCREEN_HEIGHT // 2 - 10))
 
         # Aide contrôles (discret, en bas)
-        hint1 = font_sm.render("J1: ↑↓", True, (60, 60, 80))
-        hint2 = font_sm.render("J2: N/M", True, (60, 60, 80))
-        screen.blit(hint1, (4, SCREEN_HEIGHT - 13))
-        screen.blit(hint2, (SCREEN_WIDTH - hint2.get_width() - 4, SCREEN_HEIGHT - 13))
-
         pygame.display.flip()

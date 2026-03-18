@@ -126,11 +126,9 @@ class Launcher:
                     self._axis_moved = False
 
         if event.type == pygame.JOYBUTTONDOWN:
-            if event.button == 0:  # A / Confirmer
+            if event.button in (0, 1):  # A ou B → lancer le jeu
                 if self.is_available(self.games[self.selected]):
                     return self.selected
-            elif event.button == 1:  # B / Quitter
-                return -1
 
         return None
 
