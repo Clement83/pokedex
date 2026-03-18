@@ -242,9 +242,7 @@ def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
 
         for e in events:
             if e.type == pygame.QUIT:
-                return None
-            if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
-                return None
+                pass  # On ne quitte pas
 
         if not ready[0]:
             if det.check(events, 'sel_prev_j1') or det.check_axis(events, 'sel_prev_j1'):

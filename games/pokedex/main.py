@@ -18,7 +18,7 @@ def main():
     while game_state.running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                game_state.running = False
+                pass  # On ne quitte pas
             if event.type == game_state.MUSIC_END_EVENT:
                 if game_state.music_state == 'victory':
                     game_state.play_next_menu_song()
@@ -52,7 +52,7 @@ def main():
             render(game_state)
 
         elif game_state.state == "quit":
-            game_state.running = False
+            pass  # On ne quitte pas
 
         game_state.clock.tick(60)
 

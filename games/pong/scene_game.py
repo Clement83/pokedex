@@ -93,14 +93,8 @@ def run(screen, joysticks):
         events = pygame.event.get()
 
         for e in events:
-            if e.type == pygame.QUIT:
-                return None
-            if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
-                return None
             if e.type == pygame.JOYBUTTONDOWN:
                 btn_held.add(e.button)
-                if e.button == 9:   # Start → quitter
-                    return None
             if e.type == pygame.JOYBUTTONUP:
                 btn_held.discard(e.button)
 

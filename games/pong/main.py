@@ -49,9 +49,6 @@ def _show_splash(screen: pygame.Surface, joysticks):
         anim  += dt
         events = pygame.event.get()
         for e in events:
-            if e.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
             if e.type in (pygame.KEYDOWN, pygame.JOYBUTTONDOWN):
                 return
 

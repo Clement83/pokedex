@@ -41,18 +41,12 @@ def run(screen: pygame.Surface, results: list) -> bool:
         events = pygame.event.get()
 
         for e in events:
-            if e.type == pygame.QUIT:
-                return False
             if e.type == pygame.KEYDOWN:
-                if e.key == pygame.K_ESCAPE:
-                    return False
                 if e.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_n, pygame.K_UP):
                     return True
             if e.type == pygame.JOYBUTTONDOWN:
-                if e.button in (0, 2):   # A ou X → rejouer
+                if e.button in (0, 1, 2, 3):   # n'importe quel bouton → rejouer
                     return True
-                if e.button in (1, 3):   # B ou Y → quitter
-                    return False
 
         # ── Rendu ─────────────────────────────────────────────────────────────
         screen.fill(BG_COL)
@@ -148,8 +142,7 @@ def run(screen: pygame.Surface, results: list) -> bool:
         pygame.draw.line(screen, (30, 30, 60), (0, hint_y - 4), (SCREEN_WIDTH, hint_y - 4), 1)
 
         replay = font_sm.render("A / Entrée : Rejouer", True, (80, 200, 255))
-        quit_  = font_sm.render("B / Echap  : Quitter", True, (180, 80, 80))
-        screen.blit(replay, (SCREEN_WIDTH // 4 - replay.get_width() // 2, hint_y))
-        screen.blit(quit_,  (3 * SCREEN_WIDTH // 4 - quit_.get_width() // 2, hint_y))
+        replay = font_sm.render("A / Entrée : Rejouer", True, (100, 220, 100))
+        screen.blit(replay, (SCREEN_WIDTH // 2 - replay.get_width() // 2, hint_y))
 
         pygame.display.flip()
