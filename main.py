@@ -25,6 +25,13 @@ GAMES = [
         "path": str(BASE_DIR / "games" / "shifter"),
         "entry": "main",
     },
+    {
+        "title": "Pong",
+        "description": "Pong classique 2 joueurs – J1 ↑↓  J2 N/M",
+        "image": str(BASE_DIR / "games" / "pong" / "cover.png"),
+        "path": str(BASE_DIR / "games" / "pong"),
+        "entry": "main",
+    },
 ]
 
 
@@ -80,6 +87,8 @@ def main():
 
     running = True
     while running:
+        dt = clock.tick(60) / 1000.0
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -115,6 +124,7 @@ def main():
                     launcher = Launcher(screen, GAMES, BASE_DIR)
 
         if running:
+            launcher.update(dt)
             launcher.render()
 
             # ── Barre de progression du combo update ──────────────────────────
@@ -158,8 +168,6 @@ def main():
             # ──────────────────────────────────────────────────────────────────
 
             pygame.display.flip()
-
-        clock.tick(60)
 
     pygame.quit()
     sys.exit()

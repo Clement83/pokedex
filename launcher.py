@@ -36,6 +36,14 @@ class Launcher:
         self.images = self._load_images()
         self.bg_images = self._load_bg_images()
         self._axis_moved = False
+        # Carousel : position actuelle du scroll (pixels), interpolée vers la cible
+        self._scroll_x = 0.0  # démarre centré sur le 1er jeu
+
+    def update(self, dt: float):
+        """Anime le scroll du carousel vers la tuile sélectionnée."""
+        step = TILE_W + TILE_GAP
+        target = self.selected * step
+        self._scroll_x += (target - self._scroll_x) * min(1.0, 14.0 * dt)
 
     def _load_images(self):
         images = []
@@ -146,29 +154,36 @@ class Launcher:
         pygame.draw.line(self.screen, (70, 70, 70), (0, HEADER_H), (w, HEADER_H), 1)
         self.screen.blit(header_surf, ((w - header_surf.get_width()) // 2, (HEADER_H - header_surf.get_height()) // 2))
 
-        # ── Tuiles ─────────────────────────────────────────────────────────────
-        n = len(self.games)
-        total_w = n * TILE_W + (n - 1) * TILE_GAP
-        start_x = (w - total_w) // 2
+        # ── Carousel ───────────────────────────────────────────────────────────
+        step   = TILE_W + TILE_GAP
         tile_y = HEADER_H + (h - HEADER_H - TILE_H) // 2
+        # La tuile sélectionnée est centrée horizontalement
+        center_x = w // 2 - TILE_W // 2
+
+        # Zone de clip : toute la zone sous le header (cache les débordements)
+        clip_rect = pygame.Rect(0, HEADER_H, w, h - HEADER_H)
+        self.screen.set_clip(clip_rect)
 
         for i, g in enumerate(self.games):
-            x = start_x + i * (TILE_W + TILE_GAP)
-            selected = i == self.selected
+            x = center_x + i * step - int(self._scroll_x)
+
+            # Ne pas dessiner les tuiles trop loin hors-écran
+            if x + TILE_W < -10 or x > w + 10:
+                continue
+
+            selected  = i == self.selected
             available = self.is_available(g)
 
             # Fond de la tuile (semi-transparent)
             tile_surf = pygame.Surface((TILE_W, TILE_H), pygame.SRCALPHA)
             if available:
                 alpha = 200 if selected else 160
-                rgb = (65, 65, 65) if selected else (38, 38, 38)
+                rgb   = (65, 65, 65) if selected else (38, 38, 38)
             else:
                 alpha = 130
-                rgb = (30, 30, 30)
-            tile_surf.fill((*rgb, alpha))
-            tile_rect = pygame.Rect(x, tile_y, TILE_W, TILE_H)
-            # arrondi manuel via draw.rect sur la surface alpha
+                rgb   = (30, 30, 30)
             pygame.draw.rect(tile_surf, (*rgb, alpha), tile_surf.get_rect(), border_radius=12)
+            tile_rect = pygame.Rect(x, tile_y, TILE_W, TILE_H)
             self.screen.blit(tile_surf, tile_rect)
 
             # Bordure
@@ -190,12 +205,49 @@ class Launcher:
 
             # Titre de la tuile
             title_color = TEXT_COLOR if available else SUBTITLE_COLOR
-            title_surf = self.font_tile.render(g["title"], True, title_color)
+            title_surf  = self.font_tile.render(g["title"], True, title_color)
             title_x = x + (TILE_W - title_surf.get_width()) // 2
             title_y = tile_y + TILE_H - 26 + (26 - title_surf.get_height()) // 2
             self.screen.blit(title_surf, (title_x, title_y))
 
+        self.screen.set_clip(None)
+
+        # ── Dégradés bords gauche/droite (effet profondeur carousel) ──────────
+        FADE_W = 48
+        for side in ('left', 'right'):
+            fade = pygame.Surface((FADE_W, h - HEADER_H), pygame.SRCALPHA)
+            for px in range(FADE_W):
+                t     = px / FADE_W
+                alpha = int(160 * (1.0 - t)) if side == 'left' else int(160 * t)
+                pygame.draw.line(fade, (0, 0, 0, alpha),
+                                 (px if side == 'left' else FADE_W - 1 - px, 0),
+                                 (px if side == 'left' else FADE_W - 1 - px, h - HEADER_H))
+            self.screen.blit(fade, (0 if side == 'left' else w - FADE_W, HEADER_H))
+
+        # ── Flèches indicatrices ──────────────────────────────────────────────
+        arrow_font = pygame.font.SysFont("Arial", 20, bold=True)
+        arrow_y    = HEADER_H + (h - HEADER_H) // 2 - 10
+        if self.selected > 0:
+            a = arrow_font.render("◄", True, (180, 180, 180))
+            self.screen.blit(a, (6, arrow_y))
+        if self.selected < len(self.games) - 1:
+            a = arrow_font.render("►", True, (180, 180, 180))
+            self.screen.blit(a, (w - a.get_width() - 6, arrow_y))
+
+        # ── Indicateurs de position (points) ──────────────────────────────────
+        n = len(self.games)
+        if n > 1:
+            dot_r   = 3
+            dot_gap = 10
+            dots_w  = n * (dot_r * 2) + (n - 1) * (dot_gap - dot_r * 2)
+            dot_y   = h - 18
+            dot_x0  = (w - dots_w) // 2
+            for i in range(n):
+                cx = dot_x0 + i * dot_gap
+                col = (200, 200, 200) if i == self.selected else (60, 60, 60)
+                pygame.draw.circle(self.screen, col, (cx, dot_y), dot_r)
+
         # ── Indication de navigation ───────────────────────────────────────────
         hint_font = pygame.font.SysFont("Arial", 11)
-        hint = hint_font.render("◄ ► naviguer    A/Entrée sélectionner    B/Échap quitter", True, (130, 130, 130))
+        hint = hint_font.render("◄ ► naviguer    A/Entrée sélectionner    B/Échap quitter", True, (100, 100, 100))
         self.screen.blit(hint, ((w - hint.get_width()) // 2, h - hint.get_height() - 4))
