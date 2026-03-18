@@ -284,11 +284,11 @@ CTRL = {
 
     # ── Joueur 2 (boutons A/B/X/Y) ────────────────────────────────────────────
     'sel_prev_j2':  {'keys': [pygame.K_COMMA],  'btns': [3]},   # Y → véhicule précédent
-    'sel_next_j2':  {'keys': [pygame.K_PERIOD], 'btns': [0]},   # A → véhicule suivant
+    'sel_next_j2':  {'keys': [pygame.K_PERIOD], 'btns': [1]},   # B → véhicule suivant
     'sel_conf_j2':  {'keys': [pygame.K_n],      'btns': [2]},   # X → prêt
-    'sel_tier_j2':  {'keys': [pygame.K_m],      'btns': [1]},   # B → changer tier
+    'sel_tier_j2':  {'keys': [pygame.K_m],      'btns': [0]},   # A → changer tier
     'race_up_j2':   {'keys': [pygame.K_n],      'btns': [2]},   # X → montée de vitesse
-    'race_down_j2': {'keys': [pygame.K_m],      'btns': [1]},   # B → descente de vitesse
+    'race_down_j2': {'keys': [pygame.K_m],      'btns': [0]},   # A → descente de vitesse
 
     # ── Général ───────────────────────────────────────────────────────────────
     'quit':         {'keys': [pygame.K_ESCAPE]},
