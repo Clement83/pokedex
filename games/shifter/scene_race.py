@@ -10,7 +10,7 @@ from config import (
     OVERHEAT_TIME, OVERHEAT_WARN_TIME,
 )
 from car import Car
-from ui import TrackBackground, StartLights, draw_car_sprite, load_vehicle_sprites, draw_cockpit, draw_smoke
+from ui import TrackBackground, StartLights, draw_car_sprite, load_car_sprite, draw_cockpit, draw_smoke
 
 # ── Constantes de mise en page ────────────────────────────────────────────────
 PW = SCREEN_WIDTH // 2   # largeur d'un volet : 240px
@@ -70,7 +70,6 @@ def _draw_panel(
     font_sm, font_md,
     shift_flash: dict,    # {'text': str, 'timer': float, 'color': tuple}
     finish_order: list,   # liste des player_id ayant fini, ordre d'arrivée
-    sprites: list,
     opponent_car: Car,
 ):
     p_col   = PLAYER_COLORS[player_id]
@@ -89,12 +88,12 @@ def _draw_panel(
 
     player_x  = ox + CAR_BASE_X
     player_cy = car_y + 28                            # voie droite (plus proche, plus bas)
-    player_sprite = sprites[car.data["sprite_frame"]]
+    player_sprite = load_car_sprite(car.data["sprite"], 140)
     player_blit_y = player_cy - player_sprite.get_height() // 2
 
     opp_x     = ox + CAR_BASE_X + int(delta_m * VISUAL_PX_PER_M)
     opp_cy    = car_y                                 # voie gauche (plus loin)
-    opp_sprite = sprites[opponent_car.data["sprite_frame"]]
+    opp_sprite = load_car_sprite(opponent_car.data["sprite"], 140)
     opp_blit_y = opp_cy - opp_sprite.get_height() // 2
 
     # Ordre de rendu : adversaire toujours en arrière-plan, joueur toujours au premier plan
@@ -169,7 +168,7 @@ def _draw_panel(
 
 # ── Boucle principale ─────────────────────────────────────────────────────────
 
-def run(screen: pygame.Surface, joysticks: list, car_indices: tuple) -> list | None:
+def run(screen: pygame.Surface, joysticks: list, car_indices: tuple, environment: str = "tokio1") -> list | None:
     """
     Retourne le classement [{'player_id', 'car', 'time', 'rank'}]
     ou None si on quitte.
@@ -182,10 +181,11 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple) -> list | N
 
     # ── Voitures ──────────────────────────────────────────────────────────────
     cars = [Car(CARS[idx]) for idx in car_indices]
-    # ── Sprites véhicules ───────────────────────────────────────────────────────
-    sprites = load_vehicle_sprites(140)
+    # ── Sprites véhicules (préchargement dans le cache) ─────────────────────────
+    for c in cars:
+        load_car_sprite(c.data["sprite"], 140)
     # ── Décors ────────────────────────────────────────────────────────────────
-    tracks = [TrackBackground(PW, PH) for _ in range(2)]
+    tracks = [TrackBackground(PW, PH, environment) for _ in range(2)]
 
     # ── Feux de départ ────────────────────────────────────────────────────────
     lights = StartLights(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -275,7 +275,6 @@ def run(screen: pygame.Surface, joysticks: list, car_indices: tuple) -> list | N
                 i, font_sm, font_md,
                 shift_flash[i],
                 finish_order,
-                sprites,
                 cars[1 - i],
             )
 

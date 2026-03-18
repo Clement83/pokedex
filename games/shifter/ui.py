@@ -6,41 +6,44 @@ import math
 from pathlib import Path
 
 # ── Sprites véhicules ─────────────────────────────────────────────────────────
-# Spritesheet vehicle1.png : 2 colonnes × 3 lignes → 6 frames de 768×341 px
-# Ordre : row0/col0=Vert, row0/col1=Jaune, row1/col0=Rouge,
-#         row1/col1=Blanc, row2/col0=Violet, row2/col1=Bleu
 
 _SPRITE_CACHE: dict = {}
-_FW, _FH = 768, 341   # taille d'un frame dans le sheet
 
 
-def load_vehicle_sprites(target_w: int = 160) -> list:
-    """Charge et découpe vehicle1.png. Renvoie liste de 6 surfaces scalées."""
-    if target_w in _SPRITE_CACHE:
-        return _SPRITE_CACHE[target_w]
+def load_car_sprite(sprite_cfg: dict, target_w: int = 160) -> "pygame.Surface":
+    """
+    Charge et découpe un sprite selon la config du véhicule.
 
-    path = Path("asset/sprite/vehicle1.png")
+    sprite_cfg contient :
+        sheet  – nom de fichier dans asset/sprite/  (ex. "vehicle1.png")
+        x, y   – coin haut-gauche du frame dans le sheet (px)
+        w, h   – dimensions du frame (px)
+
+    Ajustez x/y/w/h dans config.py pour recadrer précisément chaque voiture.
+    Résultat mis en cache ; aucun coût à l'exécution.
+    """
+    key = (sprite_cfg["sheet"], sprite_cfg["x"], sprite_cfg["y"],
+           sprite_cfg["w"], sprite_cfg["h"], target_w)
+    if key in _SPRITE_CACHE:
+        return _SPRITE_CACHE[key]
+
+    path = Path("asset/sprite") / sprite_cfg["sheet"]
     sheet = pygame.image.load(str(path)).convert_alpha()
 
-    # Supprimer le fond blanc si l'image n'est pas en transparence
     corner = sheet.get_at((0, 0))
     if corner.a == 255 and corner.r > 240 and corner.g > 240 and corner.b > 240:
         sheet.set_colorkey((255, 255, 255))
 
-    scale = target_w / _FW
-    th = int(_FH * scale)
+    frame = sheet.subsurface(
+        pygame.Rect(sprite_cfg["x"], sprite_cfg["y"], sprite_cfg["w"], sprite_cfg["h"])
+    ).copy()
 
-    sprites = []
-    for row in range(3):
-        for col in range(2):
-            frame = sheet.subsurface(
-                pygame.Rect(col * _FW, row * _FH, _FW, _FH)
-            ).copy()
-            scaled = pygame.transform.smoothscale(frame, (target_w, th))
-            sprites.append(scaled)
+    iw, ih = frame.get_size()
+    th = max(1, int(ih * target_w / iw))
+    scaled = pygame.transform.smoothscale(frame, (target_w, th))
 
-    _SPRITE_CACHE[target_w] = sprites
-    return sprites
+    _SPRITE_CACHE[key] = scaled
+    return scaled
 
 
 def draw_car_sprite(surf: pygame.Surface, cx: int, cy: int, sprite: pygame.Surface):
@@ -107,17 +110,18 @@ def draw_car(surf: pygame.Surface, cx: int, cy: int, body_color, scale: float = 
 _BG_CACHE: dict = {}
 
 
-def _load_bg_strip(panel_w: int, panel_h: int) -> list:
+def _load_bg_strip(panel_w: int, panel_h: int, environment: str = "tokio1") -> list:
     """
-    Charge les 3 images de fond et les scale à panel_h de hauteur.
+    Charge les 3 images de fond d'un environnement et les scale à panel_h de hauteur.
     Retourne la liste de surfaces dans l'ordre : [start, mid, end].
     La largeur de chaque image est proportionnellement conservée.
+    Les images sont cherchées dans asset/sprite/background/{environment}/.
     """
-    key = (panel_w, panel_h)
+    key = (panel_w, panel_h, environment)
     if key in _BG_CACHE:
         return _BG_CACHE[key]
 
-    base = Path("asset/sprite")
+    base = Path("asset/sprite/background") / environment
     names = ["start-back.jpg", "mid-back.jpg", "end-back.jpg"]
     surfs = []
     for name in names:
@@ -141,11 +145,11 @@ class TrackBackground:
     # Nombre de segments mid intercalés entre start et end
     MID_COUNT = 4
 
-    def __init__(self, panel_w: int, panel_h: int):
+    def __init__(self, panel_w: int, panel_h: int, environment: str = "tokio1"):
         self.pw = panel_w
         self.ph = panel_h
 
-        surfs = _load_bg_strip(panel_w, panel_h)
+        surfs = _load_bg_strip(panel_w, panel_h, environment)
         self._start = surfs[0]
         self._mid   = surfs[1]
         self._end   = surfs[2]

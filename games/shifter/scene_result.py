@@ -4,7 +4,7 @@ Retourne True (rejouer) ou False (quitter).
 """
 import pygame
 from config import PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT
-from ui import load_vehicle_sprites
+from ui import load_car_sprite
 
 BG_COL   = (8,  8,  20)
 GOLD     = (255, 215,  0)
@@ -33,7 +33,7 @@ def run(screen: pygame.Surface, results: list) -> bool:
     winner = results[0]
     p_col  = PLAYER_COLORS[winner['player_id']]
     anim_t = 0.0
-    winner_sprites = load_vehicle_sprites(220)
+    # préchargement des sprites résultats dans le cache
 
     while True:
         dt     = clock.tick(60) / 1000.0
@@ -81,7 +81,7 @@ def run(screen: pygame.Surface, results: list) -> bool:
         screen.blit(ws, (SCREEN_WIDTH // 2 - ws.get_width() // 2, 44))
 
         # ── Sprite voiture gagnante ───────────────────────────────────────────
-        w_sprite = winner_sprites[winner['car'].data['sprite_frame']]
+        w_sprite = load_car_sprite(winner['car'].data['sprite'], 220)
         sprite_x = SCREEN_WIDTH // 2 - w_sprite.get_width() // 2
         sprite_y = 78
         screen.blit(w_sprite, (sprite_x, sprite_y))

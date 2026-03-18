@@ -6,7 +6,7 @@ import pygame
 import math
 import types
 from config import CARS, PLAYER_COLORS, CTRL, SCREEN_WIDTH, SCREEN_HEIGHT, AXIS_DEAD
-from ui import load_vehicle_sprites, draw_car_sprite, draw_cockpit
+from ui import load_car_sprite, draw_car_sprite, draw_cockpit
 
 # ── Palettes UI ───────────────────────────────────────────────────────────────
 BG_TOP    = (8,   8,  20)
@@ -16,6 +16,14 @@ SEP_COL   = (60, 60, 100)
 TEXT_W    = (230, 230, 255)
 TEXT_DIM  = (110, 110, 150)
 READY_COL = (40,  220, 80)
+
+# ── Catégories de véhicules ───────────────────────────────────────────────────
+TIERS = [
+    {"name": "STREET LEVEL",    "tag": "Tuners & Rookies",   "col": (60, 200, 80)},
+    {"name": "QUARTER MILE",    "tag": "Import Legends",     "col": (255, 160, 20)},
+    {"name": "BUILT NOT BOUGHT","tag": "No Mercy Builds",    "col": (220, 40,  40)},
+]
+CARS_PER_TIER = 6   # chaque sheet a exactement 6 voitures
 
 
 # ── Détection d'événements (just-pressed) ─────────────────────────────────────
@@ -73,11 +81,14 @@ def draw_panel(
     is_ready: bool,
     font_sm, font_md, font_lg,
     anim_t: float,
-    sprites: list,
 ):
-    PH = SCREEN_HEIGHT
-    car_data = CARS[car_idx]
-    p_col    = PLAYER_COLORS[player_id]
+    PH        = SCREEN_HEIGHT
+    car_data  = CARS[car_idx]
+    p_col     = PLAYER_COLORS[player_id]
+    tier_idx  = car_idx // CARS_PER_TIER
+    tier      = TIERS[tier_idx]
+    t_col     = tier["col"]
+    car_in_tier = car_idx % CARS_PER_TIER
 
     # Fond dégradé léger
     panel_surf = pygame.Surface((pw, PH), pygame.SRCALPHA)
@@ -122,7 +133,7 @@ def draw_panel(
     car_cx = pw // 2
     car_cy = 130
     bob = int(math.sin(anim_t * 2.5) * 2)
-    sprite = sprites[car_data["sprite_frame"]]
+    sprite = load_car_sprite(car_data["sprite"], 170)
     draw_car_sprite(panel_surf, car_cx, car_cy + bob, sprite)
 
     # Reflet sol (ombre sous la voiture)
@@ -161,18 +172,26 @@ def draw_panel(
 
     # ── Flèches navigation ────────────────────────────────────────────────────
     if player_id == 0:
-        hints = "← → changer   ↑ Prêt"
+        hints = "← → voiture   ↑ Prêt"
     else:
-        hints = "Y X changer   A Prêt"
+        hints = "Y X voiture   A Prêt"
     h_surf = font_sm.render(hints, True, TEXT_DIM)
-    panel_surf.blit(h_surf, (pw // 2 - h_surf.get_width() // 2, 244))
+    panel_surf.blit(h_surf, (pw // 2 - h_surf.get_width() // 2, 240))
 
-    # ── Indicateur PRÊT ───────────────────────────────────────────────────────
+    # ── Bannière tier ─────────────────────────────────────────────────────────
+    tier_bg = pygame.Surface((pw, 20), pygame.SRCALPHA)
+    tier_bg.fill((*t_col, 40))
+    panel_surf.blit(tier_bg, (0, 254))
+    pygame.draw.line(panel_surf, t_col, (0, 254), (pw, 254), 1)
+    tier_name_surf = font_sm.render(tier["name"], True, t_col)
+    panel_surf.blit(tier_name_surf, (pw // 2 - tier_name_surf.get_width() // 2, 257))
+
+    # ── Indicateur PRÊT ou dots ────────────────────────────────────────────────
     if is_ready:
         ready_surf = font_lg.render("PRÊT!", True, READY_COL)
         rb = pygame.Rect(
             pw // 2 - ready_surf.get_width() // 2 - 8,
-            262,
+            279,
             ready_surf.get_width() + 16,
             ready_surf.get_height() + 6,
         )
@@ -180,15 +199,15 @@ def draw_panel(
         pygame.draw.rect(panel_surf, READY_COL,    rb, 2, border_radius=6)
         panel_surf.blit(ready_surf, (rb.x + 8, rb.y + 3))
     else:
-        # Points de sélection en bas
-        n = len(CARS)
-        dot_r = 3
+        # 6 dots pour la position dans le tier courant
+        dot_r   = 4
         dot_gap = 10
-        total_w = n * (dot_r * 2) + (n - 1) * dot_gap
+        total_w = CARS_PER_TIER * (dot_r * 2) + (CARS_PER_TIER - 1) * dot_gap
         start_x = pw // 2 - total_w // 2
-        for i in range(n):
-            col = p_col if i == car_idx else (55, 55, 80)
-            pygame.draw.circle(panel_surf, col, (start_x + i * (dot_r * 2 + dot_gap) + dot_r, 276), dot_r)
+        for i in range(CARS_PER_TIER):
+            col = p_col if i == car_in_tier else (55, 55, 80)
+            pygame.draw.circle(panel_surf, col,
+                               (start_x + i * (dot_r * 2 + dot_gap) + dot_r, 290), dot_r)
 
     surf.blit(panel_surf, (px, 0))
 
@@ -207,7 +226,9 @@ def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
     font_md = pygame.font.SysFont("Arial", 14, bold=True)
     font_lg = pygame.font.SysFont("Arial", 18, bold=True)
 
-    sprites = load_vehicle_sprites(170)
+    # préchargement des sprites dans le cache
+    for car in CARS:
+        load_car_sprite(car["sprite"], 170)
     car_sel = [0, 0]
     ready   = [False, False]
     det     = ActionDetector()
@@ -233,7 +254,6 @@ def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
             if det.check(events, 'sel_conf_j1') or det.check_axis(events, 'sel_conf_j1'):
                 ready[0] = True
         else:
-            # Annuler si on appuie à gauche/droite
             if det.check(events, 'sel_prev_j1') or det.check(events, 'sel_next_j1'):
                 ready[0] = False
 
@@ -253,14 +273,13 @@ def run(screen: pygame.Surface, joysticks: list) -> tuple | None:
             return (car_sel[0], car_sel[1])
 
         # ── Rendu ─────────────────────────────────────────────────────────────
-        # Fond dégradé général
         for y in range(SCREEN_HEIGHT):
             t   = y / SCREEN_HEIGHT
             col = tuple(int(BG_TOP[i] + (BG_BOT[i] - BG_TOP[i]) * t) for i in range(3))
             pygame.draw.line(screen, col, (0, y), (SCREEN_WIDTH, y))
 
-        draw_panel(screen, 0,   PW, car_sel[0], 0, ready[0], font_sm, font_md, font_lg, anim_t, sprites)
-        draw_panel(screen, PW,  PW, car_sel[1], 1, ready[1], font_sm, font_md, font_lg, anim_t, sprites)
+        draw_panel(screen, 0,  PW, car_sel[0], 0, ready[0], font_sm, font_md, font_lg, anim_t)
+        draw_panel(screen, PW, PW, car_sel[1], 1, ready[1], font_sm, font_md, font_lg, anim_t)
 
         # Séparateur central
         pygame.draw.line(screen, SEP_COL, (PW, 0), (PW, SCREEN_HEIGHT), 2)

@@ -4,17 +4,17 @@ from pathlib import Path
 
 
 # Couleurs
-BG_COLOR = (12, 12, 28)
-TILE_COLOR = (28, 28, 55)
-TILE_SELECTED_COLOR = (45, 45, 90)
-BORDER_COLOR = (110, 110, 255)
-BORDER_UNAVAILABLE = (60, 60, 80)
-TEXT_COLOR = (240, 240, 255)
-SUBTITLE_COLOR = (160, 160, 200)
-UNAVAILABLE_COLOR = (45, 45, 55)
-PLACEHOLDER_COLOR = (35, 35, 60)
-PLACEHOLDER_TEXT_COLOR = (90, 90, 120)
-HEADER_COLOR = (200, 200, 255)
+BG_COLOR = (18, 18, 18)
+TILE_COLOR = (38, 38, 38)
+TILE_SELECTED_COLOR = (60, 60, 60)
+BORDER_COLOR = (190, 190, 190)
+BORDER_UNAVAILABLE = (65, 65, 65)
+TEXT_COLOR = (240, 240, 240)
+SUBTITLE_COLOR = (145, 145, 145)
+UNAVAILABLE_COLOR = (38, 38, 38)
+PLACEHOLDER_COLOR = (48, 48, 48)
+PLACEHOLDER_TEXT_COLOR = (95, 95, 95)
+HEADER_COLOR = (220, 220, 220)
 
 TILE_W = 155
 TILE_H = 210
@@ -34,6 +34,7 @@ class Launcher:
         self.font_tile = pygame.font.SysFont("Arial", 13, bold=True)
         self.font_placeholder = pygame.font.SysFont("Arial", 36, bold=True)
         self.images = self._load_images()
+        self.bg_images = self._load_bg_images()
         self._axis_moved = False
 
     def _load_images(self):
@@ -49,6 +50,22 @@ class Launcher:
                     pass
             images.append(img)
         return images
+
+    def _load_bg_images(self):
+        """Charge une version plein-écran de chaque cover pour le fond."""
+        sw, sh = self.screen.get_size()
+        bgs = []
+        for game in self.games:
+            bg = None
+            img_path = game.get("image")
+            if img_path and os.path.exists(img_path):
+                try:
+                    raw = pygame.image.load(img_path).convert()
+                    bg = self._cover_crop(raw, sw, sh)
+                except Exception:
+                    pass
+            bgs.append(bg)
+        return bgs
 
     @staticmethod
     def _cover_crop(surf: pygame.Surface, tw: int, th: int) -> pygame.Surface:
@@ -111,13 +128,22 @@ class Launcher:
 
     def render(self):
         w, h = self.screen.get_size()
-        self.screen.fill(BG_COLOR)
+
+        # ── Fond : cover du jeu sélectionné ───────────────────────────────────
+        bg = self.bg_images[self.selected]
+        if bg:
+            self.screen.blit(bg, (0, 0))
+            overlay = pygame.Surface((w, h), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 175))
+            self.screen.blit(overlay, (0, 0))
+        else:
+            self.screen.fill(BG_COLOR)
 
         # ── En-tête : nom du jeu sélectionné ──────────────────────────────────
         game = self.games[self.selected]
         header_text = game["title"] if self.is_available(game) else f"{game['title']}  (bientôt)"
         header_surf = self.font_header.render(header_text, True, HEADER_COLOR)
-        pygame.draw.line(self.screen, (50, 50, 100), (0, HEADER_H), (w, HEADER_H), 1)
+        pygame.draw.line(self.screen, (70, 70, 70), (0, HEADER_H), (w, HEADER_H), 1)
         self.screen.blit(header_surf, ((w - header_surf.get_width()) // 2, (HEADER_H - header_surf.get_height()) // 2))
 
         # ── Tuiles ─────────────────────────────────────────────────────────────
@@ -131,13 +157,22 @@ class Launcher:
             selected = i == self.selected
             available = self.is_available(g)
 
-            # Fond de la tuile
-            tile_color = (TILE_SELECTED_COLOR if selected else TILE_COLOR) if available else UNAVAILABLE_COLOR
+            # Fond de la tuile (semi-transparent)
+            tile_surf = pygame.Surface((TILE_W, TILE_H), pygame.SRCALPHA)
+            if available:
+                alpha = 200 if selected else 160
+                rgb = (65, 65, 65) if selected else (38, 38, 38)
+            else:
+                alpha = 130
+                rgb = (30, 30, 30)
+            tile_surf.fill((*rgb, alpha))
             tile_rect = pygame.Rect(x, tile_y, TILE_W, TILE_H)
-            pygame.draw.rect(self.screen, tile_color, tile_rect, border_radius=12)
+            # arrondi manuel via draw.rect sur la surface alpha
+            pygame.draw.rect(tile_surf, (*rgb, alpha), tile_surf.get_rect(), border_radius=12)
+            self.screen.blit(tile_surf, tile_rect)
 
             # Bordure
-            border_color = BORDER_COLOR if selected else (BORDER_UNAVAILABLE if not available else (55, 55, 88))
+            border_color = BORDER_COLOR if selected else (BORDER_UNAVAILABLE if not available else (75, 75, 75))
             border_w = 3 if selected else 1
             pygame.draw.rect(self.screen, border_color, tile_rect, border_w, border_radius=12)
 
@@ -162,5 +197,5 @@ class Launcher:
 
         # ── Indication de navigation ───────────────────────────────────────────
         hint_font = pygame.font.SysFont("Arial", 11)
-        hint = hint_font.render("◄ ► naviguer    A/Entrée sélectionner    B/Échap quitter", True, (70, 70, 110))
+        hint = hint_font.render("◄ ► naviguer    A/Entrée sélectionner    B/Échap quitter", True, (130, 130, 130))
         self.screen.blit(hint, ((w - hint.get_width()) // 2, h - hint.get_height() - 4))
