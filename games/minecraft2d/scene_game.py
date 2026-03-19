@@ -223,22 +223,13 @@ def _get_dir_p1(keys, joy):
 
 def _get_dir_p2(keys, joy):
     if joy:
-        try:
-            ax = joy.get_axis(0) if joy.get_numaxes() > 0 else 0
-            ay = joy.get_axis(1) if joy.get_numaxes() > 1 else 0
-            if ax < -AXIS_DEAD: return -1, 0
-            if ax >  AXIS_DEAD: return  1, 0
-            if ay < -AXIS_DEAD: return  0, -1
-            if ay >  AXIS_DEAD: return  0,  1
-        except Exception:
-            pass
-        # Boutons ABXY en fallback
+        # Boutons YXBA uniquement (même manette que J1, joystick réservé à J1)
         try:
             pressed = {b for b in range(joy.get_numbuttons()) if joy.get_button(b)}
-            if BTN_B in pressed: return  1, 0
-            if BTN_Y in pressed: return -1, 0
-            if BTN_X in pressed: return  0, -1
-            if BTN_A in pressed: return  0,  1
+            if BTN_A in pressed: return  1,  0   # A = droite
+            if BTN_B in pressed: return  0,  1   # B = bas
+            if BTN_X in pressed: return  0, -1   # X = haut / saut
+            if BTN_Y in pressed: return -1,  0   # Y = gauche
         except Exception:
             pass
     dx = dy = 0
@@ -567,7 +558,8 @@ def run(screen, joysticks, world_id, seed):
         sc.x, sc.y = shared_cam.x, shared_cam.y
 
     joy1 = joysticks[0] if len(joysticks) > 0 else None
-    joy2 = joysticks[1] if len(joysticks) > 1 else None
+    # Une seule manette : J1 = joystick/hat, J2 = boutons YXBA sur la même manette
+    joy2 = joy1
 
     # Mapping joueur → (joystick, btn_mine, btn_mod, get_dir_fn, kb_mine, kb_mod)
     player_controls = [
