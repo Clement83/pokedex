@@ -5,6 +5,7 @@ Retourne None (quitter) ou True (retour sélection).
 import pygame
 import sys
 import os
+from collections import OrderedDict
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -297,13 +298,31 @@ class Camera:
 def _get_cursor(player, dx, dy):
     """
     Retourne (col, row) du bloc visé à partir de la direction courante.
-    Si pas de direction, cible le bloc juste devant.
+    Cible toujours la tuile immédiatement adjacente au bord du joueur (max 1 case).
+    Si pas de direction, cible le bloc juste à droite.
     """
-    pcol = player.x + PLAYER_W / TILE_SIZE / 2
-    prow = player.y + PLAYER_H / TILE_SIZE / 2
+    pw = PLAYER_W / TILE_SIZE
+    ph = PLAYER_H / TILE_SIZE
     if dx == 0 and dy == 0:
         dx = 1   # défaut : regarde à droite
-    return int(pcol + dx * 1.5), int(prow + dy * 1.5)
+
+    # Horizontal : tuile collée au bord gauche ou droit du joueur
+    if dx > 0:
+        col = int(player.x + pw - 0.01) + 1   # 1 case à droite du bord droit
+    elif dx < 0:
+        col = int(player.x) - 1               # 1 case à gauche du bord gauche
+    else:
+        col = int(player.x + pw / 2)          # colonne centrale
+
+    # Vertical : tuile collée au bord haut ou bas du joueur
+    if dy > 0:
+        row = int(player.y + ph - 0.01) + 1   # 1 case sous le bas du joueur
+    elif dy < 0:
+        row = int(player.y) - 1               # 1 case au-dessus de la tête
+    else:
+        row = int(player.y + ph / 2)          # rangée centrale
+
+    return col, row
 
 
 # ── Cache de chunks ──────────────────────────────────────────────────────────
@@ -318,9 +337,11 @@ _CHUNK_H   = ROWS       * TILE_SIZE      # 960 px
 
 
 class ChunkCache:
+    _MAX_CHUNKS = 8   # ~8 × 480×960 px = ~30 MB VRAM max
+
     def __init__(self, world):
         self._world = world
-        self._cache = {}   # {chunk_col_index: Surface}
+        self._cache = OrderedDict()   # LRU : clé → Surface
 
     def _build(self, cx):
         surf = pygame.Surface((_CHUNK_W, _CHUNK_H))
@@ -336,14 +357,17 @@ class ChunkCache:
                 surf.fill(color, (x, y, ts, ts))
                 if tile != TILE_AIR:
                     pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+        # Éviction LRU si cache plein
+        if len(self._cache) >= self._MAX_CHUNKS:
+            self._cache.popitem(last=False)
         self._cache[cx] = surf
         return surf
 
     def get(self, cx):
-        try:
+        if cx in self._cache:
+            self._cache.move_to_end(cx)   # marquer comme récemment utilisé
             return self._cache[cx]
-        except KeyError:
-            return self._build(cx)
+        return self._build(cx)
 
     def invalidate(self, col):
         """Invalide le chunk contenant la colonne col."""
@@ -427,16 +451,22 @@ def _draw_player(screen, player, camera, font):
     screen.blit(label, (px + (10 - lw) // 2, hy - 9))
 
 
+_CURSOR_SURF = None   # Surface pré-allouée, créée au premier appel
+
 def _draw_cursor(screen, player, col, row, camera):
+    global _CURSOR_SURF
     sx, sy = camera.world_to_screen(col * TILE_SIZE, row * TILE_SIZE)
     ts = TILE_SIZE
-    # Cadre jaune clignotant
+    if _CURSOR_SURF is None:
+        _CURSOR_SURF = pygame.Surface((ts, ts))
+        _CURSOR_SURF.fill((255, 255, 0))
     t = pygame.time.get_ticks()
     alpha = 128 + int(127 * abs((t % 600) / 300 - 1))
-    s = pygame.Surface((ts, ts), pygame.SRCALPHA)
-    s.fill((255, 255, 0, alpha))
-    screen.blit(s, (sx, sy))
+    _CURSOR_SURF.set_alpha(alpha)
+    screen.blit(_CURSOR_SURF, (sx, sy))
 
+
+_hotbar_label_cache = {}   # {(count, color): Surface}
 
 def _draw_hotbar(screen, inventory, x_offset, color, font):
     """Dessine la hotbar d'un joueur."""
@@ -455,7 +485,11 @@ def _draw_hotbar(screen, inventory, x_offset, color, font):
         if tile != TILE_AIR and count > 0:
             tc = TILE_COLORS[tile]
             pygame.draw.rect(screen, tc, (sx + 3, y + 3, slot_size - 6, slot_size - 6))
-            cnt_label = font.render(str(count), True, (255, 255, 255))
+            key = (count, color)
+            cnt_label = _hotbar_label_cache.get(key)
+            if cnt_label is None:
+                cnt_label = font.render(str(count), True, (255, 255, 255))
+                _hotbar_label_cache[key] = cnt_label
             screen.blit(cnt_label, (sx + slot_size - cnt_label.get_width() - 1, y + slot_size - cnt_label.get_height()))
 
 
@@ -478,6 +512,19 @@ def run(screen, joysticks, world_id, seed):
     world.mods.update(_db.load_blocks(world_id))
 
     chunks = ChunkCache(world)
+
+    # ── Batch SQLite ──────────────────────────────────────────────────────
+    _pending_saves  = {}   # {(col, row): tile}  – mods non encore flushées
+    _last_flush     = [0.0]
+    _FLUSH_INTERVAL = 2.0   # secondes
+
+    def _queue_block(col, row, tile):
+        _pending_saves[(col, row)] = tile
+
+    def _flush_blocks():
+        if _pending_saves:
+            _db.save_blocks_batch(world_id, [(c, r, t) for (c, r), t in _pending_saves.items()])
+            _pending_saves.clear()
 
 
     # Spawn J1 et J2 côte à côte au centre du monde
@@ -513,8 +560,8 @@ def run(screen, joysticks, world_id, seed):
         screen.subsurface(pygame.Rect(0,      0, HALF_W, SCREEN_HEIGHT)),
         screen.subsurface(pygame.Rect(HALF_W, 0, HALF_W, SCREEN_HEIGHT)),
     ]
-    SPLIT_DIST   = int(SCREEN_WIDTH * 0.60)   # entrer en split (~288 px)
-    UNSPLIT_DIST = int(SCREEN_WIDTH * 0.45)   # revenir en commun (~216 px)
+    SPLIT_DIST   = int(SCREEN_HEIGHT * 0.55)   # entrer en split (~176 px) – valide pour X et Y
+    UNSPLIT_DIST = int(SCREEN_HEIGHT * 0.40)   # revenir en commun (~128 px)
     is_split     = False
     for sc in split_cams:
         sc.x, sc.y = shared_cam.x, shared_cam.y
@@ -536,13 +583,20 @@ def run(screen, joysticks, world_id, seed):
 
     while True:
         dt = min(clock.tick(FPS) / 1000.0, 0.05)
+        _last_flush[0] += dt
+        if _last_flush[0] >= _FLUSH_INTERVAL:
+            _flush_blocks()
+            _last_flush[0] = 0.0
+
         events = pygame.event.get()
         keys   = pygame.key.get_pressed()
 
         for e in events:
             if e.type == pygame.QUIT:
+                _flush_blocks()
                 return None
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+                _flush_blocks()
                 return True
             quit_combo.handle_event(e)
 
@@ -620,7 +674,7 @@ def run(screen, joysticks, world_id, seed):
                                     _eject_from_blocks(p, world)
                                 player.inventory.consume()
                                 player._action_cd = 0.2
-                                _db.save_block(world_id, cur_col, cur_row, selected)
+                                _queue_block(cur_col, cur_row, selected)
 
                 elif cur_mine and not cur_mod and tile_at != TILE_AIR:
                     # ─ MINE seul (maintenu) = MINER ──────────────────────
@@ -636,7 +690,7 @@ def run(screen, joysticks, world_id, seed):
                             break_infos[i] = None
                             player._break_time = 0.0
                             player._action_cd = 0.1
-                            _db.save_block(world_id, cur_col, cur_row, TILE_AIR)
+                            _queue_block(cur_col, cur_row, TILE_AIR)
                     else:
                         player._break_time = 0.0
                         break_infos[i] = (cur_col, cur_row, 0.0)
@@ -651,7 +705,9 @@ def run(screen, joysticks, world_id, seed):
             prev_mine[i] = cur_mine
 
         # ── Caméra ─────────────────────────────────────────────────────────
-        player_dist = abs(players[0].px() - players[1].px())
+        dx_dist = abs(players[0].px() - players[1].px())
+        dy_dist = abs(players[0].py() - players[1].py())
+        player_dist = max(dx_dist, dy_dist)   # split si trop loin en X OU en Y
         if not is_split and player_dist >= SPLIT_DIST:
             is_split = True
             # Snap immédiat sur chaque joueur pour éviter un saut visuel
@@ -744,6 +800,7 @@ def run(screen, joysticks, world_id, seed):
 
         # Overlay SELECT+START (dessiné sur l'écran complet, au-dessus de tout)
         if quit_combo.update_and_draw(screen):
+            _flush_blocks()
             return True
 
         pygame.display.flip()

@@ -102,6 +102,22 @@ def _show_splash(screen, joysticks):
     clock       = pygame.time.Clock()
     start       = pygame.time.get_ticks()
 
+    # ── Pré-rendu du fond ciel dégradé (une seule fois) ───────────────────
+    sky_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    for y in range(SCREEN_HEIGHT):
+        r = int(_MC_SKY[0] + (_MC_SKY[0] * 0.3) * y / SCREEN_HEIGHT)
+        g = int(_MC_SKY[1] + (_MC_SKY[1] * 0.1) * y / SCREEN_HEIGHT)
+        b = int(_MC_SKY[2] - (_MC_SKY[2] * 0.3) * y / SCREEN_HEIGHT)
+        pygame.draw.line(sky_surf, (min(255, r), min(255, g), max(0, b)), (0, y), (SCREEN_WIDTH, y))
+    # Décor et bonhommes dessinés une fois sur sky_surf (ils sont statiques)
+    _draw_scenery(sky_surf, ts)
+    _draw_stickman(sky_surf, 60,              14 * ts - 32, P1_COLOR)
+    _draw_stickman(sky_surf, SCREEN_WIDTH - 80, 14 * ts - 32, P2_COLOR, flip=True)
+
+    # Panel noir semi-transparent pré-alloué
+    panel = pygame.Surface((420, 160), pygame.SRCALPHA)
+    panel.fill((0, 0, 0, 160))
+
     while True:
         clock.tick(FPS)
         for e in pygame.event.get():
@@ -114,26 +130,13 @@ def _show_splash(screen, joysticks):
         t = (pygame.time.get_ticks() - start) / 1000.0
         blink = int(t * 2) % 2 == 0   # clignote à ~2 Hz
 
-        # ── Fond ciel dégradé façon Minecraft ─────────────────────────────
-        for y in range(SCREEN_HEIGHT):
-            r = int(_MC_SKY[0] + (_MC_SKY[0] * 0.3) * y / SCREEN_HEIGHT)
-            g = int(_MC_SKY[1] + (_MC_SKY[1] * 0.1) * y / SCREEN_HEIGHT)
-            b = int(_MC_SKY[2] - (_MC_SKY[2] * 0.3) * y / SCREEN_HEIGHT)
-            pygame.draw.line(screen, (min(255,r), min(255,g), max(0,b)), (0, y), (SCREEN_WIDTH, y))
-
-        # ── Décor ─────────────────────────────────────────────────────────
-        _draw_scenery(screen, ts)
-
-        # ── Petits bonhommes de chaque côté ───────────────────────────────
-        _draw_stickman(screen, 60,  14 * ts - 32, P1_COLOR)
-        _draw_stickman(screen, SCREEN_WIDTH - 80, 14 * ts - 32, P2_COLOR, flip=True)
+        # ── Fond + décor (blit unique de la surface pré-rendue) ───────────
+        screen.blit(sky_surf, (0, 0))
 
         # ── Titre ─────────────────────────────────────────────────────────
         _draw_mc_title(screen, font_big, font_shadow, t)
 
         # ── Panel noir semi-transparent ───────────────────────────────────
-        panel = pygame.Surface((420, 160), pygame.SRCALPHA)
-        panel.fill((0, 0, 0, 160))
         screen.blit(panel, ((SCREEN_WIDTH - 420) // 2, 60))
 
         # ── Contrôles console uniquement ──────────────────────────────────
