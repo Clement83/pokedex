@@ -100,7 +100,7 @@ AXIS_DEAD = 0.4
 
 # J1 – joystick 0 (côté gauche OGA)
 J1_BTN_MINE     =  6   # L2 (gâchette)
-J1_BTN_MODIFIER =  7   # R2 (gâchette)
+J1_BTN_MODIFIER = 12   # I (SELECT)
 J1_BTN_FREE     = -1   # non utilisé
 
 # Boutons D-pad J1 (Odroid GO Advance)
@@ -114,8 +114,8 @@ BTN_A = 0   # J2 : bas
 BTN_B = 1   # J2 : droite
 BTN_X = 2   # J2 : haut / saut
 BTN_Y = 3   # J2 : gauche
-J2_BTN_MINE     =  4   # L1 (gâchette)
-J2_BTN_MODIFIER =  5   # R1 (gâchette)
+J2_BTN_MINE     =  4   # R2 (gâchette)
+J2_BTN_MODIFIER = 17   # VI (START)
 J2_BTN_FREE     = -1   # non utilisé
 
 # Clavier – J1 : WASD + E (mine) + R (modifier)
