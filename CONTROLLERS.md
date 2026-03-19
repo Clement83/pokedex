@@ -35,10 +35,10 @@ Y (3)         A (1)
 
 | Index | Physique | Rôle typique |
 |---|---|---|
-| `4`  | **R1** | Action |
-| `5`  | **R**  | Action |
-| `6`  | **L1** (? à confirmer) | Action |
-| `7`  | **L**  (? à confirmer) | Action |
+| `4`  | **R1** | ← gauche |
+| `5`  | **R**  | → droite |
+| `6`  | **L1** | → droite |
+| `7`  | **L**  | ⚠️ bouton potentiellement défectueux (aucune réponse) |
 
 ### D-pad
 
@@ -122,10 +122,10 @@ BTN_X = 2   # physique X → haut
 BTN_Y = 3   # physique Y → gauche
 
 # Gâchettes
-BTN_R1 = 4  # R1
-BTN_R  = 5  # R
-BTN_L1 = 6  # L1 (? à confirmer)
-BTN_L  = 7  # L  (? à confirmer)
+BTN_R1 = 4  # R1 → gauche
+BTN_R  = 5  # R  → droite
+BTN_L1 = 6  # L1 → droite
+# BTN_L = 7  # L  → potentiellement défectueux, à éviter
 
 # D-pad – J1
 BTN_UP    =  8
