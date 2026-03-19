@@ -89,13 +89,13 @@ class Player:
 
 # ── Utilitaires de collision ───────────────────────────────────────────────────
 
-def _solid(grid, col, row):
-    if col < 0 or col >= COLS or row < 0 or row >= ROWS:
+def _solid(world, col, row):
+    if row < 0 or row >= ROWS:
         return True
-    return grid[row][col] != TILE_AIR
+    return world.get(col, row) != TILE_AIR
 
 
-def _move_x(player, grid, dx):
+def _move_x(player, world, dx):
     """Déplace horizontalement avec collision par colonnes."""
     player.x += dx
     pw = PLAYER_W / TILE_SIZE
@@ -106,19 +106,19 @@ def _move_x(player, grid, dx):
 
     if dx > 0:
         for r in rows:
-            if _solid(grid, right, r):
+            if _solid(world, right, r):
                 player.x = right - pw
                 player.vx = 0
                 break
     elif dx < 0:
         for r in rows:
-            if _solid(grid, left, r):
+            if _solid(world, left, r):
                 player.x = left + 1
                 player.vx = 0
                 break
 
 
-def _move_y(player, grid, dy):
+def _move_y(player, world, dy):
     """Déplace verticalement avec collision par lignes."""
     player.y += dy
     ph = PLAYER_H / TILE_SIZE
@@ -130,14 +130,14 @@ def _move_y(player, grid, dy):
     if dy > 0:
         player.on_ground = False
         for c in cols:
-            if _solid(grid, c, bottom):
+            if _solid(world, c, bottom):
                 player.y = bottom - ph
                 player.vy = 0
                 player.on_ground = True
                 break
     elif dy < 0:
         for c in cols:
-            if _solid(grid, c, top):
+            if _solid(world, c, top):
                 player.y = top + 1
                 player.vy = 0
                 break
@@ -153,14 +153,14 @@ def _player_rows(p):
     return list(range(int(p.y), int(p.y + ph - 0.01) + 1))
 
 
-def _touching_wall(player, grid):
+def _touching_wall(player, world):
     """Vrai si le joueur touche un bloc solide directement à gauche ou à droite."""
     pw = PLAYER_W / TILE_SIZE
     left  = int(player.x) - 1
     right = int(player.x + pw - 0.01) + 1
     rows  = _player_rows(player)
     for r in rows:
-        if _solid(grid, left, r) or _solid(grid, right, r):
+        if _solid(world, left, r) or _solid(world, right, r):
             return True
     return False
 
@@ -171,6 +171,26 @@ def _in_reach(player, col, row):
     prow = player.y + PLAYER_H / TILE_SIZE / 2
     dist = ((col - pcol) ** 2 + (row - prow) ** 2) ** 0.5
     return dist <= REACH_RADIUS
+
+
+def _eject_from_blocks(player, world):
+    """
+    Si le joueur chevauche un bloc solide, l'éjecte vers le haut case par case
+    jusqu'à trouver un espace libre sur PLAYER_H tuiles.
+    Appelé au spawn et après qu'un bloc soit posé.
+    """
+    ph    = PLAYER_H / TILE_SIZE
+    pw    = PLAYER_W / TILE_SIZE
+    max_up = ROWS   # sécurité anti-boucle infinie
+    for _ in range(max_up):
+        top    = int(player.y)
+        bottom = int(player.y + ph - 0.01)
+        cols   = list(range(int(player.x), int(player.x + pw - 0.01) + 1))
+        overlap = any(_solid(world, c, r) for r in range(top, bottom + 1) for c in cols)
+        if not overlap:
+            break
+        player.y -= 1.0
+    player.vy = min(player.vy, 0.0)   # annule la vitesse vers le bas
 
 
 # ── Lecture des contrôles ─────────────────────────────────────────────────────
@@ -248,10 +268,9 @@ class Camera:
     def follow(self, target_px, target_py, dt):
         cx = target_px - self.view_w // 2
         cy = target_py - self.view_h // 2
-        # Clamp au monde
-        max_x = COLS * TILE_SIZE - self.view_w
+        # Clamp vertical uniquement (monde infini horizontalement)
         max_y = ROWS * TILE_SIZE - self.view_h
-        cx = max(0, min(cx, max_x))
+        cx = max(0, cx)
         cy = max(0, min(cy, max_y))
         # Interpolation douce
         self.x += (cx - self.x) * min(1.0, 8.0 * dt)
@@ -266,9 +285,9 @@ class Camera:
         return int(wx // TILE_SIZE), int(wy // TILE_SIZE)
 
     def visible_tile_range(self):
-        c0 = max(0, int(self.x // TILE_SIZE))
+        c0 = int(self.x // TILE_SIZE)
         r0 = max(0, int(self.y // TILE_SIZE))
-        c1 = min(COLS, c0 + self.view_w // TILE_SIZE + 2)
+        c1 = c0 + self.view_w // TILE_SIZE + 2
         r1 = min(ROWS, r0 + self.view_h // TILE_SIZE + 2)
         return c0, r0, c1, r1
 
@@ -287,29 +306,81 @@ def _get_cursor(player, dx, dy):
     return int(pcol + dx * 1.5), int(prow + dy * 1.5)
 
 
+# ── Cache de chunks ──────────────────────────────────────────────────────────
+#
+# Principe : chaque chunk est une Surface pré-rendue (CHUNK_W × CHUNK_H px).
+# Par frame : 2-3 Surface.blit() au lieu de ~600 draw.rect() Python.
+# Invalidation ponctuelle quand un joueur mine ou pose un bloc.
+
+CHUNK_COLS = 30                          # colonnes par chunk = 1 écran
+_CHUNK_W   = CHUNK_COLS * TILE_SIZE      # 480 px
+_CHUNK_H   = ROWS       * TILE_SIZE      # 960 px
+
+
+class ChunkCache:
+    def __init__(self, world):
+        self._world = world
+        self._cache = {}   # {chunk_col_index: Surface}
+
+    def _build(self, cx):
+        surf = pygame.Surface((_CHUNK_W, _CHUNK_H))
+        ts   = TILE_SIZE
+        col0 = cx * CHUNK_COLS
+        for row in range(ROWS):
+            for dc in range(CHUNK_COLS):
+                col   = col0 + dc
+                tile  = self._world.get(col, row)
+                color = TILE_COLORS[tile]
+                x = dc * ts
+                y = row * ts
+                surf.fill(color, (x, y, ts, ts))
+                if tile != TILE_AIR:
+                    pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+        self._cache[cx] = surf
+        return surf
+
+    def get(self, cx):
+        try:
+            return self._cache[cx]
+        except KeyError:
+            return self._build(cx)
+
+    def invalidate(self, col):
+        """Invalide le chunk contenant la colonne col."""
+        self._cache.pop(col // CHUNK_COLS, None)
+
+    def preload_around(self, cam_x, view_w):
+        """Pré-rend les chunks visibles + 1 d'avance de chaque côté."""
+        cx0 = int(cam_x)          // _CHUNK_W - 1
+        cx1 = (int(cam_x) + view_w) // _CHUNK_W + 1
+        for cx in range(cx0, cx1 + 1):
+            if cx not in self._cache:
+                self._build(cx)
+
+
 # ── Dessin ────────────────────────────────────────────────────────────────────
 
-def _draw_world(screen, grid, camera, break_info):
-    """Dessine uniquement les tuiles visibles (optimization clé)."""
-    c0, r0, c1, r1 = camera.visible_tile_range()
-    ts = TILE_SIZE
+def _draw_world(screen, chunks, camera, break_info):
+    """Rendu via cache de chunks : 2-3 blit() par frame."""
+    w      = screen.get_width()
+    ts     = TILE_SIZE
+    cam_x  = int(camera.x)
+    cam_y  = max(0, min(int(camera.y), _CHUNK_H - SCREEN_HEIGHT))
 
-    for row in range(r0, r1):
-        for col in range(c0, c1):
-            tile = grid[row][col]
-            color = TILE_COLORS[tile]
-            sx, sy = camera.world_to_screen(col * ts, row * ts)
-            pygame.draw.rect(screen, color, (sx, sy, ts, ts))
-            if tile != TILE_AIR:
-                # Bordure légère pour donner du relief
-                pygame.draw.rect(screen, (0, 0, 0, 50), (sx, sy, ts, ts), 1)
+    cx0 = cam_x // _CHUNK_W
+    cx1 = (cam_x + w - 1) // _CHUNK_W
 
-    # Barre de cassage
+    for cx in range(cx0, cx1 + 1):
+        surf   = chunks.get(cx)
+        dest_x = cx * _CHUNK_W - cam_x
+        screen.blit(surf, (dest_x, 0), (0, cam_y, _CHUNK_W, SCREEN_HEIGHT))
+
+    # Barre de cassage (dessinée par-dessus, pas dans le cache)
     if break_info:
         col, row, progress = break_info
         sx, sy = camera.world_to_screen(col * ts, row * ts)
-        pygame.draw.rect(screen, (0, 0, 0), (sx, sy + ts - 3, ts, 3))
-        pygame.draw.rect(screen, BREAK_BAR_COLOR, (sx, sy + ts - 3, int(ts * progress), 3))
+        pygame.draw.rect(screen, (0, 0, 0),        (sx, sy + ts - 3, ts, 3))
+        pygame.draw.rect(screen, BREAK_BAR_COLOR,  (sx, sy + ts - 3, int(ts * progress), 3))
 
 
 # Couleurs du bonhomme
@@ -402,37 +473,39 @@ def run(screen, joysticks, world_id, seed):
     font_sm   = pygame.font.SysFont("Arial", 9)
     font_med  = pygame.font.SysFont("Arial", 11, bold=True)
 
-    grid, surface, world_seed = generate(seed)
+    world      = generate(seed)
+    world_seed = world.seed
+    world.mods.update(_db.load_blocks(world_id))
 
-    # ── Appliquer les modifications sauvegardées ────────────────────────
-    saved_blocks = _db.load_blocks(world_id)
-    for (col, row), tile in saved_blocks.items():
-        if 0 <= row < ROWS and 0 <= col < COLS:
-            grid[row][col] = tile
-    # Accumulateur de changements à sauvegarder en batch
+    chunks = ChunkCache(world)
 
 
     # Spawn J1 et J2 côte à côte au centre du monde
     def spawn_x(col): return col - PLAYER_W / TILE_SIZE / 2
-    def spawn_y(col): return surface[col] - PLAYER_H / TILE_SIZE - 1
+    def spawn_y(col): return world.surface_at(col) - PLAYER_H / TILE_SIZE - 1
 
-    mid = COLS // 2
+    mid = 1_000_000   # spawn loin dans les positifs : pas de limite atteignable
     p1_col = mid - 3
     p2_col = mid + 3
     players = [
         Player(spawn_x(p1_col), spawn_y(p1_col), P1_COLOR, 0),
         Player(spawn_x(p2_col), spawn_y(p2_col), P2_COLOR, 1),
     ]
+    # S'assurer qu'aucun joueur ne spawn dans un bloc (arbre, terrain irrégulier…)
+    for p in players:
+        _eject_from_blocks(p, world)
 
     # Caméra partagée – centrée sur J1 au départ
     HALF_W = SCREEN_WIDTH // 2
     shared_cam = Camera()
     spawn_mid_px = (players[0].px() + players[1].px()) // 2
     spawn_mid_py = (players[0].py() + players[1].py()) // 2
-    max_cx = COLS * TILE_SIZE - SCREEN_WIDTH
     max_cy = ROWS * TILE_SIZE - SCREEN_HEIGHT
-    shared_cam.x = max(0, min(spawn_mid_px - SCREEN_WIDTH  // 2, max_cx))
+    shared_cam.x = max(0, spawn_mid_px - SCREEN_WIDTH  // 2)
     shared_cam.y = max(0, min(spawn_mid_py - SCREEN_HEIGHT // 2, max_cy))
+
+    # Pré-charger les chunks autour du spawn (3 au minimum)
+    chunks.preload_around(shared_cam.x, SCREEN_WIDTH)
 
     # ── Split-screen ──────────────────────────────────────────────────────
     split_cams  = [Camera(view_w=HALF_W), Camera(view_w=HALF_W)]
@@ -498,7 +571,7 @@ def run(screen, joysticks, world_id, seed):
             prev_dx[i] = dx
 
             # ── Escalade de mur (appuyer haut contre n'importe quel bloc) ────
-            player.on_wall = _touching_wall(player, grid)
+            player.on_wall = _touching_wall(player, world)
             climbing = dy < 0 and player.on_wall and not player.on_ground
 
             if climbing:
@@ -514,8 +587,8 @@ def run(screen, joysticks, world_id, seed):
 
             # Collisions
             player.on_ground = False
-            _move_x(player, grid, player.vx * dt)
-            _move_y(player, grid, player.vy * dt)
+            _move_x(player, world, player.vx * dt)
+            _move_y(player, world, player.vy * dt)
 
             if player._action_cd > 0:
                 player._action_cd -= dt
@@ -523,12 +596,11 @@ def run(screen, joysticks, world_id, seed):
             # Curseur cible
             cdx, cdy = p_dirs[i]
             cur_col, cur_row = _get_cursor(player, cdx, cdy)
-            cur_col = max(0, min(COLS - 1, cur_col))
             cur_row = max(0, min(ROWS - 1, cur_row))
             in_reach = _in_reach(player, cur_col, cur_row)
 
             if in_reach and player._action_cd <= 0:
-                tile_at = grid[cur_row][cur_col]
+                tile_at = world.get(cur_col, cur_row)
 
                 if cur_mod and cur_mine and not prev_mine[i]:
                     # ─ MODIFIER + MINE (edge) = POSER un bloc ────────────
@@ -541,7 +613,11 @@ def run(screen, joysticks, world_id, seed):
                                 for p in players
                             )
                             if not occupied:
-                                grid[cur_row][cur_col] = selected
+                                world.set(cur_col, cur_row, selected)
+                                chunks.invalidate(cur_col)
+                                # Éjecter un joueur si le bloc a été posé sur lui
+                                for p in players:
+                                    _eject_from_blocks(p, world)
                                 player.inventory.consume()
                                 player._action_cd = 0.2
                                 _db.save_block(world_id, cur_col, cur_row, selected)
@@ -555,7 +631,8 @@ def run(screen, joysticks, world_id, seed):
                         break_infos[i] = (cur_col, cur_row, progress)
                         if player._break_time >= req_time:
                             player.inventory.add(tile_at)
-                            grid[cur_row][cur_col] = TILE_AIR
+                            world.set(cur_col, cur_row, TILE_AIR)
+                            chunks.invalidate(cur_col)
                             break_infos[i] = None
                             player._break_time = 0.0
                             player._action_cd = 0.1
@@ -579,14 +656,14 @@ def run(screen, joysticks, world_id, seed):
             is_split = True
             # Snap immédiat sur chaque joueur pour éviter un saut visuel
             for i, cam in enumerate(split_cams):
-                cam.x = max(0, min(players[i].px() - HALF_W       // 2, COLS * TILE_SIZE - HALF_W))
+                cam.x = max(0, players[i].px() - HALF_W       // 2)
                 cam.y = max(0, min(players[i].py() - SCREEN_HEIGHT // 2, ROWS * TILE_SIZE - SCREEN_HEIGHT))
         elif is_split and player_dist <= UNSPLIT_DIST:
             is_split = False
             # Snap shared_cam sur le milieu actuel
             mx = (players[0].px() + players[1].px()) // 2
             my = (players[0].py() + players[1].py()) // 2
-            shared_cam.x = max(0, min(mx - SCREEN_WIDTH  // 2, COLS * TILE_SIZE - SCREEN_WIDTH))
+            shared_cam.x = max(0, mx - SCREEN_WIDTH  // 2)
             shared_cam.y = max(0, min(my - SCREEN_HEIGHT // 2, ROWS * TILE_SIZE - SCREEN_HEIGHT))
 
         if is_split:
@@ -607,13 +684,13 @@ def run(screen, joysticks, world_id, seed):
 
             for i, (surf, cam) in enumerate(zip(split_surfs, split_cams)):
                 surf.fill(BG_SKY)
-                _draw_world(surf, grid, cam, break_infos[i])
+                chunks.preload_around(cam.x, HALF_W)
+                _draw_world(surf, chunks, cam, break_infos[i])
 
                 # Curseurs des deux joueurs dans chaque vue
                 for j, player in enumerate(players):
                     cdx, cdy = p_dirs[j]
                     cur_col, cur_row = _get_cursor(player, cdx, cdy)
-                    cur_col = max(0, min(COLS - 1, cur_col))
                     cur_row = max(0, min(ROWS - 1, cur_row))
                     if _in_reach(player, cur_col, cur_row):
                         _draw_cursor(surf, player, cur_col, cur_row, cam)
@@ -637,12 +714,12 @@ def run(screen, joysticks, world_id, seed):
             split_surfs[1].blit(seed_lbl, (HALF_W - seed_lbl.get_width() - 4, SCREEN_HEIGHT - seed_lbl.get_height() - 2))
 
         else:
-            _draw_world(screen, grid, shared_cam, break_infos[0] or break_infos[1])
+            chunks.preload_around(shared_cam.x, SCREEN_WIDTH)
+            _draw_world(screen, chunks, shared_cam, break_infos[0] or break_infos[1])
 
             for i, player in enumerate(players):
                 cdx, cdy = p_dirs[i]
                 cur_col, cur_row = _get_cursor(player, cdx, cdy)
-                cur_col = max(0, min(COLS - 1, cur_col))
                 cur_row = max(0, min(ROWS - 1, cur_row))
                 if _in_reach(player, cur_col, cur_row):
                     _draw_cursor(screen, player, cur_col, cur_row, shared_cam)

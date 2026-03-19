@@ -5,6 +5,7 @@ Retourne 0 si J1 gagne, 1 si J2 gagne, None si on quitte.
 import pygame
 import math
 import random
+import collections
 
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS,
@@ -85,6 +86,7 @@ def run(screen, joysticks):
     quit       = QuitCombo()
 
     ball_x, ball_y, ball_vx, ball_vy = _reset_ball(random.randint(0, 1))
+    trail = collections.deque(maxlen=14)
 
     PAUSE_DUR  = 0.85   # secondes de pause après un point
     pause_t    = 0.0
@@ -167,6 +169,7 @@ def run(screen, joysticks):
                 if scores[1] >= WIN_SCORE:
                     return 1
                 ball_x, ball_y, ball_vx, ball_vy = _reset_ball(0)
+                trail.clear()
                 pause_t = PAUSE_DUR
 
             elif ball_x > SCREEN_WIDTH:
@@ -175,7 +178,11 @@ def run(screen, joysticks):
                 if scores[0] >= WIN_SCORE:
                     return 0
                 ball_x, ball_y, ball_vx, ball_vy = _reset_ball(1)
+                trail.clear()
                 pause_t = PAUSE_DUR
+
+            else:
+                trail.appendleft((int(ball_x), int(ball_y)))
 
         # ── Dessin ────────────────────────────────────────────────────────────
         screen.fill(BG_COLOR)
@@ -191,6 +198,15 @@ def run(screen, joysticks):
         pygame.draw.rect(screen, PADDLE_J2,
                          (PADDLE_X_J2, int(paddle_y[1]), PADDLE_W, PADDLE_H),
                          border_radius=3)
+
+        # Traînée phosphorée
+        n = len(trail)
+        if n:
+            for i, (ttx, tty) in enumerate(trail):
+                f = 1.0 - i / n
+                r = max(1, int((BALL_SIZE // 2) * f))
+                lv = int(8 + 232 * f * f)
+                pygame.draw.circle(screen, (lv, lv, lv), (ttx, tty), r)
 
         # Balle (clignote pendant la pause)
         if pause_t <= 0 or int(pause_t * 8) % 2 == 0:

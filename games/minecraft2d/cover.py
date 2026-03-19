@@ -46,7 +46,7 @@ GAMES = [
     {
         "title": "Minecraft 2D",
         "description": "Construction & exploration 2 joueurs – Mine, pose des blocs !",
-        "image": str(BASE_DIR / "games" / "minecraft2d" / "cover.png"),
+        "image": None,
         "path": str(BASE_DIR / "games" / "minecraft2d"),
         "entry": "main",
     },

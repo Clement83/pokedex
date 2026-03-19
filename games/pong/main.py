@@ -5,6 +5,7 @@ Boucle : splash → partie → résultat → boucle.
 import sys
 import os
 import math
+import collections
 
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -41,56 +42,150 @@ def main():
 
 
 def _show_splash(screen: pygame.Surface, joysticks):
-    font_xl = pygame.font.SysFont("Arial", 52, bold=True)
-    font_md = pygame.font.SysFont("Arial", 14, bold=True)
-    font_sm = pygame.font.SysFont("Arial", 11)
-    clock   = pygame.time.Clock()
+    """Écran titre Pong : simulation de partie en direct, style arcade rétro."""
+    font_title = pygame.font.SysFont("Courier New", 60, bold=True)
+    font_score = pygame.font.SysFont("Courier New", 36, bold=True)
+    font_sm    = pygame.font.SysFont("Courier New", 11)
+    clock      = pygame.time.Clock()
 
-    anim = 0.0
+    BORDER  = 14
+    PAD_W   = 10
+    PAD_H   = 60
+    PAD_L_X = 26
+    PAD_R_X = SCREEN_WIDTH - 26 - PAD_W
+
+    bx, by   = float(SCREEN_WIDTH // 2), float(SCREEN_HEIGHT // 2)
+    bvx, bvy = 220.0, 155.0
+    py1, py2 = float(SCREEN_HEIGHT // 2), float(SCREEN_HEIGHT // 2)
+    sl, sr   = 0, 0
+    trail    = collections.deque(maxlen=14)
+    anim     = 0.0
+
+    # Overlay scanlines CRT (créé une seule fois)
+    scan_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    for sy in range(0, SCREEN_HEIGHT, 3):
+        pygame.draw.line(scan_surf, (0, 0, 0, 28), (0, sy), (SCREEN_WIDTH, sy))
+
     while True:
-        dt     = clock.tick(60) / 1000.0
-        anim  += dt
-        events = pygame.event.get()
-        for e in events:
+        dt   = clock.tick(FPS) / 1000.0
+        anim += dt
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
             if e.type in (pygame.KEYDOWN, pygame.JOYBUTTONDOWN):
                 return
 
+        # ── Physique ─────────────────────────────────────────────────────
+        bx += bvx * dt
+        by += bvy * dt
+        trail.appendleft((int(bx), int(by)))
+
+        # Murs haut/bas
+        if by < BORDER + 5:
+            by = BORDER + 5;   bvy = abs(bvy)
+        if by > SCREEN_HEIGHT - BORDER - 5:
+            by = SCREEN_HEIGHT - BORDER - 5;   bvy = -abs(bvy)
+
+        # IA raquettes
+        ai_spd = 200 * dt
+        if   by < py1 - 4: py1 -= ai_spd
+        elif by > py1 + 4: py1 += ai_spd
+        if   by < py2 - 4: py2 -= ai_spd
+        elif by > py2 + 4: py2 += ai_spd
+        lo = BORDER + PAD_H // 2
+        hi = SCREEN_HEIGHT - BORDER - PAD_H // 2
+        py1 = max(lo, min(hi, py1))
+        py2 = max(lo, min(hi, py2))
+
+        # Rebond raquette gauche
+        if (bvx < 0 and PAD_L_X < bx < PAD_L_X + PAD_W + 6
+                and abs(by - py1) < PAD_H // 2):
+            bx   = PAD_L_X + PAD_W + 6
+            bvx  = abs(bvx) * 1.03
+            bvy += (by - py1) * 0.8
+
+        # Rebond raquette droite
+        if (bvx > 0 and PAD_R_X - 6 < bx < PAD_R_X + PAD_W
+                and abs(by - py2) < PAD_H // 2):
+            bx   = PAD_R_X - 6
+            bvx  = -abs(bvx) * 1.03
+            bvy += (by - py2) * 0.8
+
+        # Vitesse max
+        spd = math.hypot(bvx, bvy)
+        if spd > 400:
+            bvx *= 400 / spd
+            bvy *= 400 / spd
+        bvy = max(-260.0, min(260.0, bvy))
+
+        # Point marqué
+        if bx < -10:
+            sr += 1
+            bx, by   = float(SCREEN_WIDTH // 2), float(SCREEN_HEIGHT // 2)
+            bvx, bvy = 210.0, 140.0 * (1 if sr % 2 == 0 else -1)
+            trail.clear()
+        if bx > SCREEN_WIDTH + 10:
+            sl += 1
+            bx, by   = float(SCREEN_WIDTH // 2), float(SCREEN_HEIGHT // 2)
+            bvx, bvy = -210.0, 140.0 * (1 if sl % 2 == 0 else -1)
+            trail.clear()
+
+        # ── Rendu ─────────────────────────────────────────────────────
         screen.fill(BG_COLOR)
 
-        # Filet décoratif
-        for ny in range(0, SCREEN_HEIGHT, 16):
-            pygame.draw.rect(screen, (20, 20, 40),
-                             (SCREEN_WIDTH // 2 - 2, ny, 4, 8))
+        # Murs haut et bas
+        pygame.draw.rect(screen, TEXT_COLOR, (0, 0, SCREEN_WIDTH, BORDER))
+        pygame.draw.rect(screen, TEXT_COLOR, (0, SCREEN_HEIGHT - BORDER, SCREEN_WIDTH, BORDER))
 
-        # Raquettes décoratives animées
-        offset_j1 = 20 + int(15 * math.sin(anim * 1.8))
-        offset_j2 = 20 + int(15 * math.sin(anim * 1.8 + math.pi))
+        # Filet central
+        for ny in range(BORDER, SCREEN_HEIGHT - BORDER, 18):
+            pygame.draw.rect(screen, (32, 32, 58), (SCREEN_WIDTH // 2 - 2, ny, 4, 10))
+
+        # Score
+        s_l = font_score.render(str(sl), True, PADDLE_J1)
+        s_r = font_score.render(str(sr), True, PADDLE_J2)
+        screen.blit(s_l, (SCREEN_WIDTH // 4     - s_l.get_width() // 2, BORDER + 4))
+        screen.blit(s_r, (3 * SCREEN_WIDTH // 4 - s_r.get_width() // 2, BORDER + 4))
+
+        # Traînée balle (dégradé blanc → fond)
+        n = len(trail)
+        for i, (ttx, tty) in enumerate(trail):
+            f = 1.0 - i / n
+            r = max(1, int(5 * f))
+            lv = int(8 + 232 * f * f)
+            pygame.draw.circle(screen, (lv, lv, lv), (ttx, tty), r)
+
+        # Raquettes
         pygame.draw.rect(screen, PADDLE_J1,
-                         (24, SCREEN_HEIGHT // 2 - 30 + offset_j1, 10, 60),
-                         border_radius=3)
+                         (PAD_L_X, int(py1) - PAD_H // 2, PAD_W, PAD_H), border_radius=3)
         pygame.draw.rect(screen, PADDLE_J2,
-                         (SCREEN_WIDTH - 34, SCREEN_HEIGHT // 2 - 30 + offset_j2, 10, 60),
-                         border_radius=3)
+                         (PAD_R_X, int(py2) - PAD_H // 2, PAD_W, PAD_H), border_radius=3)
 
-        # Balle qui rebondit
-        bx = SCREEN_WIDTH  // 2 + int((SCREEN_WIDTH  // 2 - 40) * math.sin(anim * 2.5))
-        by = SCREEN_HEIGHT // 2 + int((SCREEN_HEIGHT // 2 - 20) * math.sin(anim * 3.1))
-        pygame.draw.circle(screen, (240, 240, 240), (bx, by), 5)
+        # Balle
+        pygame.draw.circle(screen, (240, 240, 240), (int(bx), int(by)), 5)
+
+        # Scanlines CRT
+        screen.blit(scan_surf, (0, 0))
 
         # Titre
-        pulse = 1.0 + 0.04 * math.sin(anim * 3)
-        title = font_xl.render("PONG", True, TEXT_COLOR)
-        ts = pygame.transform.scale(
-            title,
-            (int(title.get_width() * pulse), int(title.get_height() * pulse)),
-        )
-        screen.blit(ts, (SCREEN_WIDTH // 2 - ts.get_width() // 2, 50))
+        pulse   = 1.0 + 0.025 * math.sin(anim * 3)
+        raw     = font_title.render("PONG", True, TEXT_COLOR)
+        scaled  = pygame.transform.scale(
+            raw, (int(raw.get_width() * pulse), int(raw.get_height() * pulse)))
+        titx = SCREEN_WIDTH  // 2 - scaled.get_width()  // 2
+        tity = SCREEN_HEIGHT // 2 - scaled.get_height() // 2
+        panel = pygame.Surface((scaled.get_width() + 20,
+                                 scaled.get_height() + 10), pygame.SRCALPHA)
+        panel.fill((0, 0, 0, 155))
+        screen.blit(panel,  (titx - 10, tity - 5))
+        screen.blit(scaled, (titx,      tity))
 
-        sub = font_md.render("2 Joueurs", True, (140, 140, 180))
-        screen.blit(sub, (SCREEN_WIDTH // 2 - sub.get_width() // 2, 120))
-
+        # Clignotant
         if int(anim * 2) % 2 == 0:
-            msg = font_sm.render("Appuie sur un bouton pour commencer", True, (100, 100, 140))
-            screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, 240))
+            msg = font_sm.render("Appuie sur un bouton pour commencer", True, (100, 100, 145))
+            screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2,
+                               SCREEN_HEIGHT - BORDER - 18))
 
         pygame.display.flip()

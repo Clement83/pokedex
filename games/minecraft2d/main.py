@@ -196,8 +196,6 @@ def main():
 
     _db.init()
 
-    _show_splash(screen, joysticks)
-
     result = scene_select.run(screen, joysticks)
     if result is not None:
         slot_id, seed = result

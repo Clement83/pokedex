@@ -20,8 +20,10 @@ from config import (
     J1_BTN_MINE, J1_BTN_MODIFIER, KB_J1_MINE, KB_J1_MODIFIER,
     KB_J1_UP, KB_J1_DOWN, KB_J1_LEFT, KB_J1_RIGHT,
     AXIS_DEAD, BTN_A, BTN_B, BTN_X, BTN_Y,
+    TILE_COLORS, TILE_AIR, TILE_GRASS, COLS, ROWS,
 )
 import db
+import world as _world_mod
 from quit_combo import QuitCombo
 
 # ── Palettes ─────────────────────────────────────────────────────────────────
@@ -38,9 +40,55 @@ _SLOT_HOV  = ( 70,  60,  15)
 _RED       = (200,  50,  50)
 
 MAX_SLOTS  = 4
-SLOT_W     = 200
-SLOT_H     = 60
-SLOT_GAP   = 10
+SLOT_W     = 180
+SLOT_H     = 48
+SLOT_GAP   = 8
+
+# ── Fond monde scrollant ─────────────────────────────────────────────────────
+_BG_SEED  = 0x2B5A91FC   # seed décoratif fixe
+_BG_SPEED = 20.0          # px / s de défilement horizontal
+_TS       = 16            # taille d'une tuile (= TILE_SIZE)
+_ROW_OFF  = 10            # première rangée du monde affichée (rel. bord sup)
+
+
+def _build_world_bg():
+    """
+    Génère un monde décoratif et le pré-rend dans un Surface (COLS*TS) × SCREEN_HEIGHT.
+    Les arbres sont inclus via world.get() — pas de code séparé nécessaire.
+    Appelé une seule fois au démarrage : zéro coût par frame.
+    """
+    world = _world_mod.World(_BG_SEED)
+
+    ROW_N = SCREEN_HEIGHT // _TS   # 20 rangées visibles
+    W     = COLS * _TS             # 1920 px
+    surf  = pygame.Surface((W, SCREEN_HEIGHT))
+
+    # Dégradé ciel (une seule fois)
+    _SKY_TOP = ( 88, 145, 210)
+    _SKY_BOT = ( 38,  78, 138)
+    for y in range(SCREEN_HEIGHT):
+        ratio = y / SCREEN_HEIGHT
+        r = int(_SKY_TOP[0] + (_SKY_BOT[0] - _SKY_TOP[0]) * ratio)
+        g = int(_SKY_TOP[1] + (_SKY_BOT[1] - _SKY_TOP[1]) * ratio)
+        b = int(_SKY_TOP[2] + (_SKY_BOT[2] - _SKY_TOP[2]) * ratio)
+        pygame.draw.line(surf, (r, g, b), (0, y), (W, y))
+
+    # Tuiles + arbres via génération procédurale
+    for col in range(COLS):
+        for rel in range(ROW_N):
+            row  = _ROW_OFF + rel
+            if row >= ROWS:
+                break
+            tile = world.get(col, row)
+            if tile == TILE_AIR:
+                continue
+            color = TILE_COLORS[tile]
+            x = col * _TS
+            y = rel * _TS
+            pygame.draw.rect(surf, color,     (x, y, _TS, _TS))
+            pygame.draw.rect(surf, (0, 0, 0), (x, y, _TS, _TS), 1)
+
+    return surf, W
 
 
 def _joy_btn(joy, btn):
@@ -120,8 +168,15 @@ def run(screen, joysticks):
     prev_mod    = False
     start_t     = pygame.time.get_ticks()
 
+    # Fond monde : pré-rendu unique
+    bg_surf, bg_w = _build_world_bg()
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 115))
+    bg_x = 0.0
+
     while True:
-        clock.tick(FPS)
+        dt   = clock.tick(FPS) / 1000.0
+        bg_x = (bg_x + _BG_SPEED * dt) % bg_w
         events = pygame.event.get()
         keys   = pygame.key.get_pressed()
 
@@ -186,12 +241,12 @@ def run(screen, joysticks):
         # ── Rendu ─────────────────────────────────────────────────────────
         t = (pygame.time.get_ticks() - start_t) / 1000.0
 
-        # Fond dégradé ciel
-        for y in range(SCREEN_HEIGHT):
-            r = min(255, int(_MC_SKY[0] + _MC_SKY[0] * 0.3 * y / SCREEN_HEIGHT))
-            g = min(255, int(_MC_SKY[1] + _MC_SKY[1] * 0.1 * y / SCREEN_HEIGHT))
-            b = max(0,   int(_MC_SKY[2] - _MC_SKY[2] * 0.3 * y / SCREEN_HEIGHT))
-            pygame.draw.line(screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+        # Fond monde scrollant (juste 1 ou 2 blits par frame)
+        ix = int(bg_x)
+        screen.blit(bg_surf, (-ix, 0))
+        if ix + SCREEN_WIDTH > bg_w:
+            screen.blit(bg_surf, (bg_w - ix, 0))
+        screen.blit(overlay, (0, 0))
 
         # Titre
         wiggle = int(math.sin(t * 2.5) * 1)
