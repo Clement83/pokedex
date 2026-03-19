@@ -2,7 +2,6 @@ import pygame
 import sys
 import os
 import subprocess
-import importlib
 from pathlib import Path
 from logger import log
 
@@ -54,58 +53,30 @@ GAMES = [
 
 
 def launch_game(game):
-    """Lance un jeu : chdir dans son dossier, importe son main et l'exécute."""
+    """Lance un jeu dans un sous-processus séparé et attend sa fin."""
     game_path = Path(game["path"])
     entry = game.get("entry", "main")
-    log(f"[Launcher] Lancement de '{game.get('title')}' ({game_path})")  
+    log(f"[Launcher] Lancement de '{game.get('title')}' ({game_path})")
 
     if not (game_path / f"{entry}.py").exists():
         log(f"[Launcher] ERREUR : {game_path}/{entry}.py introuvable", "error")
         return
 
-    original_cwd = Path.cwd()
-    original_syspath = sys.path.copy()
-    original_modules = set(sys.modules.keys())
+    # Quitter pygame proprement avant de laisser la main au jeu
+    pygame.event.clear()
+    pygame.quit()
+    log(f"[Launcher] pygame.quit() OK")
 
     try:
-        os.chdir(game_path)
-        sys.path.insert(0, str(game_path))
-        log(f"[Launcher] chdir OK, sys.path mis à jour")
-
-        # Vider la queue d'événements AVANT de quitter pygame
-        pygame.event.clear()
-        pygame.quit()
-        log(f"[Launcher] pygame.quit() OK")
-
-        log(f"[Launcher] importlib.import_module('{entry}') start")
-        try:
-            mod = importlib.import_module(entry)
-        except Exception as e:
-            import traceback
-            log(f"[Launcher] IMPORT CRASH '{game.get('title')}' : {e}", "error")
-            log(traceback.format_exc(), "error")
-            return
-
-        log(f"[Launcher] import OK, appel mod.main()")
-        try:
-            mod.main()
-            log(f"[Launcher] mod.main() retour normal")
-        except SystemExit:
-            log(f"[Launcher] mod.main() sys.exit() intercepté", "warning")
-        except Exception as e:
-            import traceback
-            log(f"[Launcher] CRASH '{game.get('title')}' : {e}", "error")
-            log(traceback.format_exc(), "error")
-
-    finally:
-        log(f"[Launcher] finally : nettoyage modules pour '{game.get('title')}'")
-        # Nettoyer les modules chargés par le jeu
-        for key in list(sys.modules.keys()):
-            if key not in original_modules:
-                del sys.modules[key]
-        sys.path[:] = original_syspath
-        os.chdir(original_cwd)
-        log(f"[Launcher] finally : nettoyage terminé")
+        result = subprocess.run(
+            [sys.executable, f"{entry}.py"],
+            cwd=str(game_path),
+        )
+        log(f"[Launcher] jeu terminé (code {result.returncode})")
+    except Exception as e:
+        import traceback
+        log(f"[Launcher] CRASH subprocess '{game.get('title')}' : {e}", "error")
+        log(traceback.format_exc(), "error")
 
 
 def main():
