@@ -113,10 +113,10 @@ def _get_p1_dir(keys, joystick):
 
 def _get_p2_dir(keys, p2_btns):
     """Direction (dx, dy) de J2 via boutons ABXY ou OKLM."""
-    if BTN_X in p2_btns: return  1,  0   # X = droite
+    if BTN_A in p2_btns: return  1,  0   # A = droite
     if BTN_B in p2_btns: return  0,  1   # B = bas
     if BTN_Y in p2_btns: return -1,  0   # Y = gauche
-    if BTN_A in p2_btns: return  0, -1   # A = haut
+    if BTN_X in p2_btns: return  0, -1   # X = haut
     if keys[pygame.K_o]:  return  0, -1
     if keys[pygame.K_l]:  return  0,  1
     if keys[pygame.K_k]:  return -1,  0
