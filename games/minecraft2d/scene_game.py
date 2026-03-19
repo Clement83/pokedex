@@ -568,10 +568,10 @@ def run(screen, joysticks, world_id, seed):
     # Une seule manette : J1 = joystick/hat, J2 = boutons YXBA sur la même manette
     joy2 = joy1
 
-    # Mapping joueur → (joystick, btn_mine, btn_mod, get_dir_fn, kb_mine, kb_mod)
+    # Mapping joueur → (joystick, btn_mine, btn_mine2, btn_mod, get_dir_fn, kb_mine, kb_mod)
     player_controls = [
-        (joy1, J1_BTN_MINE, J1_BTN_MODIFIER, _get_dir_p1, KB_J1_MINE, KB_J1_MODIFIER),
-        (joy2, J2_BTN_MINE, J2_BTN_MODIFIER, _get_dir_p2, KB_J2_MINE, KB_J2_MODIFIER),
+        (joy1, J1_BTN_MINE, -1,            J1_BTN_MODIFIER, _get_dir_p1, KB_J1_MINE, KB_J1_MODIFIER),
+        (joy2, J2_BTN_MINE, J2_BTN_MINE2,  J2_BTN_MODIFIER, _get_dir_p2, KB_J2_MINE, KB_J2_MODIFIER),
     ]
 
     # État inter-frames
@@ -601,10 +601,10 @@ def run(screen, joysticks, world_id, seed):
 
         # ── Mise à jour physique et contrôles ─────────────────────────────
         for i, player in enumerate(players):
-            joy, btn_mine, btn_mod, get_dir, kb_mine, kb_mod = player_controls[i]
+            joy, btn_mine, btn_mine2, btn_mod, get_dir, kb_mine, kb_mod = player_controls[i]
 
             dx, dy = get_dir(keys, joy)
-            cur_mine = _joy_btn(joy, btn_mine) or bool(keys[kb_mine])
+            cur_mine = _joy_btn(joy, btn_mine) or _joy_btn(joy, btn_mine2) or bool(keys[kb_mine])
             cur_mod  = _joy_btn(joy, btn_mod)  or bool(keys[kb_mod])
 
             # ── Mode MODIFIER : tenu + dirs = slot, tenu + MINE = poser ───

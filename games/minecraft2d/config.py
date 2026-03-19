@@ -115,6 +115,7 @@ BTN_B = 1   # J2 : droite
 BTN_X = 2   # J2 : haut / saut
 BTN_Y = 3   # J2 : gauche
 J2_BTN_MINE     =  4   # R2 (gâchette)
+J2_BTN_MINE2    =  5   # R  (gâchette alt)
 J2_BTN_MODIFIER = 17   # VI (START)
 J2_BTN_FREE     = -1   # non utilisé
 
