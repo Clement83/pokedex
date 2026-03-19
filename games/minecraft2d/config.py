@@ -99,18 +99,24 @@ BREAK_BAR_COLOR = (255, 200,  50)
 AXIS_DEAD = 0.4
 
 # J1 – joystick 0 (côté gauche OGA)
-J1_BTN_MINE     =  8   # L2
-J1_BTN_MODIFIER = 12   # SELECT
-J1_BTN_FREE     =  9   # R2  (libre)
+J1_BTN_MINE     =  6   # L2 (gâchette)
+J1_BTN_MODIFIER =  7   # R2 (gâchette)
+J1_BTN_FREE     = -1   # non utilisé
+
+# Boutons D-pad J1 (Odroid GO Advance)
+J1_BTN_UP    =  8
+J1_BTN_DOWN  =  9
+J1_BTN_LEFT  = 10
+J1_BTN_RIGHT = 11
 
 # J2 – joystick 1 (côté droit OGA)
 BTN_A = 0   # J2 : bas
 BTN_B = 1   # J2 : droite
 BTN_X = 2   # J2 : haut / saut
 BTN_Y = 3   # J2 : gauche
-J2_BTN_MINE     = 13   # L1 ou R1
-J2_BTN_MODIFIER = 17   # START
-J2_BTN_FREE     = 16   # libre
+J2_BTN_MINE     =  4   # L1 (gâchette)
+J2_BTN_MODIFIER =  5   # R1 (gâchette)
+J2_BTN_FREE     = -1   # non utilisé
 
 # Clavier – J1 : WASD + E (mine) + R (modifier)
 KB_J1_UP       = pygame.K_w
