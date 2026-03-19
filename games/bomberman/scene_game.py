@@ -85,9 +85,20 @@ class Bonus:
 # ── Helpers de contrôle ───────────────────────────────────────────────────────
 
 def _get_p1_dir(keys, joystick):
-    """Direction (dx, dy) de J1 via D-pad/hat ou ZQSD."""
+    """Direction (dx, dy) de J1 via joystick axes, D-pad/hat ou ZQSD."""
     if joystick:
         try:
+            # Joystick analogique gauche (axes 0/1)
+            ax = joystick.get_axis(0)
+            ay = joystick.get_axis(1)
+            if ax < -AXIS_DEAD: return -1,  0
+            if ax >  AXIS_DEAD: return  1,  0
+            if ay < -AXIS_DEAD: return  0, -1
+            if ay >  AXIS_DEAD: return  0,  1
+        except Exception:
+            pass
+        try:
+            # Croix directionnelle (hat)
             hx, hy = joystick.get_hat(0)
             if hx != 0 or hy != 0:
                 return hx, -hy   # hat y+1 = haut → row-1
@@ -102,10 +113,10 @@ def _get_p1_dir(keys, joystick):
 
 def _get_p2_dir(keys, p2_btns):
     """Direction (dx, dy) de J2 via boutons ABXY ou OKLM."""
-    if BTN_X in p2_btns: return  0, -1   # X = haut
+    if BTN_X in p2_btns: return  1,  0   # X = droite
     if BTN_B in p2_btns: return  0,  1   # B = bas
     if BTN_Y in p2_btns: return -1,  0   # Y = gauche
-    if BTN_A in p2_btns: return  1,  0   # A = droite
+    if BTN_A in p2_btns: return  0, -1   # A = haut
     if keys[pygame.K_o]:  return  0, -1
     if keys[pygame.K_l]:  return  0,  1
     if keys[pygame.K_k]:  return -1,  0

@@ -121,10 +121,11 @@ class Launcher:
                 return -1  # quitter le launcher
 
         if event.type == pygame.JOYHATMOTION:
-            x, _ = event.value
-            if x == -1:
+            x, y = event.value
+            # Gauche ou haut → jeu précédent ; droite ou bas → jeu suivant
+            if x == -1 or y == 1:
                 self.selected = (self.selected - 1) % len(self.games)
-            elif x == 1:
+            elif x == 1 or y == -1:
                 self.selected = (self.selected + 1) % len(self.games)
 
         if event.type == pygame.JOYAXISMOTION:
