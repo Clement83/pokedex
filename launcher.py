@@ -145,7 +145,7 @@ class Launcher:
                     return self.selected
             elif event.button in (10, 8, 7):  # LEFT / UP / L → jeu précédent
                 self.selected = (self.selected - 1) % len(self.games)
-            elif event.button in (11, 9, 5):  # RIGHT / DOWN / R → jeu suivant
+            elif event.button in (11, 9, 5, 6):  # RIGHT / DOWN / R / L1 → jeu suivant
                 self.selected = (self.selected + 1) % len(self.games)
 
         return None

@@ -35,10 +35,10 @@ Y (3)         A (1)
 
 | Index | Physique | Rôle typique |
 |---|---|---|
-| `4`  | R2 (gâchette avant droite) | Action |
-| `5`  | R  (gâchette épaule droite) | Action |
-| `6`  | L2 (gâchette avant gauche)  | Action |
-| `7`  | L  (gâchette épaule gauche)  | Action |
+| `4`  | **R1** | Action |
+| `5`  | **R**  | Action |
+| `6`  | **L1** (? à confirmer) | Action |
+| `7`  | **L**  (? à confirmer) | Action |
 
 ### D-pad
 
@@ -122,10 +122,10 @@ BTN_X = 2   # physique X → haut
 BTN_Y = 3   # physique Y → gauche
 
 # Gâchettes
-BTN_R2 = 4
-BTN_R  = 5
-BTN_L2 = 6
-BTN_L  = 7
+BTN_R1 = 4  # R1
+BTN_R  = 5  # R
+BTN_L1 = 6  # L1 (? à confirmer)
+BTN_L  = 7  # L  (? à confirmer)
 
 # D-pad – J1
 BTN_UP    =  8
