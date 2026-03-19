@@ -8,6 +8,7 @@ import random
 from config import (
     ROWS,
     TILE_AIR, TILE_DIRT, TILE_STONE, TILE_GRASS, TILE_SAND, TILE_WOOD, TILE_COAL,
+    TILE_BRICK, TILE_CHEST, TILE_OBSIDIAN, TILE_GLASS,
     SURFACE_Y, TERRAIN_AMPLITUDE, TERRAIN_FREQ, STONE_DEPTH,
 )
 
@@ -54,6 +55,174 @@ def _smooth2(col, row, freq, seed):
 
 # ── Classe Monde infini ───────────────────────────────────────────────────────
 
+
+# ── Structures procédurales ───────────────────────────────────────────────────
+#
+# Une structure est définie comme un dict {(dc, dr): tile} dont l'ancre (0,0)
+# est le coin supérieur-gauche.  Les coordonnées négatives sont à gauche / au-dessus.
+# Les structures aériennes sont ancrées sur la rangée de surface ;
+# les souterraines sont ancrées à surface + offset profondeur.
+
+def _build_castle(col, seed):
+    """Château médiéval ~11×9 blocs. Ancre = coin bas-gauche de la base."""
+    # Tour gauche (3 large × 9 haut), corps central (5 large × 6 haut), tour droite
+    blocks = {}
+    W = 11   # largeur totale
+
+    # Remplissage intérieur air (nettoie le terrain pour dégager l'espace)
+    for dc in range(1, W - 1):
+        for dr in range(-8, 0):
+            blocks[(dc, dr)] = TILE_AIR
+
+    # Murs extérieurs
+    for dr in range(-8, 1):
+        blocks[(0, dr)]      = TILE_BRICK
+        blocks[(W - 1, dr)]  = TILE_BRICK
+    for dc in range(W):
+        blocks[(dc, 0)]  = TILE_BRICK  # base
+        blocks[(dc, -8)] = TILE_BRICK  # toit
+
+    # Mur central gauche / droite (divise tours du corps)
+    for dr in range(-5, 0):
+        blocks[(2, dr)]      = TILE_BRICK
+        blocks[(W - 3, dr)]  = TILE_BRICK
+
+    # Portes (vides au sol)
+    for dc in (4, 5, 6):
+        blocks[(dc, 0)]  = TILE_AIR
+        blocks[(dc, -1)] = TILE_AIR
+
+    # Fenêtres dans le corps central
+    blocks[(4, -4)] = TILE_GLASS
+    blocks[(6, -4)] = TILE_GLASS
+
+    # Créneaux du toit (alternés)
+    for dc in range(0, W, 2):
+        blocks[(dc, -9)] = TILE_BRICK
+
+    # Coffre dans la tour droite (accès par la porte + couloir)
+    blocks[(W - 2, -1)] = TILE_CHEST
+
+    return blocks
+
+
+def _build_pirate_ship(col, seed):
+    """Épave de navire pirate ~14×8. Ancre = plancher de cale (sous-sol du bateau)."""
+    blocks = {}
+    # Coque en bois – forme ellipsoïde grossière
+    hull = [
+        # (dc, dr, tile)
+        # Fond de cale (-3 à -1)
+        *[(dc, dr, TILE_WOOD) for dc in range(1, 13) for dr in (-1, 0)],
+        # Flancs gauche/droit
+        *[(0, dr, TILE_WOOD) for dr in range(-6, 0)],
+        *[(13, dr, TILE_WOOD) for dr in range(-6, 0)],
+    ]
+    for dc, dr, tile in hull:
+        blocks[(dc, dr)] = tile
+
+    # Pont
+    for dc in range(1, 13):
+        blocks[(dc, -2)] = TILE_WOOD
+    # Trou dans le pont (descente cale)
+    blocks[(6, -2)] = TILE_AIR
+    blocks[(7, -2)] = TILE_AIR
+
+    # Intérieur cale dégagé
+    for dc in range(1, 13):
+        blocks[(dc, -1)] = TILE_AIR
+
+    # Mât (bois au centre, s'élève de -2 à -7)
+    for dr in range(-8, -1):
+        blocks[(7, dr)] = TILE_WOOD
+    # Voile en bois (2 large × 3 haut, accrochée au mât)
+    for dr in range(-7, -4):
+        blocks[(5, dr)] = TILE_WOOD
+        blocks[(6, dr)] = TILE_WOOD
+
+    # Vigie (petite cabane au sommet du mât)
+    blocks[(6, -8)]  = TILE_WOOD
+    blocks[(7, -9)]  = TILE_WOOD
+    blocks[(8, -8)]  = TILE_WOOD
+
+    # Coffre dans la cale
+    blocks[(3, 0)] = TILE_CHEST
+    blocks[(10, 0)] = TILE_CHEST
+
+    # Trou dans la coque gauche (effet naufrage)
+    blocks[(0, -3)] = TILE_AIR
+    blocks[(0, -2)] = TILE_AIR
+
+    return blocks
+
+
+def _build_dungeon(col, surface, seed):
+    """Donjon souterrain ~9×5. Ancre = coin supérieur-gauche du couloir."""
+    blocks = {}
+    W, H = 9, 5
+    # Couloir principal
+    for dc in range(W):
+        blocks[(dc, 0)]      = TILE_BRICK  # plafond
+        blocks[(dc, H - 1)]  = TILE_OBSIDIAN  # sol obsidienne
+    for dr in range(1, H - 1):
+        blocks[(0, dr)]      = TILE_BRICK
+        blocks[(W - 1, dr)]  = TILE_BRICK
+    # Intérieur vide
+    for dc in range(1, W - 1):
+        for dr in range(1, H - 1):
+            blocks[(dc, dr)] = TILE_AIR
+    # Coffre central
+    blocks[(4, H - 2)] = TILE_CHEST
+    # Piliers charbon (décoratifs / obstacles)
+    blocks[(2, H - 2)] = TILE_COAL
+    blocks[(6, H - 2)] = TILE_COAL
+    # Entrée (trou dans le plafond à gauche)
+    blocks[(1, 0)] = TILE_AIR
+    blocks[(2, 0)] = TILE_AIR
+    return blocks
+
+
+def _build_pyramid(col, seed):
+    """Pyramide aztèque ~11×6. Ancre = coin bas-gauche au niveau du sol."""
+    blocks = {}
+    levels = [
+        (0, 11),  # base  dr=0 : 11 large
+        (1,  9),  # dr=-1 :  9 large (décalé de 1)
+        (2,  7),
+        (3,  5),
+        (4,  3),
+        (5,  1),  # sommet
+    ]
+    for dr_neg, width in levels:
+        offset = (11 - width) // 2
+        for dc in range(offset, offset + width):
+            blocks[(dc, -dr_neg)] = TILE_BRICK
+
+    # Crypte sous la pyramide (3 de large × 3 de prof, centrée)
+    for dc in range(4, 7):
+        for dr in range(1, 4):
+            blocks[(dc, dr)] = TILE_AIR
+    # Sol obsidienne de la crypte
+    for dc in range(4, 7):
+        blocks[(dc, 4)] = TILE_OBSIDIAN
+    # Coffre dans la crypte
+    blocks[(5, 3)] = TILE_CHEST
+    return blocks
+
+
+# ── Catalogue des structures de surface ──────────────────────────────────────
+#
+# Chaque entrée : (id_unique, probabilité_par_colonne, espace_min_entre_structures)
+# La probability est vérifiée via _hash1 sur la colonne candidate.
+
+_STRUCTURES = [
+    # (tag,       prob,    min_gap, builder_fn)
+    ("castle",   0.003,   120,  _build_castle),
+    ("ship",     0.004,   100,  _build_pirate_ship),
+    ("pyramid",  0.003,   110,  _build_pyramid),
+]
+
+
 class World:
     """
     Monde procédural infini horizontalement, fini verticalement (ROWS tuiles).
@@ -66,6 +235,82 @@ class World:
             seed = random.randint(0, 0xFFFF_FFFF)
         self.seed = int(seed) & 0xFFFF_FFFF
         self.mods = {}    # {(col, row): tile}
+        self._struct_cache = {}   # {col_anchor: {(col, row): tile}} – structures déjà calculées
+
+    # ── Structures procédurales ───────────────────────────────────────────
+
+    def _structure_at(self, anchor_col):
+        """Retourne le dict {(col, row): tile} de la structure ancrée en anchor_col, ou {}."""
+        if anchor_col in self._struct_cache:
+            return self._struct_cache[anchor_col]
+
+        result = {}
+        for tag, prob, min_gap, builder in _STRUCTURES:
+            tag_seed = sum(ord(c) for c in tag)
+            if _hash1(anchor_col * 97 + tag_seed, self.seed ^ 0xF00D) >= prob:
+                continue
+            # Vérifier espacement minimal
+            ok = True
+            for dc2 in range(-min_gap, 0):
+                c2 = anchor_col + dc2
+                if _hash1(c2 * 97 + tag_seed, self.seed ^ 0xF00D) < prob:
+                    ok = False
+                    break
+            if not ok:
+                continue
+
+            s = self.surface_at(anchor_col)
+            blocks = builder(anchor_col, self.seed)
+            for (dc, dr), tile in blocks.items():
+                result[(anchor_col + dc, s + dr)] = tile
+            break  # une seule structure par ancre
+
+        self._struct_cache[anchor_col] = result
+        return result
+
+    def _dungeon_at(self, anchor_col):
+        """Retourne le dict {(col, row): tile} du donjon ancré en anchor_col, ou {}."""
+        key = ("dng", anchor_col)
+        if key in self._struct_cache:
+            return self._struct_cache[key]
+
+        result = {}
+        tag_seed = 0xD0C
+        prob = 0.006
+        min_gap = 90
+        if _hash1(anchor_col * 53 + tag_seed, self.seed ^ 0xBAAD) < prob:
+            # Vérifier espacement
+            ok = True
+            for dc2 in range(-min_gap, 0):
+                if _hash1((anchor_col + dc2) * 53 + tag_seed, self.seed ^ 0xBAAD) < prob:
+                    ok = False
+                    break
+            if ok:
+                s = self.surface_at(anchor_col)
+                depth_offset = STONE_DEPTH + 5 + int(_hash1(anchor_col * 7, self.seed ^ 0xD0D) * 5)
+                base_row = s + depth_offset
+                blocks = _build_dungeon(anchor_col, s, self.seed)
+                for (dc, dr), tile in blocks.items():
+                    result[(anchor_col + dc, base_row + dr)] = tile
+
+        self._struct_cache[key] = result
+        return result
+
+    def _struct_tile(self, col, row):
+        """Cherche si (col, row) appartient à une structure proche. Retourne la tuile ou None."""
+        s = self.surface_at(col)
+        # Structures de surface : ancres dans col-20..col
+        for ac in range(col - 20, col + 1):
+            blocks = self._structure_at(ac)
+            if (col, row) in blocks:
+                return blocks[(col, row)]
+        # Donjon souterrain : ancres dans col-12..col
+        if row > s + STONE_DEPTH:
+            for ac in range(col - 12, col + 1):
+                blocks = self._dungeon_at(ac)
+                if (col, row) in blocks:
+                    return blocks[(col, row)]
+        return None
 
     # ── Terrain procédural ────────────────────────────────────────────────
 
@@ -77,7 +322,7 @@ class World:
         return int(SURFACE_Y + raw * TERRAIN_AMPLITUDE - TERRAIN_AMPLITUDE / 2)
 
     def _has_tree(self, col):
-        return _hash1(col * 31 + 7, self.seed ^ 0xBEEF) < 0.13
+        return _hash1(col * 31 + 7, self.seed ^ 0xBEEF) < 0.06
 
     def _tree_height(self, col):
         return 2 + int(_hash1(col * 17 + 3, self.seed ^ 0xBEEF) * 2)   # 2 ou 3
@@ -107,6 +352,12 @@ class World:
         if row <= 0 or row >= ROWS - 1:
             return TILE_STONE
         s = self.surface_at(col)
+
+        # Structures procédurales (priorité sur tout le reste)
+        st = self._struct_tile(col, row)
+        if st is not None:
+            return st
+
         if row < s:
             return self._tree_tile(col, row)
         if row == s:

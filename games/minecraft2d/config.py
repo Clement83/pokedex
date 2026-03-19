@@ -21,37 +21,53 @@ TILE_GRASS = 3
 TILE_SAND  = 4
 TILE_WOOD  = 5
 TILE_COAL  = 6              # bloc décoratif minable
+TILE_BRICK = 7              # brique (structures)
+TILE_CHEST = 8              # coffre (structures – rapporte beaucoup de ressources)
+TILE_OBSIDIAN = 9           # obsidienne (très dure, fonds de donjon)
+TILE_GLASS = 10             # vitre (fenêtres et hublots)
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
-    TILE_AIR:   "Air",
-    TILE_DIRT:  "Terre",
-    TILE_STONE: "Pierre",
-    TILE_GRASS: "Herbe",
-    TILE_SAND:  "Sable",
-    TILE_WOOD:  "Bois",
-    TILE_COAL:  "Charbon",
+    TILE_AIR:      "Air",
+    TILE_DIRT:     "Terre",
+    TILE_STONE:    "Pierre",
+    TILE_GRASS:    "Herbe",
+    TILE_SAND:     "Sable",
+    TILE_WOOD:     "Bois",
+    TILE_COAL:     "Charbon",
+    TILE_BRICK:    "Brique",
+    TILE_CHEST:    "Coffre",
+    TILE_OBSIDIAN: "Obsidienne",
+    TILE_GLASS:    "Vitre",
 }
 
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
-    TILE_AIR:   (100, 160, 220),   # ciel
-    TILE_DIRT:  (139,  90,  43),
-    TILE_STONE: (120, 120, 130),
-    TILE_GRASS: ( 76, 153,  0),
-    TILE_SAND:  (210, 190, 110),
-    TILE_WOOD:  (180, 120,  60),
-    TILE_COAL:  ( 60,  60,  70),
+    TILE_AIR:      (100, 160, 220),   # ciel
+    TILE_DIRT:     (139,  90,  43),
+    TILE_STONE:    (120, 120, 130),
+    TILE_GRASS:    ( 76, 153,  0),
+    TILE_SAND:     (210, 190, 110),
+    TILE_WOOD:     (180, 120,  60),
+    TILE_COAL:     ( 60,  60,  70),
+    TILE_BRICK:    (180,  80,  50),   # rouge brique
+    TILE_CHEST:    (200, 140,  40),   # brun doré
+    TILE_OBSIDIAN: ( 30,  20,  50),   # violet très sombre
+    TILE_GLASS:    (180, 220, 250),   # bleu clair translucide
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
 TILE_BREAK_TIME = {
-    TILE_DIRT:  0.4,
-    TILE_STONE: 0.9,
-    TILE_GRASS: 0.4,
-    TILE_SAND:  0.3,
-    TILE_WOOD:  0.5,
-    TILE_COAL:  0.8,
+    TILE_DIRT:     0.4,
+    TILE_STONE:    0.9,
+    TILE_GRASS:    0.4,
+    TILE_SAND:     0.3,
+    TILE_WOOD:     0.5,
+    TILE_COAL:     0.8,
+    TILE_BRICK:    1.2,
+    TILE_CHEST:    0.7,
+    TILE_OBSIDIAN: 3.0,
+    TILE_GLASS:    0.3,
 }
 
 # ── Génération du terrain ─────────────────────────────────────────────────────

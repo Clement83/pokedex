@@ -14,6 +14,9 @@ from world import generate
 from quit_combo import QuitCombo
 import db as _db
 
+# Tuiles qui donnent un bonus de ressources quand cassées (coffres)
+_CHEST_LOOT = [TILE_WOOD, TILE_STONE, TILE_BRICK, TILE_COAL, TILE_OBSIDIAN]
+
 
 # ── Inventaire ────────────────────────────────────────────────────────────────
 
@@ -688,6 +691,11 @@ def run(screen, joysticks, world_id, seed):
                         break_infos[i] = (cur_col, cur_row, progress)
                         if player._break_time >= req_time:
                             player.inventory.add(tile_at)
+                            # Si coffre : bonus de 3 ressources aléatoires
+                            if tile_at == TILE_CHEST:
+                                import random as _rnd
+                                for _ in range(3):
+                                    player.inventory.add(_rnd.choice(_CHEST_LOOT))
                             world.set(cur_col, cur_row, TILE_AIR)
                             chunks.invalidate(cur_col)
                             break_infos[i] = None
