@@ -39,7 +39,7 @@ GAMES = [
     {
         "title": "Bomberman",
         "description": "Bomberman 2 joueurs – J1 D-pad/btn12  J2 ABXY/btn17",
-        "image": str(BASE_DIR / "games" / "bomberman" / "cover.png"),
+        "image": str(BASE_DIR / "games" / "bomberman" / "bomber_cover.png"),
         "path": str(BASE_DIR / "games" / "bomberman"),
         "entry": "main",
     },
