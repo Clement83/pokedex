@@ -104,8 +104,8 @@ J1_BTN_MODIFIER = 12   # SELECT
 J1_BTN_FREE     =  9   # R2  (libre)
 
 # J2 – joystick 1 (côté droit OGA)
-BTN_A = 0   # J2 : droite
-BTN_B = 1   # J2 : bas
+BTN_A = 0   # J2 : bas
+BTN_B = 1   # J2 : droite
 BTN_X = 2   # J2 : haut / saut
 BTN_Y = 3   # J2 : gauche
 J2_BTN_MINE     = 13   # L1 ou R1

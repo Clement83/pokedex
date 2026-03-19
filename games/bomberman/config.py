@@ -38,8 +38,8 @@ MOVE_COOLDOWN = 0.14   # secondes entre chaque déplacement d'une case
 BOMB_PLACE_CD = 0.3    # anti-double placement
 
 # ── Boutons manette ───────────────────────────────────────────────────────────
-BTN_A        = 0    # P2 → droite
-BTN_B        = 1    # P2 → bas
+BTN_A        = 0    # P2 → bas
+BTN_B        = 1    # P2 → droite
 BTN_X        = 2    # P2 → haut
 BTN_Y        = 3    # P2 → gauche
 BTN_P1_BOMB  = 12   # P1 pose une bombe

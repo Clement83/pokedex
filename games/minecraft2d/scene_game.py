@@ -235,10 +235,10 @@ def _get_dir_p2(keys, joy):
         # Boutons ABXY en fallback
         try:
             pressed = {b for b in range(joy.get_numbuttons()) if joy.get_button(b)}
-            if BTN_A in pressed: return  1, 0
+            if BTN_B in pressed: return  1, 0
             if BTN_Y in pressed: return -1, 0
             if BTN_X in pressed: return  0, -1
-            if BTN_B in pressed: return  0,  1
+            if BTN_A in pressed: return  0,  1
         except Exception:
             pass
     dx = dy = 0
