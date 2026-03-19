@@ -7,29 +7,65 @@
 
 ## Architecture pygame sur OGA
 
-L'OGA expose **deux joysticks séparés** via pygame :
-
-| Index pygame | Côté physique | Utilisé pour |
-|---|---|---|
-| `joystick 0` | Gauche (croix directionnelle, L1/L2, SELECT) | J1 / joueur solo |
-| `joystick 1` | Droit (boutons A/B/X/Y, R1, START) | J2 dans les jeux 2 joueurs |
+L'OGA est vu par pygame comme **un seul joystick (index 0)** qui expose tous les boutons, axes et hat.
 
 ---
 
-## Joystick 0 – côté gauche
+## Tous les boutons (`get_button`) – joystick 0
 
-### Boutons (`get_button`)
+### Boutons de face (droite) – layout Switch
+
+```
+        X (2)
+Y (3)         A (1)
+        B (0)
+```
+
+| Index | Physique | Position | Direction |
+|---|---|---|---|
+| `0` | **B** | Bas     | bas     |
+| `1` | **A** | Droite  | droite  |
+| `2` | **X** | Haut    | haut    |
+| `3` | **Y** | Gauche  | gauche  |
+
+> ⚠️ Les indices pygame ne correspondent **pas** aux lettres : B=0, A=1, X=2, Y=3.  
+> Les constantes dans le code (`BTN_A`, `BTN_B`…) suivent les indices pygame, pas les lettres physiques.
+
+### Gâchettes
 
 | Index | Physique | Rôle typique |
 |---|---|---|
-| `8`  | L2 (gâchette arrière gauche) | Action principale J1 |
-| `9`  | R2 (gâchette arrière droite) | Action secondaire J1 |
-| `10` | D-pad ← | — |
-| `11` | D-pad → | — |
-| `12` | SELECT | Modifier / menu J1 |
+| `4`  | R2 (gâchette avant droite) | Action |
+| `5`  | R  (gâchette épaule droite) | Action |
+| `6`  | L2 (gâchette avant gauche)  | Action |
+| `7`  | L  (gâchette épaule gauche)  | Action |
 
-> ⚠️ Sur certains firmwares le D-pad arrive en **hat** ou en **axes** plutôt qu'en boutons.  
-> Préférer la combinaison hat + axes + boutons (voir ci-dessous).
+### D-pad
+
+| Index | Physique | Rôle typique |
+|---|---|---|
+| `8`  | D-pad ↑ | Haut J1 |
+| `9`  | D-pad ↓ | Bas J1 |
+| `10` | D-pad ← | Gauche J1 |
+| `11` | D-pad → | Droite J1 |
+
+> ⚠️ Le D-pad peut aussi arriver en **hat** ou **axes** selon le firmware.  
+> Préférer la combinaison hat + axes + boutons pour couvrir tous les cas.
+
+### Boutons du bas (sérigraphiés en chiffres romains)
+
+| Index | Sérigraphie | Rôle typique |
+|---|---|---|
+| `12` | **I**   | SELECT / Modifier |
+| `13` | **II**  | — |
+| `14` | **III** | Volume – |
+| `15` | **IV**  | Volume + |
+| `16` | **V**   | — |
+| `17` | **VI**  | START / menu |
+
+---
+
+## Hat et axes (joystick gauche)
 
 ### Hat (`get_hat(0)`)
 
@@ -37,8 +73,8 @@ Renvoie un tuple `(x, y)` :
 
 | x | y | Direction |
 |---|---|---|
-| `0`  | `1`  | Haut  |
-| `0`  | `-1` | Bas   |
+| `0`  | `1`  | Haut   |
+| `0`  | `-1` | Bas    |
 | `-1` | `0`  | Gauche |
 | `1`  | `0`  | Droite |
 
@@ -55,49 +91,14 @@ Deadzone recommandée : **0.4** (jeux action) · **0.7** (menus / shifter)
 
 ---
 
-## Joystick 1 – côté droit
-
-### Boutons (`get_button`) – **VÉRIFIÉ en jeu**
-
-| Index | Physique | Direction / action |
-|---|---|---|
-| `0` | **A** | Bas            |
-| `1` | **B** | Droite         |
-| `2` | **X** | Haut           |
-| `3` | **Y** | Gauche         |
-| `13` | L1 / R1 | Action principale J2 |
-| `16` | — | Action libre J2 |
-| `17` | START | Modifier / menu J2 |
-
-> Le mapping A/B/X/Y ci-dessus est **confirmé** après tests sur console.  
-> Mnémotechnique : disposition en croix = bas · droite · haut · gauche (sens antihoraire depuis A).
-
----
-
-## Boutons communs (joystick 0, jeux solo)
-
-| Index | Physique | Rôle dans pokedex |
-|---|---|---|
-| `0`  | A | CONFIRM |
-| `1`  | B | CANCEL  |
-| `8`  | Haut D-pad  | UP    |
-| `9`  | Bas D-pad   | DOWN  |
-| `10` | Gauche D-pad | LEFT |
-| `11` | Droite D-pad | RIGHT |
-| `14` | Volume –    | VOLUME_DOWN |
-| `15` | Volume +    | VOLUME_UP   |
-| `17` | START       | GIT_PULL / menu |
-
----
-
 ## Récapitulatif par jeu
 
-| Jeu | J1 directions | J2 directions | Bomb / action |
+| Jeu | J1 directions | J2 directions | Actions |
 |---|---|---|---|
-| **Bomberman** | Hat + axes (joystick 0) | A/B/X/Y (joystick 1) | J1=btn 12 · J2=btn 17 |
-| **Minecraft 2D** | Hat + axes (joystick 0) | A/B/X/Y (joystick 1) | J1=L2(8) · J2=L1(13) |
-| **Shifter** | Hat + axes + dpad-btns 8-11 | A/B/X/Y (joystick 1) | — |
-| **Pokédex** | Axes + dpad-btns 8-11 | — | A(0)=confirm · B(1)=cancel |
+| **Bomberman** | Hat + axes | Boutons A/B/X/Y | J1=btn I(12) · J2=btn VI(17) |
+| **Minecraft 2D** | Hat + axes + dpad 8-11 | Boutons A/B/X/Y | J1=L2(6)/R2(4) · J2=btn II(13)/III(14) |
+| **Shifter** | Hat + axes + dpad 8-11 | Boutons A/B/X/Y | — |
+| **Pokédex** | Axes + dpad 8-11 | — | A(0)=confirm · B(1)=cancel |
 
 ---
 
@@ -105,14 +106,38 @@ Deadzone recommandée : **0.4** (jeux action) · **0.7** (menus / shifter)
 
 ```python
 # ── Contrôles manette ─────────────────────────────────────────────────────────
+# Une seule manette (joystick 0) partagée entre les deux joueurs :
+#   J1 = joystick gauche (axes/hat) + D-pad (btns 8-11)
+#   J2 = boutons de face (btns 0-3)
+#
+# ATTENTION : indices pygame ≠ lettres physiques !
+#   btn 0 = B (bas)    btn 1 = A (droite)
+#   btn 2 = X (haut)   btn 3 = Y (gauche)
 AXIS_DEAD = 0.4
 
-# J1 – joystick 0 (croix / joystick gauche)
-#   → utiliser hat(0) + axes 0/1 pour les directions
+# Boutons de face – J2 (indices pygame)
+BTN_B = 0   # physique B → bas
+BTN_A = 1   # physique A → droite
+BTN_X = 2   # physique X → haut
+BTN_Y = 3   # physique Y → gauche
 
-# J2 – joystick 1 (boutons face)
-BTN_A = 0   # bas
-BTN_B = 1   # droite
-BTN_X = 2   # haut
-BTN_Y = 3   # gauche
+# Gâchettes
+BTN_R2 = 4
+BTN_R  = 5
+BTN_L2 = 6
+BTN_L  = 7
+
+# D-pad – J1
+BTN_UP    =  8
+BTN_DOWN  =  9
+BTN_LEFT  = 10
+BTN_RIGHT = 11
+
+# Boutons du bas
+BTN_I   = 12  # I
+BTN_II  = 13  # II
+BTN_III = 14  # III – Volume –
+BTN_IV  = 15  # IV  – Volume +
+BTN_V   = 16  # V
+BTN_VI  = 17  # VI  – START
 ```
