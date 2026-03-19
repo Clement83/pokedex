@@ -191,7 +191,7 @@ def run(screen, joysticks):
             return None
 
         worlds   = db.list_worlds()   # [None | dict, ...]  index 0-3
-        cur_mine = _joy_btn(joy, J1_BTN_MINE) or bool(keys[KB_J1_MINE])
+        cur_mine = _joy_btn(joy, J1_BTN_MINE) or _joy_btn(joy, BTN_A) or _joy_btn(joy, BTN_B) or bool(keys[KB_J1_MINE])
         cur_mod  = _joy_btn(joy, J1_BTN_MODIFIER) or bool(keys[KB_J1_MODIFIER])
         _, dy    = _get_dir(keys, joy)
 
