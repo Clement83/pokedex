@@ -231,12 +231,16 @@ def _get_dir_p1(keys, joy):
 def _get_dir_p2(keys, joy):
     if joy:
         # Boutons YXBA uniquement (même manette que J1, joystick réservé à J1)
+        # Accumulation des deux axes pour permettre les diagonales
         try:
             pressed = {b for b in range(joy.get_numbuttons()) if joy.get_button(b)}
-            if BTN_B in pressed: return  1,  0   # B = droite
-            if BTN_A in pressed: return  0,  1   # A = bas
-            if BTN_X in pressed: return  0, -1   # X = haut / saut
-            if BTN_Y in pressed: return -1,  0   # Y = gauche
+            dx = dy = 0
+            if BTN_B in pressed: dx =  1   # B = droite
+            if BTN_Y in pressed: dx = -1   # Y = gauche
+            if BTN_X in pressed: dy = -1   # X = haut / saut
+            if BTN_A in pressed: dy =  1   # A = bas
+            if dx != 0 or dy != 0:
+                return dx, dy
         except Exception:
             pass
     dx = dy = 0
