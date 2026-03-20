@@ -33,6 +33,12 @@ TILE_NAMES = {
     TILE_COAL:  "Charbon",
 }
 
+# ── Outils ────────────────────────────────────────────────────────────────────
+TOOL_HAND    = 0   # saisir / interagir (futur : grab, craft…)
+TOOL_PICKAXE = 1   # miner / construire
+TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE]
+
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
     TILE_AIR:   (100, 160, 220),   # ciel
