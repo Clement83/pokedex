@@ -45,14 +45,17 @@ TILE_NAMES = {
 TOOL_HAND    = 0   # saisir / interagir : ouvrir coffres
 TOOL_PICKAXE = 1   # creuser uniquement
 TOOL_PLACER  = 2   # poser des blocs (appui simple MINE)
-TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche", TOOL_PLACER: "Canon"}
-TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER]
+TOOL_SWORD   = 3   # épée : attaque les mobs (MINE = coup d'épée)
+TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche",
+                TOOL_PLACER: "Canon", TOOL_SWORD: "Épée"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD]
 
 # ── Équipements ───────────────────────────────────────────────────────────────
 # Slot d'équipement
-EQUIP_HEAD = 0   # casque
-EQUIP_BODY = 1   # plastron
-EQUIP_FEET = 2   # bottes
+EQUIP_HEAD  = 0   # casque
+EQUIP_BODY  = 1   # plastron
+EQUIP_FEET  = 2   # bottes
+EQUIP_SWORD = 3   # épée (main)
 
 # Matériaux
 MAT_WOOD = 0
@@ -79,6 +82,10 @@ EQUIP_NAMES = {
     (EQUIP_FEET, MAT_WOOD): "Bottes Bois",
     (EQUIP_FEET, MAT_IRON): "Bottes Fer",
     (EQUIP_FEET, MAT_GOLD): "Bottes Or",
+    # Épées
+    (EQUIP_SWORD, MAT_WOOD): "Épée Bois",
+    (EQUIP_SWORD, MAT_IRON): "Épée Fer",
+    (EQUIP_SWORD, MAT_GOLD): "Épée Or",
 }
 
 # Couleurs des tuiles (dessin simple, pas de sprites)

@@ -29,6 +29,19 @@ MOB_SEAGULL = 5
 
 _PASSIVE_MOBS = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL}
 
+# Points de vie par type de mob
+_MOB_HP = {
+    MOB_SLIME:   2,
+    MOB_ZOMBIE:  3,
+    MOB_GOLEM:   5,
+    MOB_CHICKEN: 1,
+    MOB_FROG:    1,
+    MOB_SEAGULL: 1,
+}
+
+# Dégâts de l'épée par matériau (indices MAT_WOOD=0, MAT_IRON=1, MAT_GOLD=2)
+_SWORD_DMG = [1, 2, 3]
+
 # Dimensions pixels
 _MOB_PW = {MOB_SLIME: 12, MOB_ZOMBIE: 8,  MOB_GOLEM: 14,
            MOB_CHICKEN: 8, MOB_FROG: 8,   MOB_SEAGULL: 10}
@@ -147,6 +160,7 @@ class Mob:
         self._wander_dir = 1
         self._push_cd    = 0.0
         self._fly_phase  = 0.0   # oscillation verticale mouette
+        self.hp          = _MOB_HP[mob_type]   # points de vie
         # RNG déterministe par position de spawn
         self._rng = random.Random(int(col) * 1000 + int(row) + mob_type + seed)
 
@@ -306,6 +320,29 @@ class MobManager:
     def update(self, dt, players, world):
         for mob in self._mobs:
             _update_mob(mob, dt, players, world)
+
+    # ── Attaque épée ──────────────────────────────────────────────────────────
+
+    def attack_near(self, px, py, reach, damage):
+        """
+        Inflige `damage` PV à tous les mobs dans `reach` tiles du centre joueur.
+        Supprime les mobs à 0 PV. Retourne le nombre de mobs tués.
+        """
+        pw   = PLAYER_W / TILE_SIZE
+        ph   = PLAYER_H / TILE_SIZE
+        cx   = px + pw / 2
+        cy   = py + ph / 2
+        dead = []
+        for mob in self._mobs:
+            dx = mob.center_col() - cx
+            dy = mob.center_row() - cy
+            if dx * dx + dy * dy <= reach * reach:
+                mob.hp -= damage
+                if mob.hp <= 0:
+                    dead.append(mob)
+        for m in dead:
+            self._mobs.remove(m)
+        return len(dead)
 
     # ── Rendu ─────────────────────────────────────────────────────────────────
 

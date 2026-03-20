@@ -81,7 +81,7 @@ def _draw_sky_hud(screen, t, font):
 class Inventory:
     """
     Inventaire à 5 slots :
-      slot 0 – outil       : Main ou Pioche
+      slot 0 – outil       : Main, Pioche, Canon, Épée (si trouvée)
       slot 1 – ressources  : blocs récoltés (liste dynamique)
       slot 2 – tête        : liste de casques trouvés [(slot, mat), ...]
       slot 3 – corps       : liste de plastrons trouvés
@@ -98,18 +98,20 @@ class Inventory:
     SLOT_FEET  = 4
     NUM_SLOTS  = 5
 
-    EQUIP_SLOT_MAP = {SLOT_HEAD: EQUIP_HEAD, SLOT_BODY: EQUIP_BODY, SLOT_FEET: EQUIP_FEET}
+    EQUIP_SLOT_MAP = {SLOT_HEAD: EQUIP_HEAD, SLOT_BODY: EQUIP_BODY,
+                      SLOT_FEET: EQUIP_FEET}
 
     def __init__(self):
         self.active_slot  = 0           # slot mis en évidence
         self.tool         = TOOL_HAND
         self.resources    = []          # [(tile, count), ...]
         self.resource_idx = 0
+        self.sword_mat    = None        # None = pas d'épée ; MAT_WOOD/IRON/GOLD sinon
         # équipements : listes de (equip_slot, material)
         self.equip = {
-            EQUIP_HEAD: [],   # ex. [(EQUIP_HEAD, MAT_WOOD), (EQUIP_HEAD, MAT_IRON)]
-            EQUIP_BODY: [],
-            EQUIP_FEET: [],
+            EQUIP_HEAD:  [],   # ex. [(EQUIP_HEAD, MAT_WOOD), (EQUIP_HEAD, MAT_IRON)]
+            EQUIP_BODY:  [],
+            EQUIP_FEET:  [],
         }
         self.equip_idx = {EQUIP_HEAD: 0, EQUIP_BODY: 0, EQUIP_FEET: 0}
 
@@ -177,7 +179,12 @@ class Inventory:
     def item_next(self):
         s = self.active_slot
         if s == self.SLOT_TOOL:
-            self.tool = TOOLS_LIST[(TOOLS_LIST.index(self.tool) + 1) % len(TOOLS_LIST)]
+            idx = TOOLS_LIST.index(self.tool)
+            for _ in range(len(TOOLS_LIST)):
+                idx = (idx + 1) % len(TOOLS_LIST)
+                if TOOLS_LIST[idx] != TOOL_SWORD or self.sword_mat is not None:
+                    break
+            self.tool = TOOLS_LIST[idx]
         elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx + 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
@@ -189,7 +196,12 @@ class Inventory:
     def item_prev(self):
         s = self.active_slot
         if s == self.SLOT_TOOL:
-            self.tool = TOOLS_LIST[(TOOLS_LIST.index(self.tool) - 1) % len(TOOLS_LIST)]
+            idx = TOOLS_LIST.index(self.tool)
+            for _ in range(len(TOOLS_LIST)):
+                idx = (idx - 1) % len(TOOLS_LIST)
+                if TOOLS_LIST[idx] != TOOL_SWORD or self.sword_mat is not None:
+                    break
+            self.tool = TOOLS_LIST[idx]
         elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx - 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
@@ -433,11 +445,12 @@ class Camera:
 
 # ── Curseur de la cible (bloc visé) ───────────────────────────────────────────
 
-def _get_cursor(player, dx, dy):
+def _get_cursor(player, dx, dy, world=None):
     """
     Retourne (col, row) du bloc visé à partir de la direction courante.
-    Cible toujours la tuile immédiatement adjacente au bord du joueur (max 1 case).
-    Si pas de direction, cible le bloc juste à droite.
+    En horizontal sans direction verticale :
+      - cible en priorité le bloc au niveau des pieds (bas du corps)
+      - si ce bloc est de l'air, remonte d'une rangée (niveau tête)
     """
     pw = PLAYER_W / TILE_SIZE
     ph = PLAYER_H / TILE_SIZE
@@ -446,19 +459,24 @@ def _get_cursor(player, dx, dy):
 
     # Horizontal : tuile collée au bord gauche ou droit du joueur
     if dx > 0:
-        col = int(player.x + pw - 0.01) + 1   # 1 case à droite du bord droit
+        col = int(player.x + pw - 0.01) + 1
     elif dx < 0:
-        col = int(player.x) - 1               # 1 case à gauche du bord gauche
+        col = int(player.x) - 1
     else:
-        col = int(player.x + pw / 2)          # colonne centrale
+        col = int(player.x + pw / 2)
 
-    # Vertical : tuile collée au bord haut ou bas du joueur
+    # Vertical
     if dy > 0:
         row = int(player.y + ph - 0.01) + 1   # 1 case sous le bas du joueur
     elif dy < 0:
         row = int(player.y) - 1               # 1 case au-dessus de la tête
     else:
-        row = int(player.y + ph / 2)          # rangée centrale
+        # Mouvement horizontal pur : pieds d'abord, puis tête si pieds = air
+        feet_row = int(player.y + ph - 0.01)
+        if world is None or world.get(col, feet_row) != TILE_AIR:
+            row = feet_row
+        else:
+            row = feet_row - 1   # remonte au niveau de la tête
 
     return col, row
 
@@ -823,18 +841,37 @@ def _draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):
         R(screen, c, (ox+9,  oy,   5, 5))   # tige droite
         R(screen, c, (ox+7,  oy+5, 7, 2))   # semelle droite
 
+    elif eslot == EQUIP_SWORD:
+        # Épée — lame diagonale + garde, icône 12×14 centrée
+        ox = sx + (sw - 12) // 2
+        oy = sy + (sh - 14) // 2
+        SILVER = (200, 200, 210)
+        GOLD_H = (220, 180, 40)
+        blade  = SILVER if not mat_color else c
+        handle = GOLD_H if not mat_color else dark
+        # Lame (colonne centrale)
+        R(screen, blade,  (ox + 5, oy,     2, 10))  # lame verticale
+        R(screen, blade,  (ox + 4, oy + 1, 4,  1))  # évasement 1
+        R(screen, blade,  (ox + 3, oy + 2, 6,  1))  # évasement 2
+        # Reflet sur la lame
+        R(screen, (240, 240, 245), (ox + 5, oy + 1, 1, 7))
+        # Garde
+        R(screen, handle, (ox,     oy + 10, 12, 2))
+        # Poignée
+        R(screen, (100, 65, 35),  (ox + 5, oy + 12, 2, 2))
+
 
 def _draw_hotbar(screen, inventory, x_offset, color, font):
-    """Dessine la hotbar : [outil][ressources][tête][corps][pieds]."""
+    """Dessine la hotbar : [outil][ressources][tête][corps][pieds][épée]."""
     sw, sh, pad = _HOTBAR_SLOT_W, _HOTBAR_SLOT_H, _HOTBAR_PAD
     y = HOTBAR_Y
 
     slot_configs = [
-        (Inventory.SLOT_TOOL, "Outil"),
-        (Inventory.SLOT_RES,  "Sac"),
-        (Inventory.SLOT_HEAD, "Tête"),
-        (Inventory.SLOT_BODY, "Corps"),
-        (Inventory.SLOT_FEET, "Pieds"),
+        (Inventory.SLOT_TOOL,  "Outil"),
+        (Inventory.SLOT_RES,   "Sac"),
+        (Inventory.SLOT_HEAD,  "Tête"),
+        (Inventory.SLOT_BODY,  "Corps"),
+        (Inventory.SLOT_FEET,  "Pieds"),
     ]
 
     for i, (slot_id, _) in enumerate(slot_configs):
@@ -882,7 +919,11 @@ def _draw_hotbar(screen, inventory, x_offset, color, font):
     # ── Nom de l'item actif affiché sous la hotbar ────────────────────────────
     s = inventory.active_slot
     if s == Inventory.SLOT_TOOL:
-        name = TOOL_NAMES.get(inventory.tool, "")
+        if inventory.tool == TOOL_SWORD:
+            mat_name = MAT_NAMES.get(inventory.sword_mat, "") if inventory.sword_mat is not None else ""
+            name = "Épée " + mat_name if mat_name else "Épée"
+        else:
+            name = TOOL_NAMES.get(inventory.tool, "")
     elif s == Inventory.SLOT_RES and inventory.resources:
         name = TILE_NAMES.get(inventory.resources[inventory.resource_idx][0], "?")
     elif s in Inventory.EQUIP_SLOT_MAP:
@@ -1109,14 +1150,21 @@ def run(screen, joysticks, world_id, seed):
 
             # Curseur cible
             cdx, cdy = p_dirs[i]
-            cur_col, cur_row = _get_cursor(player, cdx, cdy)
+            cur_col, cur_row = _get_cursor(player, cdx, cdy, world)
             cur_row = max(0, min(ROWS - 1, cur_row))
             in_reach = _in_reach(player, cur_col, cur_row)
 
             if in_reach and player._action_cd <= 0:
                 tile_at = world.get(cur_col, cur_row)
 
-                if cur_mine and not prev_mine[i] and not cur_mod:
+                # ─ Mode ÉPÉE : attaque uniquement, aucune interaction bloc ─────
+                if player.inventory.tool == TOOL_SWORD:
+                    if cur_mine and not prev_mine[i] and not cur_mod:
+                        dmg = (player.inventory.sword_mat or 0) + 1
+                        mob_mgr.attack_near(player.x, player.y, REACH_RADIUS, dmg)
+                        player._action_cd = 0.35
+
+                elif cur_mine and not prev_mine[i] and not cur_mod:
                     # ─ MINE appui unique + outil Canon → POSER un bloc ─────────
                     if (player.inventory.tool == TOOL_PLACER
                             and tile_at == TILE_AIR):
@@ -1246,7 +1294,7 @@ def run(screen, joysticks, world_id, seed):
                 # Curseurs des deux joueurs dans chaque vue
                 for j, player in enumerate(players):
                     cdx, cdy = p_dirs[j]
-                    cur_col, cur_row = _get_cursor(player, cdx, cdy)
+                    cur_col, cur_row = _get_cursor(player, cdx, cdy, world)
                     cur_row = max(0, min(ROWS - 1, cur_row))
                     if _in_reach(player, cur_col, cur_row):
                         _draw_cursor(surf, player, cur_col, cur_row, cam)
@@ -1277,7 +1325,7 @@ def run(screen, joysticks, world_id, seed):
 
             for i, player in enumerate(players):
                 cdx, cdy = p_dirs[i]
-                cur_col, cur_row = _get_cursor(player, cdx, cdy)
+                cur_col, cur_row = _get_cursor(player, cdx, cdy, world)
                 cur_row = max(0, min(ROWS - 1, cur_row))
                 if _in_reach(player, cur_col, cur_row):
                     _draw_cursor(screen, player, cur_col, cur_row, shared_cam)
