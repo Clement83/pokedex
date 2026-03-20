@@ -8,6 +8,7 @@ import math
 
 from config import *
 from quit_combo import QuitCombo
+import sound_manager
 
 
 # ── Génération de la grille ───────────────────────────────────────────────────
@@ -62,11 +63,12 @@ class Player:
 
 class Bomb:
     def __init__(self, col, row, owner_idx, bomb_range=BOMB_RANGE):
-        self.col   = col
-        self.row   = row
-        self.timer = BOMB_TIMER
-        self.range = bomb_range
-        self.owner = owner_idx
+        self.col       = col
+        self.row       = row
+        self.timer     = BOMB_TIMER
+        self.range     = bomb_range
+        self.owner     = owner_idx
+        self.next_tick = 0.40   # délai avant le premier tick de mèche
 
 
 class Explosion:
@@ -394,6 +396,7 @@ def run(screen, joysticks):
     clock  = pygame.time.Clock()
     f_sm   = pygame.font.SysFont("Arial", 11, bold=True)
     f_ui   = pygame.font.SysFont("Arial", 13, bold=True)
+    sounds = sound_manager.BombermanSounds()
 
     # Assignation manettes : joy 0 → J1, joy 1 → J2 (fallback sur joy 0)
     joy_p1 = joysticks[0] if len(joysticks) > 0 else None
@@ -486,6 +489,7 @@ def run(screen, joysticks):
                     bombs.append(Bomb(p1.col, p1.row, 0, p1.bomb_range))
                     p1.active_bombs += 1
                     p1.bomb_cd = BOMB_PLACE_CD
+                    sounds.play('bomb_place')
 
         # ── Déplacement J2 ─────────────────────────────────────────────────────
         p2 = players[1]
@@ -506,6 +510,7 @@ def run(screen, joysticks):
                     bombs.append(Bomb(p2.col, p2.row, 1, p2.bomb_range))
                     p2.active_bombs += 1
                     p2.bomb_cd = BOMB_PLACE_CD
+                    sounds.play('bomb_place')
 
         # ── Ramassage des bonus ────────────────────────────────────────────────
         for p in players:
@@ -515,13 +520,22 @@ def run(screen, joysticks):
                 if p.col == bx.col and p.row == bx.row:
                     _apply_bonus(p, bx.type)
                     bonuses.remove(bx)
+                    sounds.play('bonus')
 
         # ── Mise à jour bombes ─────────────────────────────────────────────────
         for b in bombs:
             b.timer -= dt
+            b.next_tick -= dt
+            if b.next_tick <= 0.0:
+                sounds.play('fuse_tick')
+                # Intervalle de tick : rapide (~0.15 s) en fin de mèche, lent (~0.67 s) au début
+                b.next_tick = 0.12 + 0.55 * max(0.0, b.timer / BOMB_TIMER)
         to_explode = [b for b in bombs if b.timer <= 0.0]
         if to_explode:
+            n_explo_before = len(explosions)
             bombs, destroyed_cells = _process_explosions(to_explode, bombs, grid, players, explosions)
+            for _ in range(len(explosions) - n_explo_before):
+                sounds.play('explosion')
             for dc, dr in destroyed_cells:
                 if random.random() < BONUS_SPAWN_CHANCE:
                     if not any(bx.col == dc and bx.row == dr for bx in bonuses):
@@ -536,9 +550,13 @@ def run(screen, joysticks):
         all_explo = set()
         for ex in explosions:
             all_explo |= ex.cells
+        prev_alive = [p.alive for p in players]
         for p in players:
             if p.alive and (p.col, p.row) in all_explo:
                 p.alive = False
+        for i, p in enumerate(players):
+            if prev_alive[i] and not p.alive:
+                sounds.play('death')
 
         # ── Condition de fin ───────────────────────────────────────────────────
         if not all(p.alive for p in players):

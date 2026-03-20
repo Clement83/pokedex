@@ -15,6 +15,7 @@ from quit_combo import QuitCombo
 import db as _db
 import sounds as _sounds
 import mobs as _mobs
+import music_player as _music
 
 # Tuiles qui donnent un bonus de ressources quand cassées (coffres)
 _CHEST_LOOT = [TILE_WOOD, TILE_STONE, TILE_BRICK, TILE_COAL, TILE_OBSIDIAN]
@@ -82,9 +83,9 @@ class Inventory:
         self.equip_idx[equip_slot] = max(0, min(idx, len(lst) - 1))
         return item
 
-    # ── Tuile à poser (pioche seulement) ──────────────────────────────────────
+    # ── Tuile à poser (pistolet) ──────────────────────────────────────────────
     def selected_tile(self):
-        if self.tool != TOOL_PICKAXE or not self.resources:
+        if not self.resources:
             return TILE_AIR
         tile, count = self.resources[self.resource_idx]
         return tile if count > 0 else TILE_AIR
@@ -121,7 +122,7 @@ class Inventory:
     def item_next(self):
         s = self.active_slot
         if s == self.SLOT_TOOL:
-            self.tool = TOOL_PICKAXE if self.tool == TOOL_HAND else TOOL_HAND
+            self.tool = TOOLS_LIST[(TOOLS_LIST.index(self.tool) + 1) % len(TOOLS_LIST)]
         elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx + 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
@@ -133,7 +134,7 @@ class Inventory:
     def item_prev(self):
         s = self.active_slot
         if s == self.SLOT_TOOL:
-            self.tool = TOOL_PICKAXE if self.tool == TOOL_HAND else TOOL_HAND
+            self.tool = TOOLS_LIST[(TOOLS_LIST.index(self.tool) - 1) % len(TOOLS_LIST)]
         elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx - 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
@@ -654,7 +655,80 @@ _HOTBAR_SLOT_H = 22   # hauteur d'un slot (px)
 _HOTBAR_PAD    = 3    # espace entre les slots
 _HOTBAR_TOTAL  = _HOTBAR_SLOT_W * 5 + _HOTBAR_PAD * 4
 
-# Icônes pixel-art pour les slots d'équipement (dessinées dans _draw_equip_icon)
+# Icônes pixel-art pour les outils et équipements
+
+def _draw_tool_icon(screen, tool, sx, sy, sw, sh):
+    """Icône pixel-art de l'outil centrée dans le slot (sw×sh)."""
+    R = pygame.draw.rect
+
+    if tool == TOOL_HAND:
+        # ── Main – 16×12 ─────────────────────────────────────────────────────
+        skin = (235, 186, 135)
+        shad = (175, 125, 80)
+        ox = sx + (sw - 16) // 2
+        oy = sy + (sh - 12) // 2
+        # Doigts (index, majeur, annulaire, auriculaire)
+        R(screen, skin, (ox + 0,  oy + 0, 2, 6))
+        R(screen, skin, (ox + 3,  oy + 0, 2, 8))
+        R(screen, skin, (ox + 6,  oy + 1, 2, 7))
+        R(screen, skin, (ox + 9,  oy + 2, 2, 6))
+        # Paume
+        R(screen, skin, (ox + 0,  oy + 7, 12, 5))
+        R(screen, shad, (ox + 0,  oy + 11, 12, 1))
+        # Pouce
+        R(screen, skin, (ox + 11, oy + 8,  4, 3))
+        R(screen, shad, (ox + 11, oy + 11, 4, 1))
+        # Ombres jointures
+        R(screen, shad, (ox + 2,  oy + 6, 1, 1))
+        R(screen, shad, (ox + 5,  oy + 7, 1, 1))
+        R(screen, shad, (ox + 8,  oy + 7, 1, 1))
+
+    elif tool == TOOL_PICKAXE:
+        # ── Pioche – 16×12 ───────────────────────────────────────────────────
+        HNDL  = (139,  90,  43)   # bois
+        STEEL = (185, 185, 200)   # acier clair
+        DSTL  = (100, 100, 115)   # acier sombre
+        ox = sx + (sw - 16) // 2
+        oy = sy + (sh - 12) // 2
+        # Manche diagonal (bas-gauche → haut-droit)
+        R(screen, HNDL, (ox + 0, oy + 9, 2, 3))
+        R(screen, HNDL, (ox + 2, oy + 7, 2, 2))
+        R(screen, HNDL, (ox + 4, oy + 5, 2, 2))
+        R(screen, HNDL, (ox + 6, oy + 3, 2, 2))
+        # Tête (deux dents + corps)
+        R(screen, STEEL, (ox + 7, oy + 0, 9, 3))   # dent supérieure
+        R(screen, STEEL, (ox + 7, oy + 3, 3, 4))   # corps tête
+        R(screen, STEEL, (ox + 7, oy + 7, 9, 3))   # dent inférieure
+        R(screen, DSTL,  (ox + 14, oy + 0, 2, 3))  # pointe haute (foncé)
+        R(screen, DSTL,  (ox + 14, oy + 7, 2, 3))  # pointe basse (foncé)
+        R(screen, (220, 220, 235), (ox + 8, oy + 0, 6, 1))  # reflet haut
+
+    elif tool == TOOL_PLACER:
+        # ── Pistolet à cube – 16×12 ──────────────────────────────────────────
+        METAL = (140, 140, 158)
+        DARK  = ( 75,  75,  92)
+        SHINE = (215, 215, 230)
+        CUBE  = (200, 140,  50)   # couleur coffre / cube
+        CHIGH = (230, 175,  70)   # highlight cube
+        ox = sx + (sw - 16) // 2
+        oy = sy + (sh - 12) // 2
+        # Corps du pistolet
+        R(screen, METAL, (ox + 0, oy + 3, 10, 5))  # corps
+        R(screen, SHINE, (ox + 1, oy + 3,  8, 1))  # reflet haut
+        # Canon
+        R(screen, METAL, (ox + 10, oy + 4, 4, 3))  # canon
+        R(screen, DARK,  (ox + 10, oy + 4, 4, 1))  # ombre haut canon
+        # Poignée
+        R(screen, DARK,  (ox + 2,  oy + 8, 4, 4))  # poignée
+        R(screen, METAL, (ox + 2,  oy + 8, 3, 3))  # face avant poignée
+        # Détente
+        R(screen, DARK,  (ox + 5,  oy + 7, 2, 1))
+        # Cube éjecté au bout du canon
+        R(screen, CUBE,  (ox + 13, oy + 2, 3, 4))  # cube
+        R(screen, CHIGH, (ox + 13, oy + 2, 3, 1))  # highlight haut
+        R(screen, CHIGH, (ox + 13, oy + 2, 1, 4))  # highlight gauche
+        R(screen, DARK,  (ox + 15, oy + 4, 1, 2))  # ombre bas-droite
+
 
 def _draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):
     """Icône pixel-art de l'équipement centrée dans le slot (sw×sh)."""
@@ -716,13 +790,7 @@ def _draw_hotbar(screen, inventory, x_offset, color, font):
         pygame.draw.rect(screen, color, (sx, y, sw, sh), 2 if act else 1)
 
         if slot_id == Inventory.SLOT_TOOL:
-            # Nom de l'outil abrégé
-            tname = {TOOL_HAND: "M", TOOL_PICKAXE: "Pi", TOOL_PLACER: "Ca"}.get(
-                inventory.tool, "?"
-            )
-            lbl   = font.render(tname, True, (255, 255, 255))
-            screen.blit(lbl, (sx + (sw - lbl.get_width()) // 2,
-                               y  + (sh - lbl.get_height()) // 2))
+            _draw_tool_icon(screen, inventory.tool, sx, y, sw, sh)
 
         elif slot_id == Inventory.SLOT_RES:
             if inventory.resources:
@@ -912,6 +980,9 @@ def run(screen, joysticks, world_id, seed):
             if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
                 _flush_blocks()
                 return True
+            if e.type == pygame.KEYDOWN and e.key == pygame.K_p:
+                _sounds.toggle_mute()
+                _music.toggle_mute()
             quit_combo.handle_event(e)
 
         # ── Mise à jour physique et contrôles ─────────────────────────────
@@ -1163,5 +1234,11 @@ def run(screen, joysticks, world_id, seed):
         if quit_combo.update_and_draw(screen):
             _flush_blocks()
             return True
+
+        # Indicateur mute (PC uniquement, coin bas-centre)
+        if _sounds.is_muted():
+            mute_lbl = font_sm.render("[MUTE] P", True, (255, 80, 80))
+            screen.blit(mute_lbl, (SCREEN_WIDTH // 2 - mute_lbl.get_width() // 2,
+                                   SCREEN_HEIGHT - mute_lbl.get_height() - 2))
 
         pygame.display.flip()

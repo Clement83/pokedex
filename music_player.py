@@ -49,6 +49,7 @@ _volume:    float = 0.55   # volume courant [0.0 – 1.0]
 # Boutons joystick pour le volume (identiques à la config Pokédex)
 _BTN_VOL_UP:   int = 15
 _BTN_VOL_DOWN: int = 14
+_muted:        bool = False
 
 
 # ── API publique ──────────────────────────────────────────────────────────────
@@ -114,6 +115,19 @@ def volume_up(step: float = 0.1) -> None:
 def volume_down(step: float = 0.1) -> None:
     """Diminue le volume d'un cran (défaut : -10 %)."""
     set_volume(_volume - step)
+
+
+def toggle_mute() -> bool:
+    """Coupe/remet la musique. Retourne True si muté après bascule."""
+    global _muted
+    _muted = not _muted
+    pygame.mixer.music.set_volume(0.0 if _muted else _volume)
+    return _muted
+
+
+def is_muted() -> bool:
+    """Retourne True si la musique est actuellement coupée."""
+    return _muted
 
 
 # ── Internals ─────────────────────────────────────────────────────────────────

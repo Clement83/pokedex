@@ -152,34 +152,44 @@ def _get(name: str) -> pygame.mixer.Sound | None:
     return snd
 
 
-# ── API publique ─────────────────────────────────────────────────────────────
+# ── Mute global ──────────────────────────────────────────────────────────────
+
+_muted: bool = False
+
+
+def toggle_mute() -> bool:
+    """Coupe/remet les SFX. Retourne True si muté après bascule."""
+    global _muted
+    _muted = not _muted
+    return _muted
+
+
+def is_muted() -> bool:
+    return _muted
+
+
+def _play(snd) -> None:
+    """Joue un son sauf si muté."""
+    if snd and not _muted:
+        snd.play()
+
+
+# ── API publique ──────────────────────────────────────────────────────────────
 
 def mine_tick():
-    snd = _get("mine_tick")
-    if snd:
-        snd.play()
+    _play(_get("mine_tick"))
 
 def mine_done():
-    snd = _get("mine_done")
-    if snd:
-        snd.play()
+    _play(_get("mine_done"))
 
 def place():
-    snd = _get("place")
-    if snd:
-        snd.play()
+    _play(_get("place"))
 
 def chest_open():
-    snd = _get("chest_open")
-    if snd:
-        snd.play()
+    _play(_get("chest_open"))
 
 def inv_change():
-    snd = _get("inv_change")
-    if snd:
-        snd.play()
+    _play(_get("inv_change"))
 
 def jump():
-    snd = _get("jump")
-    if snd:
-        snd.play()
+    _play(_get("jump"))
