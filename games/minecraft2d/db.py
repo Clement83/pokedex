@@ -5,13 +5,19 @@ Schéma :
   worlds(id INTEGER PK, seed INTEGER, created_at TEXT, last_played TEXT)
   blocks(world_id INTEGER, col INTEGER, row INTEGER, tile INTEGER,
          PRIMARY KEY (world_id, col, row))
+  players(world_id INTEGER, player_idx INTEGER, x REAL, y REAL,
+          tool INTEGER, resources TEXT, equip TEXT,
+          PRIMARY KEY (world_id, player_idx))
 
 "blocks" stocke uniquement les deltas par rapport au monde généré :
   - bloc posé par un joueur  → tile != TILE_AIR
   - bloc miné par un joueur  → tile  = TILE_AIR  (même si la génération avait mis autre chose)
 On applique ces deltas après generate(seed) pour retrouver l'état exact.
+
+"players" stocke la position et l'inventaire de chaque joueur (JSON).
 """
 import sqlite3
+import json
 import os
 from datetime import datetime
 
@@ -43,6 +49,18 @@ def init():
                 row       INTEGER NOT NULL,
                 tile      INTEGER NOT NULL,
                 PRIMARY KEY (world_id, col, row)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS players (
+                world_id   INTEGER NOT NULL,
+                player_idx INTEGER NOT NULL,
+                x          REAL    NOT NULL,
+                y          REAL    NOT NULL,
+                tool       INTEGER NOT NULL DEFAULT 0,
+                resources  TEXT    NOT NULL DEFAULT '[]',
+                equip      TEXT    NOT NULL DEFAULT '{}',
+                PRIMARY KEY (world_id, player_idx)
             )
         """)
 
@@ -79,8 +97,9 @@ def delete_world(slot_id):
     """Supprime un monde et tous ses blocs."""
     init()
     with _connect() as conn:
-        conn.execute("DELETE FROM blocks WHERE world_id = ?", (slot_id,))
-        conn.execute("DELETE FROM worlds  WHERE id = ?",      (slot_id,))
+        conn.execute("DELETE FROM blocks   WHERE world_id = ?", (slot_id,))
+        conn.execute("DELETE FROM players  WHERE world_id = ?", (slot_id,))
+        conn.execute("DELETE FROM worlds   WHERE id = ?",       (slot_id,))
 
 
 def touch_world(slot_id):
@@ -129,3 +148,52 @@ def save_blocks_batch(world_id, changes):
             INSERT OR REPLACE INTO blocks (world_id, col, row, tile)
             VALUES (?, ?, ?, ?)
         """, [(world_id, c, r, t) for c, r, t in changes])
+
+
+# ── Persistance joueurs ───────────────────────────────────────────────────────
+
+def save_player(world_id, player_idx, x, y, inventory):
+    """
+    Enregistre la position et l'inventaire d'un joueur.
+    inventory : instance de scene_game.Inventory
+    """
+    init()
+    # Sérialisation JSON de l'inventaire
+    resources_json = json.dumps(inventory.resources)
+    # equip : clés converties en str pour JSON ({0: [...]} → {"0": [...]})
+    equip_raw = {str(k): [[item[0], item[1]] for item in v]
+                 for k, v in inventory.equip.items()}
+    equip_json = json.dumps(equip_raw)
+    with _connect() as conn:
+        conn.execute("""
+            INSERT OR REPLACE INTO players
+                (world_id, player_idx, x, y, tool, resources, equip)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (world_id, player_idx, x, y, inventory.tool,
+              resources_json, equip_json))
+
+
+def load_players(world_id):
+    """
+    Retourne un dict {player_idx: {x, y, tool, resources, equip}}
+    pour tous les joueurs sauvegardés dans ce monde.
+    equip est un dict {int_key: [(slot, mat), ...]}
+    """
+    init()
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT player_idx, x, y, tool, resources, equip "
+            "FROM players WHERE world_id = ?",
+            (world_id,)
+        ).fetchall()
+    result = {}
+    for player_idx, x, y, tool, res_json, eq_json in rows:
+        resources = json.loads(res_json)   # [[tile, count], ...]
+        eq_raw    = json.loads(eq_json)    # {"0": [[s, m], ...], ...}
+        equip = {int(k): [tuple(item) for item in v] for k, v in eq_raw.items()}
+        result[player_idx] = {
+            "x": x, "y": y, "tool": tool,
+            "resources": resources,
+            "equip": equip,
+        }
+    return result

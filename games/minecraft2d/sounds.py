@@ -1,0 +1,185 @@
+"""
+Sound design procédural – Minecraft 2D
+=======================================
+Aucun fichier audio requis. Tous les sons sont générés en mémoire
+avec math + array, compatible Python 3.8 / Odroid GO Advance.
+
+Sons disponibles :
+  mine_tick()    – tick de frappe (pendant le minage)
+  mine_done()    – bloc cassé (pop satisfaisant)
+  place()        – pose de bloc (clic mat)
+  chest_open()   – loot de coffre (jingle arpège montant)
+  inv_change()   – changement d'item dans l'inventaire (beep discret)
+"""
+from __future__ import annotations
+
+import math
+import array as _array
+import pygame
+
+# ── Paramètres globaux ────────────────────────────────────────────────────────
+_VOLUME = 0.45   # volume global des SFX (0.0 – 1.0)
+
+
+def _sr() -> int:
+    """Sample rate réel du mixer, ou 22050 par défaut."""
+    info = pygame.mixer.get_init()
+    return info[0] if info else 22050
+
+
+def _build(samples_f: list, vol: float = 1.0) -> pygame.mixer.Sound | None:
+    """
+    Convertit une liste flottante [-1,1] en Sound pygame stéréo int16.
+    Retourne None si le mixer n'est pas disponible.
+    """
+    if not pygame.mixer.get_init():
+        return None
+    peak = max(abs(s) for s in samples_f) or 1.0
+    buf  = _array.array('h')
+    for s in samples_f:
+        v = int(s / peak * 32767 * vol)
+        buf.append(v)   # L
+        buf.append(v)   # R
+    snd = pygame.mixer.Sound(buffer=buf)
+    return snd
+
+
+# ── Générateurs de formes d'onde ──────────────────────────────────────────────
+
+def _noise(n: int) -> list:
+    """Bruit blanc simple (pseudo-aléatoire déterministe)."""
+    samples = []
+    x = 1
+    for _ in range(n):
+        x = (x * 1664525 + 1013904223) & 0xFFFFFFFF
+        samples.append((x / 0x7FFFFFFF) - 1.0)
+    return samples
+
+
+def _sine_decay(freq: float, dur: float, sr: int, decay: float = 8.0) -> list:
+    """Sinusoïde avec enveloppe exponentielle décroissante."""
+    n   = int(dur * sr)
+    tau = 2.0 * math.pi * freq / sr
+    return [math.sin(i * tau) * math.exp(-decay * i / n) for i in range(n)]
+
+
+def _click(dur: float, sr: int) -> list:
+    """Bruit blanc avec enveloppe très courte → clic/tap."""
+    n    = int(dur * sr)
+    raw  = _noise(n)
+    # Enveloppe : montée rapide (5 %) + décroissance exponentielle
+    env  = [min(1.0, i / (n * 0.05)) * math.exp(-12.0 * i / n) for i in range(n)]
+    return [raw[i] * env[i] for i in range(n)]
+
+
+def _arpeggio(freqs: list, note_dur: float, sr: int, decay: float = 10.0) -> list:
+    """Arpège : succession de sinusoïdes courtes."""
+    samples = []
+    for freq in freqs:
+        n   = int(note_dur * sr)
+        tau = 2.0 * math.pi * freq / sr
+        env_peak = int(n * 0.02)
+        for i in range(n):
+            env = min(1.0, i / max(1, env_peak)) * math.exp(-decay * i / n)
+            samples.append(math.sin(i * tau) * env)
+    return samples
+
+
+# ── Synthèses pré-bake au premier appel ──────────────────────────────────────
+
+_cache: dict = {}
+
+
+def _get(name: str) -> pygame.mixer.Sound | None:
+    if name in _cache:
+        return _cache[name]
+    if not pygame.mixer.get_init():
+        return None
+    sr = _sr()
+
+    if name == "mine_tick":
+        # Tap sourd sur de la roche : bruit bref + légère tonalité basse
+        n   = int(0.06 * sr)
+        raw = _noise(n)
+        low = _sine_decay(120.0, 0.06, sr, decay=18.0)
+        s   = [raw[i] * 0.4 + low[i] * 0.6 for i in range(n)]
+        snd = _build(s, vol=_VOLUME * 0.6)
+
+    elif name == "mine_done":
+        # Pop + clic grave : bloc qui tombe
+        n    = int(0.12 * sr)
+        low  = _sine_decay(90.0, 0.12, sr, decay=12.0)
+        mid  = _sine_decay(200.0, 0.05, sr, decay=25.0)
+        mid += [0.0] * (n - len(mid))
+        s    = [low[i] * 0.7 + mid[i] * 0.5 for i in range(n)]
+        snd  = _build(s, vol=_VOLUME * 0.9)
+
+    elif name == "place":
+        # Clic court et mat (bois/pierre)
+        s   = _click(0.07, sr)
+        # Légère résonance grave
+        low = _sine_decay(180.0, 0.07, sr, decay=20.0)
+        n   = min(len(s), len(low))
+        s   = [s[i] * 0.5 + low[i] * 0.5 for i in range(n)]
+        snd = _build(s, vol=_VOLUME * 0.75)
+
+    elif name == "chest_open":
+        # Jingle arpège pentatonique montant (Do Mi Sol Si Do)
+        freqs = [523.25, 659.25, 783.99, 987.77, 1046.5]   # C5 E5 G5 B5 C6
+        s     = _arpeggio(freqs, note_dur=0.10, sr=sr, decay=8.0)
+        snd   = _build(s, vol=_VOLUME)
+
+    elif name == "inv_change":
+        # Beep discret : sinusoïde courte, neutre
+        s   = _sine_decay(660.0, 0.05, sr, decay=22.0)
+        snd = _build(s, vol=_VOLUME * 0.45)
+
+    elif name == "jump":
+        # Whoosh léger : sinusoïde qui monte rapidement
+        n   = int(0.10 * sr)
+        s   = []
+        for i in range(n):
+            freq  = 200.0 + 400.0 * (i / n)
+            phase = 2.0 * math.pi * freq * i / sr
+            env   = math.exp(-8.0 * i / n)
+            s.append(math.sin(phase) * env)
+        snd = _build(s, vol=_VOLUME * 0.4)
+
+    else:
+        snd = None
+
+    _cache[name] = snd
+    return snd
+
+
+# ── API publique ─────────────────────────────────────────────────────────────
+
+def mine_tick():
+    snd = _get("mine_tick")
+    if snd:
+        snd.play()
+
+def mine_done():
+    snd = _get("mine_done")
+    if snd:
+        snd.play()
+
+def place():
+    snd = _get("place")
+    if snd:
+        snd.play()
+
+def chest_open():
+    snd = _get("chest_open")
+    if snd:
+        snd.play()
+
+def inv_change():
+    snd = _get("inv_change")
+    if snd:
+        snd.play()
+
+def jump():
+    snd = _get("jump")
+    if snd:
+        snd.play()

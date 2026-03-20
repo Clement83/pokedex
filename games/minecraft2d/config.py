@@ -22,7 +22,7 @@ TILE_SAND  = 4
 TILE_WOOD  = 5
 TILE_COAL  = 6              # bloc décoratif minable
 TILE_BRICK = 7              # brique (structures)
-TILE_CHEST = 8              # coffre (structures – rapporte beaucoup de ressources)
+TILE_CHEST = 8              # coffre (contient du loot d'équipement)
 TILE_OBSIDIAN = 9           # obsidienne (très dure, fonds de donjon)
 TILE_GLASS = 10             # vitre (fenêtres et hublots)
 
@@ -41,6 +41,46 @@ TILE_NAMES = {
     TILE_GLASS:    "Vitre",
 }
 
+# ── Outils ────────────────────────────────────────────────────────────────────
+TOOL_HAND    = 0   # saisir / interagir : ouvrir coffres
+TOOL_PICKAXE = 1   # creuser uniquement
+TOOL_PLACER  = 2   # poser des blocs (appui simple MINE)
+TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche", TOOL_PLACER: "Canon"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER]
+
+# ── Équipements ───────────────────────────────────────────────────────────────
+# Slot d'équipement
+EQUIP_HEAD = 0   # casque
+EQUIP_BODY = 1   # plastron
+EQUIP_FEET = 2   # bottes
+
+# Matériaux
+MAT_WOOD = 0
+MAT_IRON = 1
+MAT_GOLD = 2
+MAT_NAMES = {MAT_WOOD: "Bois", MAT_IRON: "Fer", MAT_GOLD: "Or"}
+
+# Couleurs des matériaux sur le bonhomme
+MAT_COLORS = {
+    MAT_WOOD: (139,  90,  43),   # brun bois
+    MAT_IRON: (170, 170, 185),   # gris métal
+    MAT_GOLD: (255, 200,   0),   # jaune or
+}
+
+# item_id = (slot, material) — tuples uniques
+# ex. (EQUIP_HEAD, MAT_WOOD) = casque en bois
+EQUIP_NAMES = {
+    (EQUIP_HEAD, MAT_WOOD): "Casque Bois",
+    (EQUIP_HEAD, MAT_IRON): "Casque Fer",
+    (EQUIP_HEAD, MAT_GOLD): "Casque Or",
+    (EQUIP_BODY, MAT_WOOD): "Plastron Bois",
+    (EQUIP_BODY, MAT_IRON): "Plastron Fer",
+    (EQUIP_BODY, MAT_GOLD): "Plastron Or",
+    (EQUIP_FEET, MAT_WOOD): "Bottes Bois",
+    (EQUIP_FEET, MAT_IRON): "Bottes Fer",
+    (EQUIP_FEET, MAT_GOLD): "Bottes Or",
+}
+
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
     TILE_AIR:      (100, 160, 220),   # ciel
@@ -51,7 +91,7 @@ TILE_COLORS = {
     TILE_WOOD:     (180, 120,  60),
     TILE_COAL:     ( 60,  60,  70),
     TILE_BRICK:    (180,  80,  50),   # rouge brique
-    TILE_CHEST:    (200, 140,  40),   # brun doré
+    TILE_CHEST:    (200, 140,  50),   # coffre brun-doré
     TILE_OBSIDIAN: ( 30,  20,  50),   # violet très sombre
     TILE_GLASS:    (180, 220, 250),   # bleu clair translucide
 }
@@ -65,7 +105,7 @@ TILE_BREAK_TIME = {
     TILE_WOOD:     0.5,
     TILE_COAL:     0.8,
     TILE_BRICK:    1.2,
-    TILE_CHEST:    0.7,
+    TILE_CHEST:    0.3,   # coffre : s'ouvre vite avec la main
     TILE_OBSIDIAN: 3.0,
     TILE_GLASS:    0.3,
 }
