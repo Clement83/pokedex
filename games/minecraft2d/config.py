@@ -36,10 +36,11 @@ TILE_NAMES = {
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
-TOOL_HAND    = 0   # saisir / interagir (futur : grab, craft…)
-TOOL_PICKAXE = 1   # miner / construire
-TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche"}
-TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE]
+TOOL_HAND    = 0   # saisir / interagir : ouvrir coffres
+TOOL_PICKAXE = 1   # creuser uniquement
+TOOL_PLACER  = 2   # poser des blocs (appui simple MINE)
+TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche", TOOL_PLACER: "Canon"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER]
 
 # ── Équipements ───────────────────────────────────────────────────────────────
 # Slot d'équipement

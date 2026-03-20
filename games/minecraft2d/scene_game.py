@@ -598,6 +598,41 @@ def _draw_player(screen, player, camera, font):
 
 _CURSOR_SURF = None   # Surface pré-allouée, créée au premier appel
 
+def _draw_compass(surf, cam, me, other, surf_w, color):
+    """Boussole (top-right) dont l'aiguille pointe vers l'autre joueur."""
+    import math as _math
+    R   = 12          # rayon du cadran
+    cx  = surf_w - R - 6
+    cy  = R + 6
+
+    # Fond semi-transparent
+    bg  = pygame.Surface((R*2+2, R*2+2), pygame.SRCALPHA)
+    pygame.draw.circle(bg, (0, 0, 0, 110), (R+1, R+1), R+1)
+    surf.blit(bg, (cx - R - 1, cy - R - 1))
+
+    # Cercle du cadran
+    pygame.draw.circle(surf, (50, 50, 50),  (cx, cy), R)
+    pygame.draw.circle(surf, (180, 180, 180), (cx, cy), R, 1)
+
+    # Angle vers l'autre joueur (en pixels monde)
+    dx = (other.px() + PLAYER_W / 2) - (me.px() + PLAYER_W / 2)
+    dy = (other.py() + PLAYER_H / 2) - (me.py() + PLAYER_H / 2)
+    angle = _math.atan2(dy, dx)   # 0 = droite, sens horaire vers le bas
+
+    needle = R - 3
+    tip_x  = int(cx + _math.cos(angle) * needle)
+    tip_y  = int(cy + _math.sin(angle) * needle)
+    tail_x = int(cx - _math.cos(angle) * (needle // 2))
+    tail_y = int(cy - _math.sin(angle) * (needle // 2))
+
+    # Aiguille : pointe colorée (vers l'autre joueur) + queue grise
+    pygame.draw.line(surf, (80, 80, 80), (tail_x, tail_y), (cx, cy), 2)
+    pygame.draw.line(surf, color,        (cx, cy), (tip_x, tip_y), 2)
+    pygame.draw.circle(surf, color, (tip_x, tip_y), 2)
+    # Point central
+    pygame.draw.circle(surf, (220, 220, 220), (cx, cy), 2)
+
+
 def _draw_cursor(screen, player, col, row, camera):
     global _CURSOR_SURF
     sx, sy = camera.world_to_screen(col * TILE_SIZE, row * TILE_SIZE)
@@ -616,8 +651,45 @@ _HOTBAR_SLOT_H = 22   # hauteur d'un slot (px)
 _HOTBAR_PAD    = 3    # espace entre les slots
 _HOTBAR_TOTAL  = _HOTBAR_SLOT_W * 5 + _HOTBAR_PAD * 4
 
-# Icônes texte pour les slots d'équipement
-_EQUIP_ICON = {EQUIP_HEAD: "T", EQUIP_BODY: "P", EQUIP_FEET: "B"}   # Tête/Plastron/Bottes
+# Icônes pixel-art pour les slots d'équipement (dessinées dans _draw_equip_icon)
+
+def _draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):
+    """Icône pixel-art de l'équipement centrée dans le slot (sw×sh)."""
+    c    = mat_color if mat_color else (80, 80, 80)
+    dark = (max(0, c[0]-70), max(0, c[1]-70), max(0, c[2]-70))
+    R    = pygame.draw.rect
+
+    if eslot == EQUIP_HEAD:
+        # Casque — icône 16×9 centrée
+        ox = sx + (sw - 16) // 2
+        oy = sy + (sh - 9)  // 2
+        R(screen, c, (ox+3, oy,   10, 1))   # arc du dôme
+        R(screen, c, (ox+1, oy+1, 14, 1))
+        R(screen, c, (ox,   oy+2, 16, 1))
+        R(screen, c, (ox,   oy+3, 16, 3))   # corps
+        R(screen, (15,15,15), (ox+4, oy+3, 8, 3))  # visière sombre
+        R(screen, c, (ox,    oy+6, 5, 3))   # jugulaire gauche
+        R(screen, c, (ox+11, oy+6, 5, 3))   # jugulaire droite
+
+    elif eslot == EQUIP_BODY:
+        # Plastron — icône 16×12 centrée
+        ox = sx + (sw - 16) // 2
+        oy = sy + (sh - 12) // 2
+        R(screen, c, (ox,   oy,    16,  2))  # épaulettes
+        R(screen, (15,15,15), (ox+5, oy, 6, 2))  # encolure
+        R(screen, c, (ox+1, oy+2,  14, 10))  # corps
+        R(screen, dark, (ox+7, oy+3,  2,  8))  # couture centrale
+        R(screen, dark, (ox+3, oy+5,  2,  2))  # rivet gauche
+        R(screen, dark, (ox+11,oy+5,  2,  2))  # rivet droit
+
+    elif eslot == EQUIP_FEET:
+        # Bottes — deux L miroir, icône 14×7 centrée
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 7)  // 2
+        R(screen, c, (ox,    oy,   5, 5))   # tige gauche
+        R(screen, c, (ox,    oy+5, 7, 2))   # semelle gauche
+        R(screen, c, (ox+9,  oy,   5, 5))   # tige droite
+        R(screen, c, (ox+7,  oy+5, 7, 2))   # semelle droite
 
 
 def _draw_hotbar(screen, inventory, x_offset, color, font):
@@ -642,7 +714,9 @@ def _draw_hotbar(screen, inventory, x_offset, color, font):
 
         if slot_id == Inventory.SLOT_TOOL:
             # Nom de l'outil abrégé
-            tname = "M" if inventory.tool == TOOL_HAND else "Pi"
+            tname = {TOOL_HAND: "M", TOOL_PICKAXE: "Pi", TOOL_PLACER: "Ca"}.get(
+                inventory.tool, "?"
+            )
             lbl   = font.render(tname, True, (255, 255, 255))
             screen.blit(lbl, (sx + (sw - lbl.get_width()) // 2,
                                y  + (sh - lbl.get_height()) // 2))
@@ -666,23 +740,18 @@ def _draw_hotbar(screen, inventory, x_offset, color, font):
                                       y + (sh - none_s.get_height()) // 2))
 
         else:
-            # Slots équipement
-            eslot = Inventory.EQUIP_SLOT_MAP[slot_id]
-            item  = inventory.worn_equip(eslot)
-            icon  = font.render(_EQUIP_ICON[eslot], True, (160, 160, 160))
-            screen.blit(icon, (sx + 1, y + 1))
+            # Slots équipement — icônes pixel-art
+            eslot  = Inventory.EQUIP_SLOT_MAP[slot_id]
+            item   = inventory.worn_equip(eslot)
+            mat_c  = MAT_COLORS[item[1]] if item else None
+            _draw_equip_icon(screen, eslot, mat_c, sx, y, sw, sh)
+            # Compteur si plusieurs pièces du même slot
             if item:
-                mat_c = MAT_COLORS[item[1]]
-                pygame.draw.rect(screen, mat_c, (sx + 3, y + 3, sh - 6, sh - 6))
                 lst = inventory.equip[eslot]
                 if len(lst) > 1:
                     cnt_s = font.render(str(len(lst)), True, (255, 255, 255))
                     screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
                                          y + sh - cnt_s.get_height()))
-            else:
-                none_s = font.render("—", True, (80, 80, 80))
-                screen.blit(none_s, (sx + (sw - none_s.get_width()) // 2,
-                                      y + (sh - none_s.get_height()) // 2))
 
     # ── Nom de l'item actif affiché sous la hotbar ────────────────────────────
     s = inventory.active_slot
@@ -909,10 +978,9 @@ def run(screen, joysticks, world_id, seed):
             if in_reach and player._action_cd <= 0:
                 tile_at = world.get(cur_col, cur_row)
 
-                if cur_mod and cur_mine and not prev_mine[i]:
-                    # ─ MODIFIER + MINE (edge) = POSER un bloc ────────────
-                    # Uniquement avec l'outil Pioche et une ressource dispo
-                    if (player.inventory.tool == TOOL_PICKAXE
+                if cur_mine and not prev_mine[i] and not cur_mod:
+                    # ─ MINE appui unique + outil Canon → POSER un bloc ─────────
+                    if (player.inventory.tool == TOOL_PLACER
                             and tile_at == TILE_AIR):
                         selected = player.inventory.selected_tile()
                         if selected != TILE_AIR:
@@ -1053,6 +1121,10 @@ def run(screen, joysticks, world_id, seed):
                 # Hotbar du joueur propriétaire de cette vue (nom inclus dans _draw_hotbar)
                 player_i = players[i]
                 _draw_hotbar(surf, player_i.inventory, 4, player_i.color, font_sm)
+
+                # Boussole vers l'autre joueur (top-right)
+                other = players[1 - i]
+                _draw_compass(surf, cam, players[i], other, HALF_W, other.color)
 
             # Séparateur vertical central
             pygame.draw.line(screen, (200, 200, 200), (HALF_W, 0), (HALF_W, SCREEN_HEIGHT), 2)
