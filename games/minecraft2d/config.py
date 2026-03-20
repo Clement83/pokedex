@@ -21,6 +21,7 @@ TILE_GRASS = 3
 TILE_SAND  = 4
 TILE_WOOD  = 5
 TILE_COAL  = 6              # bloc décoratif minable
+TILE_CHEST = 7              # coffre (contient du loot d'équipement)
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -31,6 +32,7 @@ TILE_NAMES = {
     TILE_SAND:  "Sable",
     TILE_WOOD:  "Bois",
     TILE_COAL:  "Charbon",
+    TILE_CHEST: "Coffre",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -38,6 +40,39 @@ TOOL_HAND    = 0   # saisir / interagir (futur : grab, craft…)
 TOOL_PICKAXE = 1   # miner / construire
 TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche"}
 TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE]
+
+# ── Équipements ───────────────────────────────────────────────────────────────
+# Slot d'équipement
+EQUIP_HEAD = 0   # casque
+EQUIP_BODY = 1   # plastron
+EQUIP_FEET = 2   # bottes
+
+# Matériaux
+MAT_WOOD = 0
+MAT_IRON = 1
+MAT_GOLD = 2
+MAT_NAMES = {MAT_WOOD: "Bois", MAT_IRON: "Fer", MAT_GOLD: "Or"}
+
+# Couleurs des matériaux sur le bonhomme
+MAT_COLORS = {
+    MAT_WOOD: (139,  90,  43),   # brun bois
+    MAT_IRON: (170, 170, 185),   # gris métal
+    MAT_GOLD: (255, 200,   0),   # jaune or
+}
+
+# item_id = (slot, material) — tuples uniques
+# ex. (EQUIP_HEAD, MAT_WOOD) = casque en bois
+EQUIP_NAMES = {
+    (EQUIP_HEAD, MAT_WOOD): "Casque Bois",
+    (EQUIP_HEAD, MAT_IRON): "Casque Fer",
+    (EQUIP_HEAD, MAT_GOLD): "Casque Or",
+    (EQUIP_BODY, MAT_WOOD): "Plastron Bois",
+    (EQUIP_BODY, MAT_IRON): "Plastron Fer",
+    (EQUIP_BODY, MAT_GOLD): "Plastron Or",
+    (EQUIP_FEET, MAT_WOOD): "Bottes Bois",
+    (EQUIP_FEET, MAT_IRON): "Bottes Fer",
+    (EQUIP_FEET, MAT_GOLD): "Bottes Or",
+}
 
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
@@ -48,6 +83,7 @@ TILE_COLORS = {
     TILE_SAND:  (210, 190, 110),
     TILE_WOOD:  (180, 120,  60),
     TILE_COAL:  ( 60,  60,  70),
+    TILE_CHEST: (200, 140,  50),   # coffre brun-doré
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -58,6 +94,7 @@ TILE_BREAK_TIME = {
     TILE_SAND:  0.3,
     TILE_WOOD:  0.5,
     TILE_COAL:  0.8,
+    TILE_CHEST: 0.3,   # coffre : s'ouvre vite avec la main
 }
 
 # ── Génération du terrain ─────────────────────────────────────────────────────

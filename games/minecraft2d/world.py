@@ -7,7 +7,7 @@ Perf-first : pas de numpy, Python 3.8 compatible, Odroid GO Advance.
 import random
 from config import (
     ROWS,
-    TILE_AIR, TILE_DIRT, TILE_STONE, TILE_GRASS, TILE_SAND, TILE_WOOD, TILE_COAL,
+    TILE_AIR, TILE_DIRT, TILE_STONE, TILE_GRASS, TILE_SAND, TILE_WOOD, TILE_COAL, TILE_CHEST,
     SURFACE_Y, TERRAIN_AMPLITUDE, TERRAIN_FREQ, STONE_DEPTH,
 )
 
@@ -102,19 +102,71 @@ class World:
                 return TILE_GRASS   # feuilles = vert
         return TILE_AIR
 
+    # ── Cabanes avec coffres ──────────────────────────────────────────────────
+
+    def _cabin_origin(self, col):
+        """Retourne la colonne gauche de la cabane dont col fait partie, ou None."""
+        # Cabanes espacées toutes ~40 colonnes, largeur 5
+        for dc in range(5):
+            tc = col - dc
+            if _hash1(tc * 73 + 11, self.seed ^ 0xABCD) < 0.025:
+                return tc
+        return None
+
+    def _cabin_tile(self, col, row):
+        """
+        Cabane = murs en TILE_WOOD (largeur 5, hauteur 3), sol en TILE_STONE,
+        coffre au centre (col+2, surface-1) = TILE_CHEST.
+        Retourne la tuile ou TILE_AIR si (col, row) n'est pas dans une cabane.
+        """
+        origin = self._cabin_origin(col)
+        if origin is None:
+            return TILE_AIR
+        s  = self.surface_at(origin + 2)   # surface au centre de la cabane
+        dc = col - origin
+        dr = row - (s - 3)                 # dr=0 : toit, dr=2 : plancher
+        if not (0 <= dc <= 4 and 0 <= dr <= 3):
+            return TILE_AIR
+        # Plancher
+        if dr == 3:
+            return TILE_STONE
+        # Murs latéraux et toit
+        if dc == 0 or dc == 4 or dr == 0:
+            return TILE_WOOD
+        # Coffre au centre (dr=2, dc=2)
+        if dc == 2 and dr == 2:
+            return TILE_CHEST
+        return TILE_AIR   # intérieur vide
+
     def _base_tile(self, col, row):
         """Tuile procédurale sans modifications joueurs."""
         if row <= 0 or row >= ROWS - 1:
             return TILE_STONE
         s = self.surface_at(col)
         if row < s:
+            cabin = self._cabin_tile(col, row)
+            if cabin != TILE_AIR:
+                return cabin
             return self._tree_tile(col, row)
         if row == s:
-            return TILE_SAND if _hash1(col * 37, self.seed ^ 0x5A4D) < 0.07 else TILE_GRASS
+            # Plancher de cabane prioritaire sur l'herbe
+            cabin = self._cabin_tile(col, row)
+            if cabin != TILE_AIR:
+                return cabin
+            is_sand = _hash1(col * 37, self.seed ^ 0x5A4D) < 0.07
+            # Coffre rare à la surface (hors sable, hors cabane) ~1/100 colonnes
+            if not is_sand and _hash1(col * 137 + 19, self.seed ^ 0xF00D) < 0.010:
+                return TILE_CHEST
+            return TILE_SAND if is_sand else TILE_GRASS
         if row < s + STONE_DEPTH:
             return TILE_DIRT
-        # Cave via bruit 2D (remplace l'automate cellulaire – infini horizontal)
-        if _smooth2(col, row, 0.18, self.seed ^ 0xCAFE) > 0.67 and row > s + 3:
+        # Cave via bruit 2D
+        cave = _smooth2(col, row, 0.18, self.seed ^ 0xCAFE) > 0.67 and row > s + 3
+        if cave:
+            # Coffre rare sur le sol d'une grotte (tuile du dessous = solide)
+            floor_solid = _smooth2(col, row + 1, 0.18, self.seed ^ 0xCAFE) <= 0.67
+            if floor_solid and _hash2(col, row, self.seed ^ 0x5E17) < 0.018:
+                return TILE_CHEST
             return TILE_AIR
         # Veines de charbon
         if _smooth2(col * 1.3, row * 1.1, 0.22, self.seed ^ 0xC0A1) > 0.80 and row >= s + STONE_DEPTH + 2:
@@ -135,6 +187,24 @@ class World:
     def set(self, col, row, tile):
         """Enregistre une modification joueur en mémoire."""
         self.mods[(col, row)] = tile
+
+    def chest_loot(self):
+        """
+        Tire un item d'équipement aléatoire à l'ouverture d'un coffre.
+        - Type (tête/corps/pieds) : égalité parfaite
+        - Matériau : bois 65 %, fer 28 %, or 7 %
+        Retourne (equip_slot, material).
+        """
+        from config import EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, MAT_WOOD, MAT_IRON, MAT_GOLD
+        equip_slot = random.choice([EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
+        r = random.random()
+        if r < 0.65:
+            material = MAT_WOOD
+        elif r < 0.93:
+            material = MAT_IRON
+        else:
+            material = MAT_GOLD
+        return (equip_slot, material)
 
 
 def generate(seed=None):

@@ -13,36 +13,79 @@ from config import *
 from world import generate
 from quit_combo import QuitCombo
 import db as _db
+import sounds as _sounds
 
 
 # ── Inventaire ────────────────────────────────────────────────────────────────
 
 class Inventory:
     """
-    Inventaire à deux slots fonctionnels :
-      slot 0 – outil actif   : Main (grab) ou Pioche (mine/construit)
-      slot 1 – ressources    : liste dynamique remplie en minant, vide au départ
+    Inventaire à 5 slots :
+      slot 0 – outil       : Main ou Pioche
+      slot 1 – ressources  : blocs récoltés (liste dynamique)
+      slot 2 – tête        : liste de casques trouvés [(slot, mat), ...]
+      slot 3 – corps       : liste de plastrons trouvés
+      slot 4 – pieds       : liste de bottes trouvées
 
     Contrôles (MODIFIER tenu) :
-      ← / →  → naviguer entre slot 0 et slot 1
-      ↑ / ↓  → changer d'outil (slot 0) ou de ressource active (slot 1)
+      ← / →  → naviguer entre les slots 0-4
+      ↑ / ↓  → changer l'item actif du slot courant
     """
+    SLOT_TOOL  = 0
+    SLOT_RES   = 1
+    SLOT_HEAD  = 2
+    SLOT_BODY  = 3
+    SLOT_FEET  = 4
+    NUM_SLOTS  = 5
+
+    EQUIP_SLOT_MAP = {SLOT_HEAD: EQUIP_HEAD, SLOT_BODY: EQUIP_BODY, SLOT_FEET: EQUIP_FEET}
 
     def __init__(self):
-        self.active_slot  = 0           # slot mis en évidence (0=outil, 1=ressources)
-        self.tool         = TOOL_HAND   # outil courant
-        self.resources    = []          # [(tile, count), ...]  — vide au départ
-        self.resource_idx = 0           # index dans resources
+        self.active_slot  = 0           # slot mis en évidence
+        self.tool         = TOOL_HAND
+        self.resources    = []          # [(tile, count), ...]
+        self.resource_idx = 0
+        # équipements : listes de (equip_slot, material)
+        self.equip = {
+            EQUIP_HEAD: [],   # ex. [(EQUIP_HEAD, MAT_WOOD), (EQUIP_HEAD, MAT_IRON)]
+            EQUIP_BODY: [],
+            EQUIP_FEET: [],
+        }
+        self.equip_idx = {EQUIP_HEAD: 0, EQUIP_BODY: 0, EQUIP_FEET: 0}
 
-    # ── Tuile sélectionnée pour poser ─────────────────────────────────────────
+    # ── Équipement porté ──────────────────────────────────────────────────────
+    def worn_equip(self, equip_slot):
+        """Retourne (equip_slot, material) actuellement porté ou None."""
+        lst = self.equip[equip_slot]
+        if not lst:
+            return None
+        return lst[self.equip_idx[equip_slot]]
+
+    # ── Ajouter un équipement au bon slot ─────────────────────────────────────
+    def add_equip(self, item):
+        """item = (equip_slot, material)."""
+        eslot = item[0]
+        if item not in self.equip[eslot]:
+            self.equip[eslot].append(item)
+
+    # ── Retirer l'équipement actif d'un slot (drop) ───────────────────────────
+    def drop_equip(self, equip_slot):
+        lst = self.equip[equip_slot]
+        if not lst:
+            return None
+        idx  = self.equip_idx[equip_slot]
+        item = lst.pop(idx)
+        self.equip_idx[equip_slot] = max(0, min(idx, len(lst) - 1))
+        return item
+
+    # ── Tuile à poser (pioche seulement) ──────────────────────────────────────
     def selected_tile(self):
-        """Retourne la tuile à poser. Nécessite l'outil Pioche et un sac non vide."""
         if self.tool != TOOL_PICKAXE or not self.resources:
             return TILE_AIR
         tile, count = self.resources[self.resource_idx]
         return tile if count > 0 else TILE_AIR
 
-    # ── Ajout d'une tuile dans le sac (après avoir miné) ─────────────────────
+    # ── Ajouter une ressource ─────────────────────────────────────────────────
     def add(self, tile):
         for i, (t, c) in enumerate(self.resources):
             if t == tile:
@@ -50,7 +93,7 @@ class Inventory:
                 return
         self.resources.append((tile, 1))
 
-    # ── Consommation d'une unité de la ressource active (après avoir posé) ───
+    # ── Consommer une ressource ───────────────────────────────────────────────
     def consume(self):
         if not self.resources:
             return
@@ -63,25 +106,37 @@ class Inventory:
         else:
             self.resources[self.resource_idx] = (t, c - 1)
 
-    # ── Navigation gauche / droite : changer de slot actif ───────────────────
+    # ── Navigation ←/→ entre slots ───────────────────────────────────────────
     def slot_next(self):
-        self.active_slot = min(self.active_slot + 1, 1)
+        self.active_slot = (self.active_slot + 1) % self.NUM_SLOTS
 
     def slot_prev(self):
-        self.active_slot = max(self.active_slot - 1, 0)
+        self.active_slot = (self.active_slot - 1) % self.NUM_SLOTS
 
-    # ── Navigation haut / bas : changer au sein du slot actif ────────────────
+    # ── Navigation ↑/↓ dans le slot actif ────────────────────────────────────
     def item_next(self):
-        if self.active_slot == 0:
+        s = self.active_slot
+        if s == self.SLOT_TOOL:
             self.tool = TOOL_PICKAXE if self.tool == TOOL_HAND else TOOL_HAND
-        elif self.active_slot == 1 and len(self.resources) > 1:
+        elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx + 1) % len(self.resources)
+        elif s in self.EQUIP_SLOT_MAP:
+            eslot = self.EQUIP_SLOT_MAP[s]
+            lst   = self.equip[eslot]
+            if len(lst) > 1:
+                self.equip_idx[eslot] = (self.equip_idx[eslot] + 1) % len(lst)
 
     def item_prev(self):
-        if self.active_slot == 0:
+        s = self.active_slot
+        if s == self.SLOT_TOOL:
             self.tool = TOOL_PICKAXE if self.tool == TOOL_HAND else TOOL_HAND
-        elif self.active_slot == 1 and len(self.resources) > 1:
+        elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx - 1) % len(self.resources)
+        elif s in self.EQUIP_SLOT_MAP:
+            eslot = self.EQUIP_SLOT_MAP[s]
+            lst   = self.equip[eslot]
+            if len(lst) > 1:
+                self.equip_idx[eslot] = (self.equip_idx[eslot] - 1) % len(lst)
 
 
 # ── Joueur ────────────────────────────────────────────────────────────────────
@@ -374,12 +429,15 @@ class ChunkCache:
             for dc in range(CHUNK_COLS):
                 col   = col0 + dc
                 tile  = self._world.get(col, row)
-                color = TILE_COLORS[tile]
                 x = dc * ts
                 y = row * ts
-                surf.fill(color, (x, y, ts, ts))
-                if tile != TILE_AIR:
-                    pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+                if tile == TILE_CHEST:
+                    _draw_chest_tile(surf, x, y)
+                else:
+                    color = TILE_COLORS[tile]
+                    surf.fill(color, (x, y, ts, ts))
+                    if tile != TILE_AIR:
+                        pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
         # Éviction LRU si cache plein
         if len(self._cache) >= self._MAX_CHUNKS:
             self._cache.popitem(last=False)
@@ -406,6 +464,45 @@ class ChunkCache:
 
 
 # ── Dessin ────────────────────────────────────────────────────────────────────
+
+# Coffre pixel-art 16×16 ──────────────────────────────────────────────────────
+_C_BK  = ( 30,  15,   5)   # contour sombre
+_C_GD  = (215, 165,   5)   # or (cadre / bande)
+_C_BR  = (115,  65,  20)   # brun corps
+_C_WH  = (220, 205, 175)   # reflet clair
+
+
+def _draw_chest_tile(surf, x, y):
+    """Dessine un coffre pixel-art sur la surface surf à (x, y), taille 16×16."""
+    dr = surf.fill   # alias raccourci
+
+    # ── Fond brun ───────────────────────────────────────────────────────
+    dr(_C_BR,  (x,     y,     16, 16))
+
+    # ── Cadre or 1 px intérieur + contour noir ───────────────────────────
+    pygame.draw.rect(surf, _C_BK, (x,   y,   16, 16), 1)
+    pygame.draw.rect(surf, _C_GD, (x+1, y+1, 14, 14), 1)
+
+    # ── Bande horizontale séparant couvercle et corps (y+6, 1px) ────────
+    dr(_C_GD,  (x+1,  y+6,  14,  1))
+
+    # ── Serrure centrée sur la bande : 3×3 px ────────────────────────────
+    lx = x + 7   # centre horizontal
+    dr(_C_BK,  (lx,   y+5,   3,   3))   # fond sombre
+    dr(_C_GD,  (lx,   y+5,   3,   1))   # haut de la serrure (=bande or)
+    dr(_C_WH,  (lx+1, y+6,   1,   1))   # reflet centre
+
+    # ── Reflets couvercle (haut-gauche) ──────────────────────────────────
+    dr(_C_WH,  (x+3,  y+2,   4,   1))
+    dr(_C_WH,  (x+3,  y+3,   1,   2))
+
+    # ── Reflets corps (haut-gauche du corps) ─────────────────────────────
+    dr(_C_WH,  (x+3,  y+8,   4,   1))
+    dr(_C_WH,  (x+3,  y+9,   1,   2))
+
+    # ── Pieds (deux petits blocs or en bas) ──────────────────────────────
+    dr(_C_GD,  (x+2,  y+14,  2,   1))
+    dr(_C_GD,  (x+12, y+14,  2,   1))
 
 def _draw_world(screen, chunks, camera, break_info):
     """Rendu via cache de chunks : 2-3 blit() par frame."""
@@ -438,8 +535,17 @@ _DARK   = ( 40,  40,  40)   # contour
 def _draw_player(screen, player, camera, font):
     px, py = camera.world_to_screen(player.px(), player.py())
     c  = player.color
-    # version foncée de la couleur pour les jambes / ombre
     dc = tuple(max(0, v - 55) for v in c)
+
+    inv = player.inventory
+
+    # ── Équipements portés ────────────────────────────────────────────────────
+    head_item  = inv.worn_equip(EQUIP_HEAD)
+    body_item  = inv.worn_equip(EQUIP_BODY)
+    feet_item  = inv.worn_equip(EQUIP_FEET)
+    head_color = MAT_COLORS[head_item[1]] if head_item else None
+    body_color = MAT_COLORS[body_item[1]] if body_item else None
+    feet_color = MAT_COLORS[feet_item[1]] if feet_item else None
 
     # ── Tête (10×10) – au-dessus de la hitbox ─────────────────────────────
     hx, hy = px, py - 10
@@ -450,26 +556,41 @@ def _draw_player(screen, player, camera, font):
     pygame.draw.rect(screen, _BLACK, (hx + 6, hy + 3,  2,  2))
     # Bouche
     pygame.draw.rect(screen, _DARK,  (hx + 3, hy + 7,  4,  1))
+    # Casque : bande colorée sur le haut de la tête
+    if head_color:
+        pygame.draw.rect(screen, head_color, (hx,     hy,     10,  3))
+        pygame.draw.rect(screen, head_color, (hx - 1, hy,      1, 10))
+        pygame.draw.rect(screen, head_color, (hx + 10,hy,      1, 10))
+        pygame.draw.rect(screen, _DARK,      (hx,     hy,     10,  3), 1)
 
     # ── Corps (10×10) – première moitié de la hitbox ──────────────────────
     bx, by = px, py
-    pygame.draw.rect(screen, c,    (bx,     by,     10, 10))
-    pygame.draw.rect(screen, _DARK,(bx,     by,     10, 10), 1)
-    # Boutons / détail
-    pygame.draw.rect(screen, dc,   (bx + 3, by + 3,  2,  2))
-    pygame.draw.rect(screen, dc,   (bx + 6, by + 3,  2,  2))
+    body_c = body_color if body_color else c
+    pygame.draw.rect(screen, body_c,  (bx,     by,     10, 10))
+    pygame.draw.rect(screen, _DARK,   (bx,     by,     10, 10), 1)
+    # Détail boutons sur le plastron
+    detail_c = dc if not body_color else tuple(max(0, v - 40) for v in body_color)
+    pygame.draw.rect(screen, detail_c, (bx + 3, by + 3,  2,  2))
+    pygame.draw.rect(screen, detail_c, (bx + 6, by + 3,  2,  2))
+    # Ligne centrale plastron
+    if body_color:
+        pygame.draw.rect(screen, _DARK, (bx + 4, by + 1,  2,  8))
 
     # ── Jambes (4×10 chacune) – deuxième moitié de la hitbox ─────────────
     lx, ly = px, py + 10
-    pygame.draw.rect(screen, dc,   (lx,         ly, 4, 10))
-    pygame.draw.rect(screen, dc,   (lx + 6,     ly, 4, 10))
-    pygame.draw.rect(screen, _DARK,(lx,         ly, 4, 10), 1)
-    pygame.draw.rect(screen, _DARK,(lx + 6,     ly, 4, 10), 1)
+    leg_c = feet_color if feet_color else dc
+    pygame.draw.rect(screen, leg_c,  (lx,     ly, 4, 10))
+    pygame.draw.rect(screen, leg_c,  (lx + 6, ly, 4, 10))
+    pygame.draw.rect(screen, _DARK,  (lx,     ly, 4, 10), 1)
+    pygame.draw.rect(screen, _DARK,  (lx + 6, ly, 4, 10), 1)
+    # Semelle bottes
+    if feet_color:
+        pygame.draw.rect(screen, _DARK, (lx,     ly + 8, 4, 2))
+        pygame.draw.rect(screen, _DARK, (lx + 6, ly + 8, 4, 2))
 
     # ── Étiquette J1 / J2 ─────────────────────────────────────────────────
     label = font.render("J" + str(player.idx + 1), True, (255, 255, 255))
     lw = label.get_width()
-    # fond sombre pour lisibilité
     pygame.draw.rect(screen, (0, 0, 0), (px + (10 - lw) // 2 - 1, hy - 9, lw + 2, 9))
     screen.blit(label, (px + (10 - lw) // 2, hy - 9))
 
@@ -489,56 +610,89 @@ def _draw_cursor(screen, player, col, row, camera):
     screen.blit(_CURSOR_SURF, (sx, sy))
 
 
-_HOTBAR_SLOT_W = 36   # largeur d'un slot (px)
+_HOTBAR_SLOT_W = 28   # largeur d'un slot (px) — réduit pour loger 5 slots
 _HOTBAR_SLOT_H = 22   # hauteur d'un slot (px)
-_HOTBAR_PAD    = 4    # espace entre les deux slots
-_HOTBAR_TOTAL  = _HOTBAR_SLOT_W * 2 + _HOTBAR_PAD
+_HOTBAR_PAD    = 3    # espace entre les slots
+_HOTBAR_TOTAL  = _HOTBAR_SLOT_W * 5 + _HOTBAR_PAD * 4
+
+# Icônes texte pour les slots d'équipement
+_EQUIP_ICON = {EQUIP_HEAD: "T", EQUIP_BODY: "P", EQUIP_FEET: "B"}   # Tête/Plastron/Bottes
 
 
 def _draw_hotbar(screen, inventory, x_offset, color, font):
-    """Dessine la hotbar : [outil] [ressource active]."""
+    """Dessine la hotbar : [outil][ressources][tête][corps][pieds]."""
     sw, sh, pad = _HOTBAR_SLOT_W, _HOTBAR_SLOT_H, _HOTBAR_PAD
     y = HOTBAR_Y
 
-    # ── Slot 0 : outil ───────────────────────────────────────────────────────
-    sx0    = x_offset
-    act0   = (inventory.active_slot == 0)
-    bg0    = (120, 100, 20) if act0 else (55, 55, 55)
-    pygame.draw.rect(screen, bg0,   (sx0, y, sw, sh))
-    pygame.draw.rect(screen, color, (sx0, y, sw, sh), 2 if act0 else 1)
-    tname  = TOOL_NAMES.get(inventory.tool, "?")
-    tlbl   = font.render(tname, True, (255, 255, 255))
-    screen.blit(tlbl, (sx0 + (sw - tlbl.get_width()) // 2,
-                        y  + (sh - tlbl.get_height()) // 2))
+    slot_configs = [
+        (Inventory.SLOT_TOOL, "Outil"),
+        (Inventory.SLOT_RES,  "Sac"),
+        (Inventory.SLOT_HEAD, "Tête"),
+        (Inventory.SLOT_BODY, "Corps"),
+        (Inventory.SLOT_FEET, "Pieds"),
+    ]
 
-    # ── Slot 1 : ressource active ─────────────────────────────────────────────
-    sx1  = x_offset + sw + pad
-    act1 = (inventory.active_slot == 1)
-    bg1  = (120, 100, 20) if act1 else (55, 55, 55)
-    pygame.draw.rect(screen, bg1,   (sx1, y, sw, sh))
-    pygame.draw.rect(screen, color, (sx1, y, sw, sh), 2 if act1 else 1)
+    for i, (slot_id, _) in enumerate(slot_configs):
+        sx  = x_offset + i * (sw + pad)
+        act = (inventory.active_slot == slot_id)
+        bg  = (120, 100, 20) if act else (55, 55, 55)
+        pygame.draw.rect(screen, bg,    (sx, y, sw, sh))
+        pygame.draw.rect(screen, color, (sx, y, sw, sh), 2 if act else 1)
 
-    if inventory.resources:
-        tile, count = inventory.resources[inventory.resource_idx]
-        pygame.draw.rect(screen, TILE_COLORS[tile], (sx1 + 3, y + 3, sh - 6, sh - 6))
-        cnt_s = font.render(str(count), True, (255, 255, 255))
-        screen.blit(cnt_s, (sx1 + sw - cnt_s.get_width() - 2,
-                             y + sh - cnt_s.get_height()))
-        if len(inventory.resources) > 1:
-            idx_s = font.render(
-                f"{inventory.resource_idx + 1}/{len(inventory.resources)}",
-                True, (180, 180, 180))
-            screen.blit(idx_s, (sx1 + 1, y + sh - idx_s.get_height()))
-    else:
-        none_s = font.render("—", True, (130, 130, 130))
-        screen.blit(none_s, (sx1 + (sw - none_s.get_width()) // 2,
-                              y  + (sh - none_s.get_height()) // 2))
+        if slot_id == Inventory.SLOT_TOOL:
+            # Nom de l'outil abrégé
+            tname = "M" if inventory.tool == TOOL_HAND else "Pi"
+            lbl   = font.render(tname, True, (255, 255, 255))
+            screen.blit(lbl, (sx + (sw - lbl.get_width()) // 2,
+                               y  + (sh - lbl.get_height()) // 2))
 
-    # ── Nom affiché sous la hotbar ────────────────────────────────────────────
-    if act0:
+        elif slot_id == Inventory.SLOT_RES:
+            if inventory.resources:
+                tile, count = inventory.resources[inventory.resource_idx]
+                pygame.draw.rect(screen, TILE_COLORS[tile],
+                                 (sx + 3, y + 3, sh - 6, sh - 6))
+                cnt_s = font.render(str(count), True, (255, 255, 255))
+                screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
+                                     y + sh - cnt_s.get_height()))
+                if len(inventory.resources) > 1:
+                    idx_s = font.render(
+                        f"{inventory.resource_idx+1}/{len(inventory.resources)}",
+                        True, (180, 180, 180))
+                    screen.blit(idx_s, (sx + 1, y + sh - idx_s.get_height()))
+            else:
+                none_s = font.render("—", True, (100, 100, 100))
+                screen.blit(none_s, (sx + (sw - none_s.get_width()) // 2,
+                                      y + (sh - none_s.get_height()) // 2))
+
+        else:
+            # Slots équipement
+            eslot = Inventory.EQUIP_SLOT_MAP[slot_id]
+            item  = inventory.worn_equip(eslot)
+            icon  = font.render(_EQUIP_ICON[eslot], True, (160, 160, 160))
+            screen.blit(icon, (sx + 1, y + 1))
+            if item:
+                mat_c = MAT_COLORS[item[1]]
+                pygame.draw.rect(screen, mat_c, (sx + 3, y + 3, sh - 6, sh - 6))
+                lst = inventory.equip[eslot]
+                if len(lst) > 1:
+                    cnt_s = font.render(str(len(lst)), True, (255, 255, 255))
+                    screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
+                                         y + sh - cnt_s.get_height()))
+            else:
+                none_s = font.render("—", True, (80, 80, 80))
+                screen.blit(none_s, (sx + (sw - none_s.get_width()) // 2,
+                                      y + (sh - none_s.get_height()) // 2))
+
+    # ── Nom de l'item actif affiché sous la hotbar ────────────────────────────
+    s = inventory.active_slot
+    if s == Inventory.SLOT_TOOL:
         name = TOOL_NAMES.get(inventory.tool, "")
-    elif act1 and inventory.resources:
+    elif s == Inventory.SLOT_RES and inventory.resources:
         name = TILE_NAMES.get(inventory.resources[inventory.resource_idx][0], "?")
+    elif s in Inventory.EQUIP_SLOT_MAP:
+        eslot = Inventory.EQUIP_SLOT_MAP[s]
+        item  = inventory.worn_equip(eslot)
+        name  = EQUIP_NAMES.get(item, "—") if item else "—"
     else:
         name = ""
     if name:
@@ -563,6 +717,7 @@ def run(screen, joysticks, world_id, seed):
     world      = generate(seed)
     world_seed = world.seed
     world.mods.update(_db.load_blocks(world_id))
+    _saved_players = _db.load_players(world_id)
 
     chunks = ChunkCache(world)
 
@@ -574,10 +729,16 @@ def run(screen, joysticks, world_id, seed):
     def _queue_block(col, row, tile):
         _pending_saves[(col, row)] = tile
 
-    def _flush_blocks():
+    def _flush_all():
         if _pending_saves:
             _db.save_blocks_batch(world_id, [(c, r, t) for (c, r), t in _pending_saves.items()])
             _pending_saves.clear()
+        for p in players:
+            _db.save_player(world_id, p.idx, p.x, p.y, p.inventory)
+
+    # alias court utilisé par les blocs de code existants
+    def _flush_blocks():
+        _flush_all()
 
 
     # Spawn J1 et J2 côte à côte au centre du monde
@@ -594,6 +755,24 @@ def run(screen, joysticks, world_id, seed):
     # S'assurer qu'aucun joueur ne spawn dans un bloc (arbre, terrain irrégulier…)
     for p in players:
         _eject_from_blocks(p, world)
+
+    # ── Restaurer la dernière position / inventaire sauvegardés ──────────
+    for p in players:
+        sv = _saved_players.get(p.idx)
+        if sv:
+            p.x = sv["x"]
+            p.y = sv["y"]
+            p.inventory.tool         = sv["tool"]
+            p.inventory.resources    = [tuple(r) for r in sv["resources"]]
+            p.inventory.equip        = {
+                k: [tuple(e) for e in v] for k, v in sv["equip"].items()
+            }
+            # Corriger les index si la liste a rétréci
+            for eslot, lst in p.inventory.equip.items():
+                p.inventory.equip_idx[eslot] = min(
+                    p.inventory.equip_idx.get(eslot, 0), max(0, len(lst) - 1)
+                )
+            _eject_from_blocks(p, world)
 
     # Caméra partagée – centrée sur J1 au départ
     HALF_W = SCREEN_WIDTH // 2
@@ -635,13 +814,16 @@ def run(screen, joysticks, world_id, seed):
     prev_mine   = [False, False]      # état précédent du bouton mine
     prev_dx     = [0, 0]              # pour détecter l'edge gauche/droite en mode modifier
     prev_dy     = [0, 0]              # pour détecter l'edge haut/bas en mode modifier
+    mine_tick_cd = [0.0, 0.0]         # throttle du son de minage (s)
 
     while True:
         dt = min(clock.tick(FPS) / 1000.0, 0.05)
         _last_flush[0] += dt
         if _last_flush[0] >= _FLUSH_INTERVAL:
-            _flush_blocks()
+            _flush_all()
             _last_flush[0] = 0.0
+        mine_tick_cd[0] = max(0.0, mine_tick_cd[0] - dt)
+        mine_tick_cd[1] = max(0.0, mine_tick_cd[1] - dt)
 
         events = pygame.event.get()
         keys   = pygame.key.get_pressed()
@@ -668,13 +850,17 @@ def run(screen, joysticks, world_id, seed):
                 # ←/→ : changer de slot actif (outil ↔ ressources)
                 if dx ==  1 and prev_dx[i] !=  1:
                     player.inventory.slot_next()
+                    _sounds.inv_change()
                 elif dx == -1 and prev_dx[i] != -1:
                     player.inventory.slot_prev()
+                    _sounds.inv_change()
                 # ↑/↓ : changer d'outil (slot 0) ou de ressource (slot 1)
                 if dy == -1 and prev_dy[i] != -1:
                     player.inventory.item_prev()
+                    _sounds.inv_change()
                 elif dy ==  1 and prev_dy[i] !=  1:
                     player.inventory.item_next()
+                    _sounds.inv_change()
                 # Bloquer le déplacement horizontal
                 player.vx = 0.0
             else:
@@ -696,6 +882,7 @@ def run(screen, joysticks, world_id, seed):
                 # Saut (direction haut, disabled si modifier tenu)
                 if dy < 0 and player.on_ground and not cur_mod:
                     player.vy = JUMP_VEL
+                    _sounds.jump()
 
                 # Gravité
                 player.vy = min(player.vy + GRAVITY * dt, MAX_FALL_SPEED)
@@ -732,39 +919,65 @@ def run(screen, joysticks, world_id, seed):
                             if not occupied:
                                 world.set(cur_col, cur_row, selected)
                                 chunks.invalidate(cur_col)
-                                # Éjecter un joueur si le bloc a été posé sur lui
                                 for p in players:
                                     _eject_from_blocks(p, world)
                                 player.inventory.consume()
                                 player._action_cd = 0.2
                                 _queue_block(cur_col, cur_row, selected)
+                                _sounds.place()
 
-                elif cur_mine and not cur_mod and tile_at != TILE_AIR:
-                    # ─ MINE seul (maintenu) = MINER ──────────────────────
-                    # Uniquement avec l'outil Pioche
-                    if player.inventory.tool == TOOL_PICKAXE:
+                elif cur_mine and not cur_mod:
+                    # ─ MINE seul (maintenu) ───────────────────────────────
+                    if tile_at == TILE_CHEST and player.inventory.tool == TOOL_HAND:
+                        # ── Coffre × Outil Main → loote l'équipement ─────
+                        if break_infos[i] and break_infos[i][:2] == (cur_col, cur_row):
+                            player._break_time += dt
+                            progress = min(player._break_time / 0.6, 1.0)
+                            break_infos[i] = (cur_col, cur_row, progress)
+                            if player._break_time >= 0.6:
+                                item = world.chest_loot()
+                                player.inventory.add_equip(item)
+                                world.set(cur_col, cur_row, TILE_AIR)
+                                chunks.invalidate(cur_col)
+                                break_infos[i] = None
+                                player._break_time = 0.0
+                                player._action_cd  = 0.3
+                                _queue_block(cur_col, cur_row, TILE_AIR)
+                                _sounds.chest_open()
+                        else:
+                            player._break_time = 0.0
+                            break_infos[i] = (cur_col, cur_row, 0.0)
+
+                    elif tile_at != TILE_AIR and tile_at != TILE_CHEST \
+                            and player.inventory.tool == TOOL_PICKAXE:
+                        # ── Minage normal (Pioche uniquement) ─────────────
                         if break_infos[i] and break_infos[i][:2] == (cur_col, cur_row):
                             player._break_time += dt
                             req_time = TILE_BREAK_TIME.get(tile_at, 0.5)
                             progress = min(player._break_time / req_time, 1.0)
                             break_infos[i] = (cur_col, cur_row, progress)
+                            # Son de frappe throttlé (toutes les ~0.15 s)
+                            if mine_tick_cd[i] <= 0.0:
+                                _sounds.mine_tick()
+                                mine_tick_cd[i] = 0.15
                             if player._break_time >= req_time:
                                 player.inventory.add(tile_at)
                                 world.set(cur_col, cur_row, TILE_AIR)
                                 chunks.invalidate(cur_col)
                                 break_infos[i] = None
                                 player._break_time = 0.0
-                                player._action_cd = 0.1
+                                player._action_cd  = 0.1
                                 _queue_block(cur_col, cur_row, TILE_AIR)
+                                _sounds.mine_done()
+                                mine_tick_cd[i] = 0.0
                         else:
                             player._break_time = 0.0
                             break_infos[i] = (cur_col, cur_row, 0.0)
                     else:
-                        # Outil Main : pas de minage
-                        break_infos[i] = None
+                        break_infos[i]   = None
                         player._break_time = 0.0
                 else:
-                    break_infos[i] = None
+                    break_infos[i]   = None
                     player._break_time = 0.0
             else:
                 if not cur_mine:
