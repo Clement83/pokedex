@@ -1,10 +1,15 @@
 """
 Gestion des mobs pour Minecraft 2D.
 
-Trois types :
+Mobs agressifs :
   MOB_SLIME  (0) – souterrain, se réveille si joueur à ≤5 tiles, saut vers lui
   MOB_ZOMBIE (1) – profond (>18 tiles sous surface), errance, poursuite LOS ≤8
   MOB_GOLEM  (2) – surface près des cabanes, alerte si joueur casse un bloc cabane
+
+Mobs passifs (jour uniquement) :
+  MOB_CHICKEN (3) – surface, erre et fuit le joueur à <4 tiles
+  MOB_FROG    (4) – surface, sauts périodiques, fuit le joueur
+  MOB_SEAGULL (5) – en vol, oscille doucement
 """
 import math
 import random
@@ -15,13 +20,20 @@ from config import (TILE_SIZE, ROWS, GRAVITY, MAX_FALL_SPEED, JUMP_VEL,
 from world import _hash1
 
 # ── Constantes ────────────────────────────────────────────────────────────────
-MOB_SLIME  = 0
-MOB_ZOMBIE = 1
-MOB_GOLEM  = 2
+MOB_SLIME   = 0
+MOB_ZOMBIE  = 1
+MOB_GOLEM   = 2
+MOB_CHICKEN = 3
+MOB_FROG    = 4
+MOB_SEAGULL = 5
+
+_PASSIVE_MOBS = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL}
 
 # Dimensions pixels
-_MOB_PW = {MOB_SLIME: 12, MOB_ZOMBIE: 8,  MOB_GOLEM: 14}
-_MOB_PH = {MOB_SLIME: 10, MOB_ZOMBIE: 16, MOB_GOLEM: 18}
+_MOB_PW = {MOB_SLIME: 12, MOB_ZOMBIE: 8,  MOB_GOLEM: 14,
+           MOB_CHICKEN: 8, MOB_FROG: 8,   MOB_SEAGULL: 10}
+_MOB_PH = {MOB_SLIME: 10, MOB_ZOMBIE: 16, MOB_GOLEM: 18,
+           MOB_CHICKEN: 8, MOB_FROG: 7,   MOB_SEAGULL: 6}
 
 # Dimensions tiles (float)
 def _mw(t): return _MOB_PW[t] / TILE_SIZE
@@ -29,9 +41,12 @@ def _mh(t): return _MOB_PH[t] / TILE_SIZE
 
 # Couleurs de base
 _MOB_COLOR = {
-    MOB_SLIME:  ( 70, 200,  70),
-    MOB_ZOMBIE: (100, 150,  80),
-    MOB_GOLEM:  (160, 140, 120),
+    MOB_SLIME:   ( 70, 200,  70),
+    MOB_ZOMBIE:  (100, 150,  80),
+    MOB_GOLEM:   (160, 140, 120),
+    MOB_CHICKEN: (240, 240, 235),
+    MOB_FROG:    ( 55, 175,  55),
+    MOB_SEAGULL: (235, 235, 235),
 }
 
 _SPAWN_RANGE  = 55   # colonnes de chaque côté à scanner
@@ -131,6 +146,7 @@ class Mob:
         self._wander_cd  = 0.0
         self._wander_dir = 1
         self._push_cd    = 0.0
+        self._fly_phase  = 0.0   # oscillation verticale mouette
         # RNG déterministe par position de spawn
         self._rng = random.Random(int(col) * 1000 + int(row) + mob_type + seed)
 
@@ -162,10 +178,10 @@ class MobManager:
 
     # ── Spawn déterministe ────────────────────────────────────────────────────
 
-    def spawn_around(self, center_col):
+    def spawn_around(self, center_col, is_night=False):
         """
-        Scanne les colonnes autour de center_col et génère les mobs
-        dont la position de spawn n'a pas encore été traitée.
+        Scanne les colonnes autour de center_col et génère les mobs.
+        Mobs passifs uniquement le jour (is_night=False).
         """
         world = self._world
         seed  = self._seed
@@ -225,7 +241,47 @@ class MobManager:
                                 self._mobs.append(m)
                                 break
 
-        # ── Dépawn des mobs trop loin ─────────────────────────────────────────
+            # ── Poule : surface, uniquement le jour ───────────────────────────
+            key_ch = (col, MOB_CHICKEN)
+            if key_ch not in self._spawned and not is_night:
+                self._spawned.add(key_ch)
+                if _hash1(col * 73 + 11, seed ^ 0xC0DE) < 0.08:
+                    sr      = world.surface_at(col)
+                    mh_c    = _mh(MOB_CHICKEN)
+                    top_row = sr - math.ceil(mh_c)
+                    free = all(world.get(col, top_row + k) == TILE_AIR
+                               for k in range(math.ceil(mh_c)))
+                    if free:
+                        m = Mob(col, top_row, MOB_CHICKEN, seed)
+                        _eject_mob(m, world)
+                        self._mobs.append(m)
+
+            # ── Grenouille : surface, uniquement le jour ──────────────────────
+            key_fr = (col, MOB_FROG)
+            if key_fr not in self._spawned and not is_night:
+                self._spawned.add(key_fr)
+                if _hash1(col * 89 + 17, seed ^ 0xF09B) < 0.06:
+                    sr      = world.surface_at(col)
+                    mh_f    = _mh(MOB_FROG)
+                    top_row = sr - math.ceil(mh_f)
+                    free = all(world.get(col, top_row + k) == TILE_AIR
+                               for k in range(math.ceil(mh_f)))
+                    if free:
+                        m = Mob(col, top_row, MOB_FROG, seed)
+                        _eject_mob(m, world)
+                        self._mobs.append(m)
+
+            # ── Mouette : en vol, uniquement le jour ──────────────────────────
+            key_sg = (col, MOB_SEAGULL)
+            if key_sg not in self._spawned and not is_night:
+                self._spawned.add(key_sg)
+                if _hash1(col * 61 + 23, seed ^ 0xBEEF) < 0.04:
+                    sr      = world.surface_at(col)
+                    fly_row = sr - 7
+                    if fly_row >= 1:
+                        m = Mob(col, float(fly_row), MOB_SEAGULL, seed)
+                        m._wander_dir = 1 if m._rng.random() > 0.5 else -1
+                        self._mobs.append(m)   # pas d'éjection, vole librement
         self._mobs = [
             m for m in self._mobs
             if abs(m.center_col() - center_col) <= _DESPAWN_RANGE
@@ -361,12 +417,66 @@ def _update_mob(mob, dt, players, world):
         else:
             mob.vx *= 0.8   # friction → décélération
 
-    # ── Gravité + déplacement ─────────────────────────────────────────────────
-    mob.vy = min(mob.vy + GRAVITY * dt, MAX_FALL_SPEED)
-    _move_mob_x(mob, world, mob.vx * dt)
-    _move_mob_y(mob, world, mob.vy * dt)
+    # ── Poule ─────────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_CHICKEN:
+        if dist <= 4.0:
+            mob.vx = -dir_to * 3.5
+            if mob.on_ground and mob._jump_cd <= 0:
+                mob.vy       = JUMP_VEL * 0.5
+                mob._jump_cd = 0.55
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 2.0 + mob._rng.random() * 3.0
+            mob.vx = 1.2 * mob._wander_dir
+            check_col = int(mob.x + mob._wander_dir * (_mw(MOB_CHICKEN) + 0.1))
+            if _solid(world, check_col, int(cy)):
+                mob._wander_dir *= -1
+                mob._wander_cd   = 0.0
 
-    # ── Contact joueur → poussée ──────────────────────────────────────────────
+    # ── Grenouille ────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_FROG:
+        if dist <= 3.5 and mob.on_ground and mob._jump_cd <= 0:
+            mob.vx       = -dir_to * 4.0
+            mob.vy       = JUMP_VEL * 0.68
+            mob._jump_cd = 0.9
+        elif dist > 3.5:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 1.2 + mob._rng.random() * 2.5
+            if mob.on_ground and mob._jump_cd <= 0:
+                mob.vx       = 2.2 * mob._wander_dir
+                mob.vy       = JUMP_VEL * 0.62
+                mob._jump_cd = 1.0 + mob._rng.random() * 0.8
+
+    # ── Mouette : vol libre, gestion séparée (pas de gravité) ─────────────────
+    elif mob.mob_type == MOB_SEAGULL:
+        mob._fly_phase += dt * 1.6
+        mob._wander_cd -= dt
+        if mob._wander_cd <= 0:
+            mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+            mob._wander_cd  = 3.0 + mob._rng.random() * 4.0
+        mob.vx = 3.5 * mob._wander_dir
+        mob.vy = math.sin(mob._fly_phase) * 0.7
+        check_col = int(mob.x + mob._wander_dir * (_mw(MOB_SEAGULL) + 0.2))
+        if _solid(world, check_col, int(mob.center_row())):
+            mob._wander_dir *= -1
+            mob._wander_cd   = 0.0
+
+    # ── Gravité + déplacement ─────────────────────────────────────────────────
+    if mob.mob_type == MOB_SEAGULL:
+        mob.x += mob.vx * dt
+        mob.y += mob.vy * dt
+    else:
+        mob.vy = min(mob.vy + GRAVITY * dt, MAX_FALL_SPEED)
+        _move_mob_x(mob, world, mob.vx * dt)
+        _move_mob_y(mob, world, mob.vy * dt)
+
+    # ── Contact joueur → poussée (agressifs seulement) ────────────────────────
+    if mob.mob_type in _PASSIVE_MOBS:
+        return
     if mob._push_cd <= 0:
         pw = PLAYER_W / TILE_SIZE
         ph = PLAYER_H / TILE_SIZE
@@ -415,3 +525,43 @@ def _draw_mob(screen, mob, camera):
         pygame.draw.rect(screen, (220, 140, 40), (sx + 9,  sy + 4, 3, 3))
         pygame.draw.line(screen, dc, (sx + 5, sy + 9),  (sx + 7, sy + 14), 1)
         pygame.draw.line(screen, dc, (sx + 9, sy + 7),  (sx + 8, sy + 12), 1)
+
+    elif mob.mob_type == MOB_CHICKEN:
+        # ── Poule pixel-art 8×8 ──────────────────────────────────────────────
+        dr = pygame.draw.rect
+        dr(screen, (240, 240, 235), (sx,     sy + 2, 7, 5))   # corps
+        dr(screen, (190, 190, 185), (sx + 1, sy + 3, 5, 2))   # aile grise
+        dr(screen, (240, 240, 235), (sx,     sy,     2, 3))    # queue
+        dr(screen, (240, 240, 235), (sx + 4, sy + 1, 3, 3))   # tête
+        dr(screen, (215,  50,  50), (sx + 4, sy,     2, 1))   # crête rouge
+        dr(screen, (225, 140,  35), (sx + 7, sy + 2, 1, 1))   # bec orange
+        dr(screen, (  0,   0,   0), (sx + 5, sy + 2, 1, 1))   # œil
+        dr(screen, (225, 140,  35), (sx + 2, sy + 7, 1, 2))   # patte g
+        dr(screen, (225, 140,  35), (sx + 5, sy + 7, 1, 2))   # patte d
+
+    elif mob.mob_type == MOB_FROG:
+        # ── Grenouille pixel-art 8×7 ─────────────────────────────────────────
+        dr = pygame.draw.rect
+        dr(screen, ( 55, 175,  55), (sx,     sy + 3, 8, 4))   # corps
+        dr(screen, (190, 215,  80), (sx + 2, sy + 4, 4, 2))   # ventre clair
+        dr(screen, ( 55, 175,  55), (sx + 1, sy + 1, 6, 3))   # tête
+        dr(screen, ( 55, 175,  55), (sx,     sy,     2, 2))   # œil gauche
+        dr(screen, ( 55, 175,  55), (sx + 6, sy,     2, 2))   # œil droit
+        dr(screen, (  0,   0,   0), (sx,     sy,     1, 1))   # pupille g
+        dr(screen, (  0,   0,   0), (sx + 7, sy,     1, 1))   # pupille d
+        dr(screen, ( 35, 120,  35), (sx + 2, sy + 3, 4, 1))   # bouche
+        dr(screen, ( 35, 120,  35), (sx,     sy + 6, 2, 1))   # patte arr g
+        dr(screen, ( 35, 120,  35), (sx + 6, sy + 6, 2, 1))   # patte arr d
+
+    elif mob.mob_type == MOB_SEAGULL:
+        # ── Mouette pixel-art 10×6 – ailes battent selon fly_phase ───────────
+        dr = pygame.draw.rect
+        wo = -1 if math.sin(mob._fly_phase) > 0 else 1   # battement aile
+        dr(screen, (240, 240, 240), (sx,     sy + 1 + wo, 4, 2))   # aile g
+        dr(screen, (170, 178, 185), (sx,     sy + 1 + wo, 2, 1))   # pointe g
+        dr(screen, (240, 240, 240), (sx + 6, sy + 1 + wo, 4, 2))   # aile d
+        dr(screen, (170, 178, 185), (sx + 8, sy + 1 + wo, 2, 1))   # pointe d
+        dr(screen, (240, 240, 240), (sx + 3, sy + 2,      4, 3))   # corps
+        dr(screen, (240, 240, 240), (sx + 4, sy,          3, 3))   # tête
+        dr(screen, (  0,   0,   0), (sx + 5, sy + 1,      1, 1))   # œil
+        dr(screen, (225, 185,  45), (sx + 7, sy + 2,      2, 1))   # bec

@@ -21,7 +21,62 @@ import music_player as _music
 _CHEST_LOOT = [TILE_WOOD, TILE_STONE, TILE_BRICK, TILE_COAL, TILE_OBSIDIAN]
 
 
-# ── Inventaire ────────────────────────────────────────────────────────────────
+# ── Cycle jour / nuit ─────────────────────────────────────────────────────────
+#
+# _day_time ∈ [0, 1)   0.00 = aube   0.15 = plein jour   0.65 = crépuscule
+#                       0.73 = nuit   0.95 = nuit         1.00 = aube (boucle)
+#
+DAY_CYCLE_DURATION = 300.0   # secondes pour un cycle complet (5 min)
+
+_SKY_KEYFRAMES = [
+    (0.00, (220, 130,  80)),   # aube  – orange rosé
+    (0.12, (100, 160, 220)),   # jour  – bleu ciel
+    (0.62, (100, 160, 220)),   # fin jour
+    (0.70, (200,  75,  35)),   # crépuscule orange
+    (0.75, ( 30,  15,  55)),   # tombée de nuit
+    (0.95, ( 20,  10,  40)),   # nuit profonde
+    (1.00, (220, 130,  80)),   # retour aube
+]
+
+def _lerp3(c1, c2, t):
+    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+
+def _sky_color(t):
+    for i in range(len(_SKY_KEYFRAMES) - 1):
+        t0, c0 = _SKY_KEYFRAMES[i]
+        t1, c1 = _SKY_KEYFRAMES[i + 1]
+        if t0 <= t <= t1:
+            tl = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+            return _lerp3(c0, c1, tl)
+    return _SKY_KEYFRAMES[0][1]
+
+def _night_alpha(t):
+    """Opacité de l'overlay nuit [0–150]."""
+    if   0.70 <= t < 0.75: return int(150 * (t - 0.70) / 0.05)
+    elif 0.75 <= t < 0.95: return 150
+    elif 0.95 <= t < 1.00: return int(150 * (1.00 - t) / 0.05)
+    return 0
+
+def _is_night(t):
+    return t >= 0.68
+
+_night_overlay = None   # Surface pré-allouée
+
+
+def _draw_sky_hud(screen, t, font):
+    """Petit indicateur soleil/lune + heure en haut au centre."""
+    import math as _m
+    cx = SCREEN_WIDTH // 2
+    cy = 7
+    is_n = _is_night(t)
+    if not is_n:
+        # Soleil jaune
+        pygame.draw.circle(screen, (255, 220,  20), (cx, cy), 5)
+        pygame.draw.circle(screen, (255, 255, 120), (cx, cy), 3)
+    else:
+        # Lune blanche + croissant (cercle sombre décalé)
+        pygame.draw.circle(screen, (220, 220, 200), (cx, cy), 5)
+        pygame.draw.circle(screen, ( 25,  12,  48), (cx + 2, cy - 1), 4)
 
 class Inventory:
     """
@@ -862,6 +917,9 @@ def run(screen, joysticks, world_id, seed):
 
     chunks = ChunkCache(world)
 
+    # Cycle jour/nuit
+    _day_time = [0.12]   # on démarre en plein jour
+
     # ── Batch SQLite ──────────────────────────────────────────────────────
     _pending_saves  = {}   # {(col, row): tile}  – mods non encore flushées
     _last_flush     = [0.0]
@@ -963,6 +1021,12 @@ def run(screen, joysticks, world_id, seed):
 
     while True:
         dt = min(clock.tick(FPS) / 1000.0, 0.05)
+
+        # ── Cycle jour/nuit ───────────────────────────────────────────────
+        _day_time[0] = (_day_time[0] + dt / DAY_CYCLE_DURATION) % 1.0
+        _sky_c   = _sky_color(_day_time[0])
+        is_night = _is_night(_day_time[0])
+
         _last_flush[0] += dt
         if _last_flush[0] >= _FLUSH_INTERVAL:
             _flush_all()
@@ -1140,7 +1204,7 @@ def run(screen, joysticks, world_id, seed):
         _mob_spawn_cd[0] -= dt
         if _mob_spawn_cd[0] <= 0:
             mid_col = int((players[0].x + players[1].x) / 2)
-            mob_mgr.spawn_around(mid_col)
+            mob_mgr.spawn_around(mid_col, is_night)
             _mob_spawn_cd[0] = 3.0
         mob_mgr.update(dt, players, world)
 
@@ -1171,11 +1235,11 @@ def run(screen, joysticks, world_id, seed):
             shared_cam.follow(mid_px, mid_py, dt)
 
         # ── Rendu ──────────────────────────────────────────────────────────
-        screen.fill(BG_SKY)
+        screen.fill(_sky_c)
 
         if is_split:
             for i, (surf, cam) in enumerate(zip(split_surfs, split_cams)):
-                surf.fill(BG_SKY)
+                surf.fill(_sky_c)
                 chunks.preload_around(cam.x, HALF_W)
                 _draw_world(surf, chunks, cam, break_infos[i])
 
@@ -1229,6 +1293,16 @@ def run(screen, joysticks, world_id, seed):
 
             seed_lbl = font_sm.render("seed: " + str(world_seed), True, (180, 180, 180))
             screen.blit(seed_lbl, (SCREEN_WIDTH - seed_lbl.get_width() - 4, SCREEN_HEIGHT - seed_lbl.get_height() - 2))
+
+        # ── Overlay nuit ──────────────────────────────────────────────────
+        _na = _night_alpha(_day_time[0])
+        if _na > 0:
+            global _night_overlay
+            if _night_overlay is None:
+                _night_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            _night_overlay.fill((10, 5, 30, _na))
+            screen.blit(_night_overlay, (0, 0))
+        _draw_sky_hud(screen, _day_time[0], font_sm)
 
         # Overlay SELECT+START (dessiné sur l'écran complet, au-dessus de tout)
         if quit_combo.update_and_draw(screen):
