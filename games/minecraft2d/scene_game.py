@@ -14,6 +14,7 @@ from world import generate
 from quit_combo import QuitCombo
 import db as _db
 import sounds as _sounds
+import mobs as _mobs
 
 
 # ── Inventaire ────────────────────────────────────────────────────────────────
@@ -777,6 +778,10 @@ def run(screen, joysticks, world_id, seed):
     # Caméra partagée – centrée sur J1 au départ
     HALF_W = SCREEN_WIDTH // 2
     shared_cam = Camera()
+
+    # ── Mobs ──────────────────────────────────────────────────────────────
+    mob_mgr    = _mobs.MobManager(world)
+    _mob_spawn_cd = [0.0]   # cooldown avant prochain scan de spawn
     spawn_mid_px = (players[0].px() + players[1].px()) // 2
     spawn_mid_py = (players[0].py() + players[1].py()) // 2
     max_cy = ROWS * TILE_SIZE - SCREEN_HEIGHT
@@ -961,6 +966,9 @@ def run(screen, joysticks, world_id, seed):
                                 _sounds.mine_tick()
                                 mine_tick_cd[i] = 0.15
                             if player._break_time >= req_time:
+                                # Alerte le Golem si c'était un bloc de cabane
+                                if world._cabin_tile(cur_col, cur_row) != TILE_AIR:
+                                    mob_mgr.trigger_cabin_break(cur_col)
                                 player.inventory.add(tile_at)
                                 world.set(cur_col, cur_row, TILE_AIR)
                                 chunks.invalidate(cur_col)
@@ -985,6 +993,14 @@ def run(screen, joysticks, world_id, seed):
                     player._break_time = 0.0
 
             prev_mine[i] = cur_mine
+
+        # ── Mobs : spawn périodique + update ──────────────────────────────
+        _mob_spawn_cd[0] -= dt
+        if _mob_spawn_cd[0] <= 0:
+            mid_col = int((players[0].x + players[1].x) / 2)
+            mob_mgr.spawn_around(mid_col)
+            _mob_spawn_cd[0] = 3.0
+        mob_mgr.update(dt, players, world)
 
         # ── Caméra ─────────────────────────────────────────────────────────
         dx_dist = abs(players[0].px() - players[1].px())
@@ -1029,7 +1045,8 @@ def run(screen, joysticks, world_id, seed):
                     if _in_reach(player, cur_col, cur_row):
                         _draw_cursor(surf, player, cur_col, cur_row, cam)
 
-                # Les deux joueurs visibles dans chaque moitié
+                # Mobs puis joueurs (joueurs par-dessus)
+                mob_mgr.draw(surf, cam)
                 for player in players:
                     _draw_player(surf, player, cam, font_sm)
 
@@ -1055,6 +1072,7 @@ def run(screen, joysticks, world_id, seed):
                 if _in_reach(player, cur_col, cur_row):
                     _draw_cursor(screen, player, cur_col, cur_row, shared_cam)
 
+            mob_mgr.draw(screen, shared_cam)
             for i, player in enumerate(players):
                 _draw_player(screen, player, shared_cam, font_sm)
 
