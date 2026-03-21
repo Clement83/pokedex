@@ -106,7 +106,10 @@ class Inventory:
         self.tool         = TOOL_HAND
         self.resources    = []          # [(tile, count), ...]
         self.resource_idx = 0
-        self.sword_mat    = None        # None = pas d'épée ; MAT_WOOD/IRON/GOLD sinon
+        self.swords     = []    # matériaux d'épées trouvées [MAT_WOOD, MAT_IRON, ...]
+        self.sword_idx  = 0     # index de l'épée active
+        self.pickaxes   = []    # matériaux de pioches trouvées
+        self.pickaxe_idx = 0    # index de la pioche active
         # équipements : listes de (equip_slot, material)
         self.equip = {
             EQUIP_HEAD:  [],   # ex. [(EQUIP_HEAD, MAT_WOOD), (EQUIP_HEAD, MAT_IRON)]
@@ -114,6 +117,16 @@ class Inventory:
             EQUIP_FEET:  [],
         }
         self.equip_idx = {EQUIP_HEAD: 0, EQUIP_BODY: 0, EQUIP_FEET: 0}
+
+    @property
+    def sword_mat(self):
+        """Matériau de l'épée active, ou None."""
+        return self.swords[self.sword_idx] if self.swords else None
+
+    @property
+    def pickaxe_mat(self):
+        """Matériau de la pioche active, ou None (pioche par défaut)."""
+        return self.pickaxes[self.pickaxe_idx] if self.pickaxes else None
 
     # ── Équipement porté ──────────────────────────────────────────────────────
     def worn_equip(self, equip_slot):
@@ -126,9 +139,16 @@ class Inventory:
     # ── Ajouter un équipement au bon slot ─────────────────────────────────────
     def add_equip(self, item):
         """item = (equip_slot, material)."""
-        eslot = item[0]
-        if item not in self.equip[eslot]:
-            self.equip[eslot].append(item)
+        eslot, mat = item
+        if eslot == EQUIP_SWORD:
+            if mat not in self.swords:
+                self.swords.append(mat)
+        elif eslot == EQUIP_PICKAXE:
+            if mat not in self.pickaxes:
+                self.pickaxes.append(mat)
+        else:
+            if item not in self.equip[eslot]:
+                self.equip[eslot].append(item)
 
     # ── Retirer l'équipement actif d'un slot (drop) ───────────────────────────
     def drop_equip(self, equip_slot):
@@ -176,15 +196,47 @@ class Inventory:
         self.active_slot = (self.active_slot - 1) % self.NUM_SLOTS
 
     # ── Navigation ↑/↓ dans le slot actif ────────────────────────────────────
+    def _tool_items(self):
+        """Liste plate des items du slot outil."""
+        # Pioche : sans matériau si aucune trouvée, sinon tuples (TOOL_PICKAXE, mat)
+        if self.pickaxes:
+            items = [TOOL_HAND] + [(TOOL_PICKAXE, m) for m in self.pickaxes] + [TOOL_PLACER]
+        else:
+            items = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER]
+        for mat in self.swords:
+            items.append((TOOL_SWORD, mat))
+        items.append(TOOL_FLAG)   # drapeau : toujours disponible
+        return items
+
+    def _active_tool_idx(self):
+        items = self._tool_items()
+        if self.tool == TOOL_SWORD and self.swords:
+            target = (TOOL_SWORD, self.swords[self.sword_idx])
+        elif self.tool == TOOL_PICKAXE and self.pickaxes:
+            target = (TOOL_PICKAXE, self.pickaxes[self.pickaxe_idx])
+        else:
+            target = self.tool
+        try:
+            return items.index(target)
+        except ValueError:
+            return 0
+
+    def _apply_tool_item(self, item):
+        if isinstance(item, tuple):
+            if item[0] == TOOL_SWORD:
+                self.tool = TOOL_SWORD
+                self.sword_idx = self.swords.index(item[1])
+            elif item[0] == TOOL_PICKAXE:
+                self.tool = TOOL_PICKAXE
+                self.pickaxe_idx = self.pickaxes.index(item[1])
+        else:
+            self.tool = item
+
     def item_next(self):
         s = self.active_slot
         if s == self.SLOT_TOOL:
-            idx = TOOLS_LIST.index(self.tool)
-            for _ in range(len(TOOLS_LIST)):
-                idx = (idx + 1) % len(TOOLS_LIST)
-                if TOOLS_LIST[idx] != TOOL_SWORD or self.sword_mat is not None:
-                    break
-            self.tool = TOOLS_LIST[idx]
+            items = self._tool_items()
+            self._apply_tool_item(items[(self._active_tool_idx() + 1) % len(items)])
         elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx + 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
@@ -196,12 +248,8 @@ class Inventory:
     def item_prev(self):
         s = self.active_slot
         if s == self.SLOT_TOOL:
-            idx = TOOLS_LIST.index(self.tool)
-            for _ in range(len(TOOLS_LIST)):
-                idx = (idx - 1) % len(TOOLS_LIST)
-                if TOOLS_LIST[idx] != TOOL_SWORD or self.sword_mat is not None:
-                    break
-            self.tool = TOOLS_LIST[idx]
+            items = self._tool_items()
+            self._apply_tool_item(items[(self._active_tool_idx() - 1) % len(items)])
         elif s == self.SLOT_RES and len(self.resources) > 1:
             self.resource_idx = (self.resource_idx - 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
@@ -226,6 +274,9 @@ class Player:
         self.inventory = Inventory()
         self._action_cd  = 0.0   # cooldown après place/break
         self._break_time = 0.0   # temps accumulé sur le bloc en cours
+        self.max_hp  = 6         # 3 cœurs = 6 demi-cœurs
+        self.hp      = 6
+        self._dmg_flash = 0.0    # durée restante du flash rouge (s)
 
     # position pixel du coin supérieur gauche
     def px(self): return int(self.x * TILE_SIZE)
@@ -666,6 +717,76 @@ def _draw_player(screen, player, camera, font):
         pygame.draw.rect(screen, _DARK, (lx,     ly + 8, 4, 2))
         pygame.draw.rect(screen, _DARK, (lx + 6, ly + 8, 4, 2))
 
+    # ── Outil en main (droite du corps) ───────────────────────────────────
+    tool = inv.tool
+    R    = pygame.draw.rect
+    tx   = px + 11   # juste à droite du corps
+    ty   = py +  2   # hauteur épaule
+    if tool == TOOL_PICKAXE:
+        _ph_steel = {MAT_WOOD: (155, 100, 42), MAT_IRON: (195, 198, 215), MAT_GOLD: (255, 200, 0)}
+        _ph_dstl  = {MAT_WOOD: (100,  62, 20), MAT_IRON: ( 95,  98, 120), MAT_GOLD: (190, 145, 0)}
+        pm    = inv.pickaxe_mat
+        HNDL  = (155, 100, 42)
+        STEEL = _ph_steel.get(pm, (195, 198, 215))
+        DSTL  = _ph_dstl.get(pm,  ( 95,  98, 120))
+        # manche
+        R(screen, HNDL,  (tx + 0, ty + 5, 2, 3))
+        R(screen, HNDL,  (tx + 2, ty + 3, 2, 2))
+        # corps tête
+        R(screen, STEEL, (tx + 3, ty + 1, 4, 3))
+        R(screen, DSTL,  (tx + 3, ty + 1, 4, 3), 1)
+        # pointe haute
+        R(screen, STEEL, (tx + 6, ty + 0, 2, 2))
+        R(screen, DSTL,  (tx + 7, ty + 0, 1, 2))
+        # pointe basse
+        R(screen, STEEL, (tx + 6, ty + 3, 2, 2))
+        R(screen, DSTL,  (tx + 7, ty + 4, 1, 1))
+    elif tool == TOOL_PLACER:
+        METAL = (140, 140, 158)
+        DARK  = ( 75,  75,  92)
+        SHINE = (215, 215, 230)
+        # corps
+        R(screen, METAL, (tx + 0, ty + 2, 6, 3))
+        R(screen, SHINE, (tx + 0, ty + 2, 6, 1))
+        # canon
+        R(screen, METAL, (tx + 6, ty + 3, 3, 2))
+        R(screen, DARK,  (tx + 6, ty + 3, 3, 1))
+        # poignée
+        R(screen, DARK,  (tx + 1, ty + 5, 3, 3))
+        R(screen, METAL, (tx + 1, ty + 5, 2, 2))
+        # détente
+        R(screen, DARK,  (tx + 4, ty + 4, 1, 1))
+    elif tool == TOOL_SWORD:
+        _sword_blade = {MAT_WOOD: (170, 120, 50), MAT_IRON: (205, 208, 220), MAT_GOLD: (240, 195, 20)}
+        BLADE = _sword_blade.get(inv.sword_mat, (205, 208, 220))
+        SHINE = (245, 248, 255)
+        DARK  = ( 80,  90, 115)
+        GUARD = (200, 162,  30)
+        GRIP  = (120,  72,  28)
+        # poignée
+        R(screen, GRIP,  (tx + 0, ty + 6, 2, 2))
+        # garde
+        R(screen, GUARD, (tx + 0, ty + 4, 4, 2))
+        # lame diagonale
+        R(screen, BLADE, (tx + 2, ty + 3, 2, 2))
+        R(screen, BLADE, (tx + 4, ty + 1, 2, 2))
+        R(screen, BLADE, (tx + 6, ty + 0, 2, 2))
+        R(screen, SHINE, (tx + 2, ty + 3, 1, 1))
+        R(screen, SHINE, (tx + 4, ty + 1, 1, 1))
+        R(screen, SHINE, (tx + 6, ty + 0, 1, 1))
+        R(screen, DARK,  (tx + 3, ty + 4, 1, 1))
+        R(screen, DARK,  (tx + 5, ty + 2, 1, 1))
+    elif tool == TOOL_FLAG:
+        POLE = (160, 130, 80)
+        fc   = player.color
+        # hampe
+        R(screen, POLE, (tx + 1, ty + 2, 2, 6))
+        # drapeau triangle
+        R(screen, fc,   (tx + 3, ty + 2, 5, 2))
+        R(screen, fc,   (tx + 3, ty + 4, 3, 1))
+        # pointe
+        R(screen, (220, 200, 120), (tx + 1, ty + 0, 2, 2))
+
     # ── Étiquette J1 / J2 ─────────────────────────────────────────────────
     label = font.render("J" + str(player.idx + 1), True, (255, 255, 255))
     lw = label.get_width()
@@ -723,6 +844,50 @@ def _draw_cursor(screen, player, col, row, camera):
     screen.blit(_CURSOR_SURF, (sx, sy))
 
 
+# ── Coeurs de vie ─────────────────────────────────────────────────────────────
+# Masque d'un coeur 6×5 px : liste de (dx, dy)
+_HEART_MASK = [
+    (1, 0), (2, 0), (4, 0), (5, 0),
+    (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1),
+    (0, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2),
+    (1, 3), (2, 3), (3, 3), (4, 3),
+    (2, 4), (3, 4),
+]
+_HEART_W     = 6    # largeur d'un cœur en px
+_HEART_GAP   = 3    # espace entre cœurs
+_HEART_FULL  = (220,  50,  50)
+_HEART_EMPTY = ( 70,  20,  20)
+_HEART_SHINE = (255, 140, 140)
+
+
+def _draw_hearts(surf, hp, max_hp, x, y):
+    """Dessine max_hp//2 cœurs. hp et max_hp sont en demi-cœurs."""
+    n = max_hp // 2
+    R = pygame.draw.rect
+    for i in range(n):
+        hx = x + i * (_HEART_W + _HEART_GAP)
+        for dx, dy in _HEART_MASK:
+            half   = 0 if dx < 3 else 1
+            filled = hp > i * 2 + half
+            R(surf, _HEART_FULL if filled else _HEART_EMPTY, (hx + dx, y + dy, 1, 1))
+        if hp > i * 2:
+            R(surf, _HEART_SHINE, (hx + 1, y + 1, 1, 1))
+
+
+def _draw_flag_in_world(screen, flag_x, flag_y, color, camera):
+    """Dessine un drapeau posé dans le monde (hampe 3px × 14px + triangle)."""
+    px = int(flag_x * TILE_SIZE)
+    py = int(flag_y * TILE_SIZE)
+    sx, sy = camera.world_to_screen(px, py - 14)   # sommet de la hampe
+    R    = pygame.draw.rect
+    POLE = (160, 130, 80)
+    R(screen, POLE,  (sx,     sy,     2, 14))        # hampe
+    R(screen, color, (sx + 2, sy,     7, 3))         # drapeau haut
+    R(screen, color, (sx + 2, sy + 3, 5, 2))         # drapeau milieu
+    R(screen, color, (sx + 2, sy + 5, 3, 2))         # drapeau bas
+    R(screen, (220, 200, 120), (sx, sy - 2, 2, 2))   # pointe dorée
+
+
 _HOTBAR_SLOT_W = 28   # largeur d'un slot (px) — réduit pour loger 5 slots
 _HOTBAR_SLOT_H = 22   # hauteur d'un slot (px)
 _HOTBAR_PAD    = 3    # espace entre les slots
@@ -730,7 +895,7 @@ _HOTBAR_TOTAL  = _HOTBAR_SLOT_W * 5 + _HOTBAR_PAD * 4
 
 # Icônes pixel-art pour les outils et équipements
 
-def _draw_tool_icon(screen, tool, sx, sy, sw, sh):
+def _draw_tool_icon(screen, tool, sx, sy, sw, sh, mat=None):
     """Icône pixel-art de l'outil centrée dans le slot (sw×sh)."""
     R = pygame.draw.rect
 
@@ -757,24 +922,37 @@ def _draw_tool_icon(screen, tool, sx, sy, sw, sh):
         R(screen, shad, (ox + 8,  oy + 7, 1, 1))
 
     elif tool == TOOL_PICKAXE:
-        # ── Pioche – 16×12 ───────────────────────────────────────────────────
-        HNDL  = (139,  90,  43)   # bois
-        STEEL = (185, 185, 200)   # acier clair
-        DSTL  = (100, 100, 115)   # acier sombre
-        ox = sx + (sw - 16) // 2
-        oy = sy + (sh - 12) // 2
-        # Manche diagonal (bas-gauche → haut-droit)
-        R(screen, HNDL, (ox + 0, oy + 9, 2, 3))
-        R(screen, HNDL, (ox + 2, oy + 7, 2, 2))
-        R(screen, HNDL, (ox + 4, oy + 5, 2, 2))
-        R(screen, HNDL, (ox + 6, oy + 3, 2, 2))
-        # Tête (deux dents + corps)
-        R(screen, STEEL, (ox + 7, oy + 0, 9, 3))   # dent supérieure
-        R(screen, STEEL, (ox + 7, oy + 3, 3, 4))   # corps tête
-        R(screen, STEEL, (ox + 7, oy + 7, 9, 3))   # dent inférieure
-        R(screen, DSTL,  (ox + 14, oy + 0, 2, 3))  # pointe haute (foncé)
-        R(screen, DSTL,  (ox + 14, oy + 7, 2, 3))  # pointe basse (foncé)
-        R(screen, (220, 220, 235), (ox + 8, oy + 0, 6, 1))  # reflet haut
+        # ── Pioche – 14×14 (classique diagonale) ────────────────────────────
+        _mat_steel = {MAT_WOOD: (155, 100,  42), MAT_IRON: (195, 198, 215), MAT_GOLD: (255, 200,   0)}
+        _mat_dstl  = {MAT_WOOD: (100,  62,  20), MAT_IRON: ( 95,  98, 120), MAT_GOLD: (190, 145,   0)}
+        _mat_shine = {MAT_WOOD: (200, 145,  80), MAT_IRON: (235, 238, 248), MAT_GOLD: (255, 230,  80)}
+        HNDL  = (155, 100,  42)   # bois manche
+        HSHAD = (100,  62,  20)   # ombre manche
+        STEEL = _mat_steel.get(mat, (195, 198, 215))
+        DSTL  = _mat_dstl.get(mat,  ( 95,  98, 120))
+        SHINE = _mat_shine.get(mat, (235, 238, 248))
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 14) // 2
+        # Manche (bas-gauche → milieu, 4 segments)
+        R(screen, HNDL,  (ox + 0, oy + 11, 2, 3))
+        R(screen, HNDL,  (ox + 2, oy +  9, 2, 2))
+        R(screen, HSHAD, (ox + 1, oy + 12, 1, 2))  # ombre
+        R(screen, HNDL,  (ox + 4, oy +  7, 2, 2))
+        R(screen, HSHAD, (ox + 5, oy +  8, 1, 1))
+        R(screen, HNDL,  (ox + 6, oy +  5, 2, 2))
+        # Corps de la tête (3×3)
+        R(screen, STEEL, (ox + 5, oy +  3, 5, 4))
+        R(screen, DSTL,  (ox + 5, oy +  3, 5, 4), 1)  # contour
+        R(screen, SHINE, (ox + 6, oy +  4, 2, 1))      # reflet
+        # Pointe haute → haut-droite
+        R(screen, STEEL, (ox +  9, oy +  0, 3, 3))
+        R(screen, SHINE, (ox +  9, oy +  0, 3, 1))
+        R(screen, DSTL,  (ox + 11, oy +  0, 1, 3))
+        R(screen, DSTL,  (ox +  9, oy +  2, 3, 1))
+        # Pointe basse → bas-droite
+        R(screen, STEEL, (ox +  9, oy +  7, 3, 3))
+        R(screen, DSTL,  (ox + 11, oy +  7, 1, 3))
+        R(screen, DSTL,  (ox +  9, oy +  9, 3, 1))
 
     elif tool == TOOL_PLACER:
         # ── Pistolet à cube – 16×12 ──────────────────────────────────────────
@@ -801,6 +979,54 @@ def _draw_tool_icon(screen, tool, sx, sy, sw, sh):
         R(screen, CHIGH, (ox + 13, oy + 2, 3, 1))  # highlight haut
         R(screen, CHIGH, (ox + 13, oy + 2, 1, 4))  # highlight gauche
         R(screen, DARK,  (ox + 15, oy + 4, 1, 2))  # ombre bas-droite
+
+    elif tool == TOOL_SWORD:
+        # ── Épée – 14×14 (lame diagonale haut-droite) ───────────────────────
+        _blade_cols = {MAT_WOOD: (170, 120, 50), MAT_IRON: (205, 208, 220), MAT_GOLD: (240, 195, 20)}
+        BLADE = _blade_cols.get(mat, (205, 208, 220))
+        SHINE = (245, 248, 255)
+        DARK  = ( 80,  90, 115)
+        GUARD = (200, 162,  30)   # garde or
+        GRIP  = (120,  72,  28)   # poignée bois
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 14) // 2
+        # Poignée (bas-gauche)
+        R(screen, GRIP,  (ox +  0, oy + 12, 2, 2))
+        R(screen, GRIP,  (ox +  2, oy + 10, 2, 2))
+        # Garde (croix)
+        R(screen, GUARD, (ox +  1, oy +  8, 6, 2))
+        R(screen, (230, 185, 50), (ox + 1, oy + 8, 6, 1))  # reflet garde
+        # Lame diagonale
+        R(screen, BLADE, (ox +  4, oy +  7, 2, 2))
+        R(screen, BLADE, (ox +  6, oy +  5, 2, 2))
+        R(screen, BLADE, (ox +  8, oy +  3, 2, 2))
+        R(screen, BLADE, (ox + 10, oy +  1, 2, 2))
+        R(screen, BLADE, (ox + 12, oy +  0, 2, 2))  # pointe
+        # Reflet (bord haut de chaque segment)
+        R(screen, SHINE, (ox +  4, oy +  7, 1, 1))
+        R(screen, SHINE, (ox +  6, oy +  5, 1, 1))
+        R(screen, SHINE, (ox +  8, oy +  3, 1, 1))
+        R(screen, SHINE, (ox + 10, oy +  1, 1, 1))
+        # Ombre (bord bas)
+        R(screen, DARK,  (ox +  5, oy +  8, 1, 1))
+        R(screen, DARK,  (ox +  7, oy +  6, 1, 1))
+        R(screen, DARK,  (ox +  9, oy +  4, 1, 1))
+        R(screen, DARK,  (ox + 11, oy +  2, 1, 1))
+
+    elif tool == TOOL_FLAG:
+        # ── Drapeau – hampe + triangle de drapeau ─────────────────────────
+        fc = mat if mat else (255, 80, 80)   # couleur passée = couleur joueur
+        POLE = (160, 130, 80)   # bois de hampe
+        ox = sx + (sw - 10) // 2
+        oy = sy + (sh - 14) // 2
+        # Hampe verticale
+        R(screen, POLE, (ox + 1, oy + 3, 2, 11))
+        # Drapeau (triangle approximé avec 3 rectangles décroissants)
+        R(screen, fc, (ox + 3, oy + 3,  7, 2))
+        R(screen, fc, (ox + 3, oy + 5,  5, 2))
+        R(screen, fc, (ox + 3, oy + 7,  3, 2))
+        # Pointe de la hampe
+        R(screen, (220, 200, 120), (ox + 1, oy + 1, 2, 2))
 
 
 def _draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):
@@ -882,7 +1108,16 @@ def _draw_hotbar(screen, inventory, x_offset, color, font):
         pygame.draw.rect(screen, color, (sx, y, sw, sh), 2 if act else 1)
 
         if slot_id == Inventory.SLOT_TOOL:
-            _draw_tool_icon(screen, inventory.tool, sx, y, sw, sh)
+            _tool_mat = (inventory.sword_mat   if inventory.tool == TOOL_SWORD   else
+                         inventory.pickaxe_mat if inventory.tool == TOOL_PICKAXE else
+                         color                 if inventory.tool == TOOL_FLAG     else None)
+            _draw_tool_icon(screen, inventory.tool, sx, y, sw, sh, mat=_tool_mat)
+            # Compteur si plusieurs items dans le slot outil
+            items = inventory._tool_items()
+            if len(items) > 1:
+                tidx  = inventory._active_tool_idx()
+                idx_s = font.render(f"{tidx+1}/{len(items)}", True, (180, 180, 180))
+                screen.blit(idx_s, (sx + 1, y + sh - idx_s.get_height()))
 
         elif slot_id == Inventory.SLOT_RES:
             if inventory.resources:
@@ -974,7 +1209,7 @@ def run(screen, joysticks, world_id, seed):
             _db.save_blocks_batch(world_id, [(c, r, t) for (c, r), t in _pending_saves.items()])
             _pending_saves.clear()
         for p in players:
-            _db.save_player(world_id, p.idx, p.x, p.y, p.inventory)
+            _db.save_player(world_id, p.idx, p.x, p.y, p.inventory, flag=flag_positions[p.idx])
 
     # alias court utilisé par les blocs de code existants
     def _flush_blocks():
@@ -996,14 +1231,20 @@ def run(screen, joysticks, world_id, seed):
     for p in players:
         _eject_from_blocks(p, world)
 
+    flag_positions = [None, None]      # position de respawn de chaque joueur (x, y en tuiles)
+
     # ── Restaurer la dernière position / inventaire sauvegardés ──────────
     for p in players:
         sv = _saved_players.get(p.idx)
         if sv:
             p.x = sv["x"]
             p.y = sv["y"]
-            p.inventory.tool         = sv["tool"]
-            p.inventory.resources    = [tuple(r) for r in sv["resources"]]
+            p.inventory.tool      = sv["tool"]
+            p.inventory.resources = [tuple(r) for r in sv["resources"]]
+            p.inventory.swords       = sv.get("swords", [])
+            p.inventory.sword_idx    = sv.get("sword_idx", 0)
+            p.inventory.pickaxes     = sv.get("pickaxes", [])
+            p.inventory.pickaxe_idx  = sv.get("pickaxe_idx", 0)
             p.inventory.equip        = {
                 k: [tuple(e) for e in v] for k, v in sv["equip"].items()
             }
@@ -1013,6 +1254,9 @@ def run(screen, joysticks, world_id, seed):
                     p.inventory.equip_idx.get(eslot, 0), max(0, len(lst) - 1)
                 )
             _eject_from_blocks(p, world)
+            # Restaurer la position du drapeau
+            if sv.get("flag") is not None:
+                flag_positions[p.idx] = sv["flag"]
 
     # Caméra partagée – centrée sur J1 au départ
     HALF_W = SCREEN_WIDTH // 2
@@ -1059,6 +1303,7 @@ def run(screen, joysticks, world_id, seed):
     prev_dx     = [0, 0]              # pour détecter l'edge gauche/droite en mode modifier
     prev_dy     = [0, 0]              # pour détecter l'edge haut/bas en mode modifier
     mine_tick_cd = [0.0, 0.0]         # throttle du son de minage (s)
+    loot_notifs   = []   # [[texte, temps_restant, couleur], ...]
 
     while True:
         dt = min(clock.tick(FPS) / 1000.0, 0.05)
@@ -1154,17 +1399,28 @@ def run(screen, joysticks, world_id, seed):
             cur_row = max(0, min(ROWS - 1, cur_row))
             in_reach = _in_reach(player, cur_col, cur_row)
 
-            if in_reach and player._action_cd <= 0:
+            # ─ Mode ÉPÉE : attaque sans condition de portée (zone autour du joueur)
+            if player.inventory.tool == TOOL_SWORD and player._action_cd <= 0:
+                if cur_mine and not prev_mine[i] and not cur_mod:
+                    dmg = (player.inventory.sword_mat or 0) + 1
+                    killed = mob_mgr.attack_near(player.x, player.y, REACH_RADIUS, dmg)
+                    if killed > 0:
+                        player.hp = player.max_hp   # tuer un mob = vie pleine
+                    player._action_cd = 0.35
+                    _sounds.sword_hit()
+
+            # ─ Mode DRAPEAU : pose le drapeau sur le joueur (appui unique)
+            if player.inventory.tool == TOOL_FLAG and player._action_cd <= 0:
+                if cur_mine and not prev_mine[i] and not cur_mod:
+                    flag_positions[i] = (player.x, player.y)
+                    player._action_cd = 0.4
+                    loot_notifs.append(["Drapeau J" + str(i + 1) + " placé !", 2.0, player.color])
+                    _sounds.flag_place()
+
+            if in_reach and player._action_cd <= 0 and player.inventory.tool != TOOL_SWORD:
                 tile_at = world.get(cur_col, cur_row)
 
-                # ─ Mode ÉPÉE : attaque uniquement, aucune interaction bloc ─────
-                if player.inventory.tool == TOOL_SWORD:
-                    if cur_mine and not prev_mine[i] and not cur_mod:
-                        dmg = (player.inventory.sword_mat or 0) + 1
-                        mob_mgr.attack_near(player.x, player.y, REACH_RADIUS, dmg)
-                        player._action_cd = 0.35
-
-                elif cur_mine and not prev_mine[i] and not cur_mod:
+                if cur_mine and not prev_mine[i] and not cur_mod:
                     # ─ MINE appui unique + outil Canon → POSER un bloc ─────────
                     if (player.inventory.tool == TOOL_PLACER
                             and tile_at == TILE_AIR):
@@ -1196,6 +1452,7 @@ def run(screen, joysticks, world_id, seed):
                             if player._break_time >= 0.6:
                                 item = world.chest_loot()
                                 player.inventory.add_equip(item)
+                                loot_notifs.append([EQUIP_NAMES.get(item, "?"), 2.5, player.color])
                                 world.set(cur_col, cur_row, TILE_AIR)
                                 chunks.invalidate(cur_col)
                                 break_infos[i] = None
@@ -1248,11 +1505,31 @@ def run(screen, joysticks, world_id, seed):
 
             prev_mine[i] = cur_mine
 
+        # ── Tick dmg flash ────────────────────────────────────────────────
+        for player in players:
+            player._dmg_flash = max(0.0, player._dmg_flash - dt)
+
+        # ── Respawn si un joueur tombe hors du monde ou meurt ─────────────
+        for i, player in enumerate(players):
+            dead = player.hp <= 0 or player.y * TILE_SIZE > ROWS * TILE_SIZE + 64
+            if dead:
+                player.hp = player.max_hp
+                fp = flag_positions[i]
+                if fp:
+                    player.x, player.y = fp
+                else:
+                    col = mid - 3 if i == 0 else mid + 3
+                    player.x = spawn_x(col)
+                    player.y = spawn_y(col)
+                player.vx = 0.0
+                player.vy = 0.0
+                _eject_from_blocks(player, world)
+
         # ── Mobs : spawn périodique + update ──────────────────────────────
         _mob_spawn_cd[0] -= dt
         if _mob_spawn_cd[0] <= 0:
-            mid_col = int((players[0].x + players[1].x) / 2)
-            mob_mgr.spawn_around(mid_col, is_night)
+            centers = list({int(p.x) for p in players})
+            mob_mgr.spawn_around(centers, is_night)
             _mob_spawn_cd[0] = 3.0
         mob_mgr.update(dt, players, world)
 
@@ -1291,13 +1568,20 @@ def run(screen, joysticks, world_id, seed):
                 chunks.preload_around(cam.x, HALF_W)
                 _draw_world(surf, chunks, cam, break_infos[i])
 
-                # Curseurs des deux joueurs dans chaque vue
+                # Curseurs des deux joueurs dans chaque vue (pas avec l'épée)
                 for j, player in enumerate(players):
+                    if player.inventory.tool == TOOL_SWORD:
+                        continue
                     cdx, cdy = p_dirs[j]
                     cur_col, cur_row = _get_cursor(player, cdx, cdy, world)
                     cur_row = max(0, min(ROWS - 1, cur_row))
                     if _in_reach(player, cur_col, cur_row):
                         _draw_cursor(surf, player, cur_col, cur_row, cam)
+
+                # Drapeaux de respawn
+                for fi, fp in enumerate(flag_positions):
+                    if fp:
+                        _draw_flag_in_world(surf, fp[0], fp[1], players[fi].color, cam)
 
                 # Mobs puis joueurs (joueurs par-dessus)
                 mob_mgr.draw(surf, cam)
@@ -1307,6 +1591,18 @@ def run(screen, joysticks, world_id, seed):
                 # Hotbar du joueur propriétaire de cette vue (nom inclus dans _draw_hotbar)
                 player_i = players[i]
                 _draw_hotbar(surf, player_i.inventory, 4, player_i.color, font_sm)
+
+                # Coeurs de vie (à droite de la hotbar)
+                _draw_hearts(surf, player_i.hp, player_i.max_hp,
+                             4 + _HOTBAR_TOTAL + 4,
+                             HOTBAR_Y + (_HOTBAR_SLOT_H - 5) // 2 + 1)
+
+                # Flash de dégâts (overlay rouge)
+                if player_i._dmg_flash > 0:
+                    _alpha = int(140 * player_i._dmg_flash / 0.4)
+                    _dmg_surf = pygame.Surface((HALF_W, SCREEN_HEIGHT), pygame.SRCALPHA)
+                    _dmg_surf.fill((200, 0, 0, min(140, _alpha)))
+                    surf.blit(_dmg_surf, (0, 0))
 
                 # Boussole vers l'autre joueur (top-right)
                 other = players[1 - i]
@@ -1324,6 +1620,8 @@ def run(screen, joysticks, world_id, seed):
             _draw_world(screen, chunks, shared_cam, break_infos[0] or break_infos[1])
 
             for i, player in enumerate(players):
+                if player.inventory.tool == TOOL_SWORD:
+                    continue
                 cdx, cdy = p_dirs[i]
                 cur_col, cur_row = _get_cursor(player, cdx, cdy, world)
                 cur_row = max(0, min(ROWS - 1, cur_row))
@@ -1331,6 +1629,10 @@ def run(screen, joysticks, world_id, seed):
                     _draw_cursor(screen, player, cur_col, cur_row, shared_cam)
 
             mob_mgr.draw(screen, shared_cam)
+            # Drapeaux de respawn
+            for fi, fp in enumerate(flag_positions):
+                if fp:
+                    _draw_flag_in_world(screen, fp[0], fp[1], players[fi].color, shared_cam)
             for i, player in enumerate(players):
                 _draw_player(screen, player, shared_cam, font_sm)
 
@@ -1338,6 +1640,22 @@ def run(screen, joysticks, world_id, seed):
             _draw_hotbar(screen, players[0].inventory, 4, P1_COLOR, font_sm)
             _draw_hotbar(screen, players[1].inventory,
                          SCREEN_WIDTH - _HOTBAR_TOTAL - 4, P2_COLOR, font_sm)
+
+            # Coeurs de vie J1 (à droite de sa hotbar) et J2 (à gauche de sa hotbar)
+            _hearts_y = HOTBAR_Y + (_HOTBAR_SLOT_H - 5) // 2 + 1
+            _hearts_w  = players[0].max_hp // 2 * (_HEART_W + _HEART_GAP) - _HEART_GAP
+            _draw_hearts(screen, players[0].hp, players[0].max_hp,
+                         4 + _HOTBAR_TOTAL + 4, _hearts_y)
+            _draw_hearts(screen, players[1].hp, players[1].max_hp,
+                         SCREEN_WIDTH - _HOTBAR_TOTAL - 4 - 4 - _hearts_w, _hearts_y)
+
+            # Flash de dégâts (overlay rouge par joueur — même vue)
+            for _pi, _pp in enumerate(players):
+                if _pp._dmg_flash > 0:
+                    _alpha = int(140 * _pp._dmg_flash / 0.4)
+                    _dmg_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                    _dmg_surf.fill((200, 0, 0, min(140, _alpha)))
+                    screen.blit(_dmg_surf, (0, 0))
 
             seed_lbl = font_sm.render("seed: " + str(world_seed), True, (180, 180, 180))
             screen.blit(seed_lbl, (SCREEN_WIDTH - seed_lbl.get_width() - 4, SCREEN_HEIGHT - seed_lbl.get_height() - 2))
@@ -1362,5 +1680,27 @@ def run(screen, joysticks, world_id, seed):
             mute_lbl = font_sm.render("[MUTE] P", True, (255, 80, 80))
             screen.blit(mute_lbl, (SCREEN_WIDTH // 2 - mute_lbl.get_width() // 2,
                                    SCREEN_HEIGHT - mute_lbl.get_height() - 2))
+
+        # ── Notifications loot coffre ─────────────────────────────────────
+        _ni = 0
+        while _ni < len(loot_notifs):
+            loot_notifs[_ni][1] -= dt
+            if loot_notifs[_ni][1] <= 0:
+                loot_notifs.pop(_ni)
+            else:
+                _ni += 1
+        if loot_notifs:
+            _ntxt, _ntime, _ncol = loot_notifs[-1]
+            _nalpha = 255 if _ntime > 0.6 else int(_ntime / 0.6 * 255)
+            _nlbl   = font_med.render("Obtenu : " + _ntxt + " !", True, (255, 220, 60))
+            _nlbl.set_alpha(_nalpha)
+            _nlw, _nlh = _nlbl.get_size()
+            _npad = 6
+            _nbg  = pygame.Surface((_nlw + _npad * 2, _nlh + _npad * 2), pygame.SRCALPHA)
+            _nbg.fill((0, 0, 0, int(_nalpha * 0.7)))
+            _nnx = SCREEN_WIDTH  // 2 - (_nlw + _npad * 2) // 2
+            _nny = SCREEN_HEIGHT // 3
+            screen.blit(_nbg, (_nnx, _nny))
+            screen.blit(_nlbl, (_nnx + _npad, _nny + _npad))
 
         pygame.display.flip()

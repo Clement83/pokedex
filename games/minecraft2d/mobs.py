@@ -192,118 +192,122 @@ class MobManager:
 
     # ── Spawn déterministe ────────────────────────────────────────────────────
 
-    def spawn_around(self, center_col, is_night=False):
+    def spawn_around(self, centers, is_night=False):
         """
-        Scanne les colonnes autour de center_col et génère les mobs.
+        Scanne les colonnes autour de chaque centre et génère les mobs.
+        centers : int ou list[int] (colonne(s) des joueurs)
         Mobs passifs uniquement le jour (is_night=False).
         """
+        if isinstance(centers, int):
+            centers = [centers]
         world = self._world
         seed  = self._seed
 
-        for col in range(center_col - _SPAWN_RANGE,
-                         center_col + _SPAWN_RANGE):
-            surf = world.surface_at(col)
+        for center_col in centers:
+            for col in range(center_col - _SPAWN_RANGE,
+                             center_col + _SPAWN_RANGE):
+                surf = world.surface_at(col)
 
-            # ── Golem : surface à gauche d'une cabane ────────────────────────
-            key_g = (col, MOB_GOLEM)
-            if key_g not in self._spawned:
-                self._spawned.add(key_g)
-                origin = world._cabin_origin(col)
-                # Un seul Golem par cabane, calculé depuis la colonne d'origine
-                if origin is not None and col == origin:
-                    if _hash1(col * 53 + 7, seed ^ 0xBABE) < 0.50:
-                        sc  = origin - 1          # juste à gauche du mur
-                        sr  = world.surface_at(sc)
-                        mh_g = _mh(MOB_GOLEM)
-                        top_row = sr - math.ceil(mh_g)
-                        # Vérifier que l'espace est suffisamment libre
-                        free = all(world.get(sc, top_row + k) == TILE_AIR
-                                   for k in range(math.ceil(mh_g)))
+                # ── Golem : surface à gauche d'une cabane ────────────────────────
+                key_g = (col, MOB_GOLEM)
+                if key_g not in self._spawned:
+                    self._spawned.add(key_g)
+                    origin = world._cabin_origin(col)
+                    # Un seul Golem par cabane, calculé depuis la colonne d'origine
+                    if origin is not None and col == origin:
+                        if _hash1(col * 53 + 7, seed ^ 0xBABE) < 0.50:
+                            sc  = origin - 1          # juste à gauche du mur
+                            sr  = world.surface_at(sc)
+                            mh_g = _mh(MOB_GOLEM)
+                            top_row = sr - math.ceil(mh_g)
+                            # Vérifier que l'espace est suffisamment libre
+                            free = all(world.get(sc, top_row + k) == TILE_AIR
+                                       for k in range(math.ceil(mh_g)))
+                            if free:
+                                m = Mob(sc, top_row, MOB_GOLEM, seed)
+                                _eject_mob(m, world)
+                                self._mobs.append(m)
+
+                # ── Slime : cave entre +5 et +40 sous la surface ─────────────────
+                key_s = (col, MOB_SLIME)
+                if key_s not in self._spawned:
+                    self._spawned.add(key_s)
+                    if _hash1(col * 97 + 13, seed ^ 0xC1C2) < 0.08:
+                        for row in range(surf + 5, min(surf + 40, ROWS - 2)):
+                            if world.get(col, row) == TILE_AIR:
+                                if world.get(col, row + 1) != TILE_AIR:
+                                    mh_s   = _mh(MOB_SLIME)
+                                    top_row = row - math.ceil(mh_s) + 1
+                                    m = Mob(col, top_row, MOB_SLIME, seed)
+                                    _eject_mob(m, world)
+                                    self._mobs.append(m)
+                                    break
+
+                # ── Zombie : profond (>18 tiles sous surface) ─────────────────────
+                key_z = (col, MOB_ZOMBIE)
+                if key_z not in self._spawned:
+                    self._spawned.add(key_z)
+                    if _hash1(col * 131 + 29, seed ^ 0xDEAD) < 0.06:
+                        deep_min = surf + 18
+                        for row in range(deep_min, min(deep_min + 30, ROWS - 2)):
+                            if world.get(col, row) == TILE_AIR:
+                                if world.get(col, row + 1) != TILE_AIR:
+                                    mh_z   = _mh(MOB_ZOMBIE)
+                                    top_row = row - math.ceil(mh_z) + 1
+                                    m = Mob(col, top_row, MOB_ZOMBIE, seed)
+                                    _eject_mob(m, world)
+                                    self._mobs.append(m)
+                                    break
+
+                # ── Poule : surface, uniquement le jour ───────────────────────────
+                key_ch = (col, MOB_CHICKEN)
+                if key_ch not in self._spawned and not is_night:
+                    self._spawned.add(key_ch)
+                    if _hash1(col * 73 + 11, seed ^ 0xC0DE) < 0.035:
+                        sr      = world.surface_at(col)
+                        mh_c    = _mh(MOB_CHICKEN)
+                        top_row = sr - math.ceil(mh_c)
+                        free = all(world.get(col, top_row + k) == TILE_AIR
+                                   for k in range(math.ceil(mh_c)))
                         if free:
-                            m = Mob(sc, top_row, MOB_GOLEM, seed)
+                            m = Mob(col, top_row, MOB_CHICKEN, seed)
                             _eject_mob(m, world)
                             self._mobs.append(m)
 
-            # ── Slime : cave entre +5 et +40 sous la surface ─────────────────
-            key_s = (col, MOB_SLIME)
-            if key_s not in self._spawned:
-                self._spawned.add(key_s)
-                if _hash1(col * 97 + 13, seed ^ 0xC1C2) < 0.08:
-                    for row in range(surf + 5, min(surf + 40, ROWS - 2)):
-                        if world.get(col, row) == TILE_AIR:
-                            if world.get(col, row + 1) != TILE_AIR:
-                                mh_s   = _mh(MOB_SLIME)
-                                top_row = row - math.ceil(mh_s) + 1
-                                m = Mob(col, top_row, MOB_SLIME, seed)
-                                _eject_mob(m, world)
-                                self._mobs.append(m)
-                                break
+                # ── Grenouille : surface, uniquement le jour ──────────────────────
+                key_fr = (col, MOB_FROG)
+                if key_fr not in self._spawned and not is_night:
+                    self._spawned.add(key_fr)
+                    if _hash1(col * 89 + 17, seed ^ 0xF09B) < 0.025:
+                        sr      = world.surface_at(col)
+                        mh_f    = _mh(MOB_FROG)
+                        top_row = sr - math.ceil(mh_f)
+                        free = all(world.get(col, top_row + k) == TILE_AIR
+                                   for k in range(math.ceil(mh_f)))
+                        if free:
+                            m = Mob(col, top_row, MOB_FROG, seed)
+                            _eject_mob(m, world)
+                            self._mobs.append(m)
 
-            # ── Zombie : profond (>18 tiles sous surface) ─────────────────────
-            key_z = (col, MOB_ZOMBIE)
-            if key_z not in self._spawned:
-                self._spawned.add(key_z)
-                if _hash1(col * 131 + 29, seed ^ 0xDEAD) < 0.06:
-                    deep_min = surf + 18
-                    for row in range(deep_min, min(deep_min + 30, ROWS - 2)):
-                        if world.get(col, row) == TILE_AIR:
-                            if world.get(col, row + 1) != TILE_AIR:
-                                mh_z   = _mh(MOB_ZOMBIE)
-                                top_row = row - math.ceil(mh_z) + 1
-                                m = Mob(col, top_row, MOB_ZOMBIE, seed)
-                                _eject_mob(m, world)
-                                self._mobs.append(m)
-                                break
-
-            # ── Poule : surface, uniquement le jour ───────────────────────────
-            key_ch = (col, MOB_CHICKEN)
-            if key_ch not in self._spawned and not is_night:
-                self._spawned.add(key_ch)
-                if _hash1(col * 73 + 11, seed ^ 0xC0DE) < 0.08:
-                    sr      = world.surface_at(col)
-                    mh_c    = _mh(MOB_CHICKEN)
-                    top_row = sr - math.ceil(mh_c)
-                    free = all(world.get(col, top_row + k) == TILE_AIR
-                               for k in range(math.ceil(mh_c)))
-                    if free:
-                        m = Mob(col, top_row, MOB_CHICKEN, seed)
-                        _eject_mob(m, world)
-                        self._mobs.append(m)
-
-            # ── Grenouille : surface, uniquement le jour ──────────────────────
-            key_fr = (col, MOB_FROG)
-            if key_fr not in self._spawned and not is_night:
-                self._spawned.add(key_fr)
-                if _hash1(col * 89 + 17, seed ^ 0xF09B) < 0.06:
-                    sr      = world.surface_at(col)
-                    mh_f    = _mh(MOB_FROG)
-                    top_row = sr - math.ceil(mh_f)
-                    free = all(world.get(col, top_row + k) == TILE_AIR
-                               for k in range(math.ceil(mh_f)))
-                    if free:
-                        m = Mob(col, top_row, MOB_FROG, seed)
-                        _eject_mob(m, world)
-                        self._mobs.append(m)
-
-            # ── Mouette : en vol, uniquement le jour ──────────────────────────
-            key_sg = (col, MOB_SEAGULL)
-            if key_sg not in self._spawned and not is_night:
-                self._spawned.add(key_sg)
-                if _hash1(col * 61 + 23, seed ^ 0xBEEF) < 0.04:
-                    sr      = world.surface_at(col)
-                    fly_row = sr - 7
-                    if fly_row >= 1:
-                        m = Mob(col, float(fly_row), MOB_SEAGULL, seed)
-                        m._wander_dir = 1 if m._rng.random() > 0.5 else -1
-                        self._mobs.append(m)   # pas d'éjection, vole librement
+                # ── Mouette : en vol, uniquement le jour ──────────────────────────
+                key_sg = (col, MOB_SEAGULL)
+                if key_sg not in self._spawned and not is_night:
+                    self._spawned.add(key_sg)
+                    if _hash1(col * 61 + 23, seed ^ 0xBEEF) < 0.018:
+                        sr      = world.surface_at(col)
+                        fly_row = sr - 7
+                        if fly_row >= 1:
+                            m = Mob(col, float(fly_row), MOB_SEAGULL, seed)
+                            m._wander_dir = 1 if m._rng.random() > 0.5 else -1
+                            self._mobs.append(m)   # pas d'éjection, vole librement
         self._mobs = [
             m for m in self._mobs
-            if abs(m.center_col() - center_col) <= _DESPAWN_RANGE
+            if any(abs(m.center_col() - c) <= _DESPAWN_RANGE for c in centers)
         ]
-        # Libérer les clés hors portée (permettra de respawn si le joueur revient)
+        # Libérer les clés hors portée de TOUS les centres
         self._spawned = {
             k for k in self._spawned
-            if abs(k[0] - center_col) <= _DESPAWN_RANGE
+            if any(abs(k[0] - c) <= _DESPAWN_RANGE for c in centers)
         }
 
     # ── Alerte Golem ──────────────────────────────────────────────────────────
@@ -527,6 +531,9 @@ def _update_mob(mob, dt, players, world):
                 p.vx         = push * 5.0
                 p.vy         = -4.0
                 mob._push_cd = 0.5
+                # 1 demi-cœur de dégât au joueur
+                p.hp          = max(0, p.hp - 1)
+                p._dmg_flash  = 0.4
 
 
 # ── Rendu d'un mob ────────────────────────────────────────────────────────────

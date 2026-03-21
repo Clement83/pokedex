@@ -60,9 +60,17 @@ def init():
                 tool       INTEGER NOT NULL DEFAULT 0,
                 resources  TEXT    NOT NULL DEFAULT '[]',
                 equip      TEXT    NOT NULL DEFAULT '{}',
+                flag_x     REAL,
+                flag_y     REAL,
                 PRIMARY KEY (world_id, player_idx)
             )
         """)
+        # Migration : ajoute les colonnes flag si l'ancienne table n'en a pas
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(players)").fetchall()}
+        if "flag_x" not in existing:
+            conn.execute("ALTER TABLE players ADD COLUMN flag_x REAL")
+        if "flag_y" not in existing:
+            conn.execute("ALTER TABLE players ADD COLUMN flag_y REAL")
 
 
 def list_worlds():
@@ -152,25 +160,31 @@ def save_blocks_batch(world_id, changes):
 
 # ── Persistance joueurs ───────────────────────────────────────────────────────
 
-def save_player(world_id, player_idx, x, y, inventory):
+def save_player(world_id, player_idx, x, y, inventory, flag=None):
     """
     Enregistre la position et l'inventaire d'un joueur.
     inventory : instance de scene_game.Inventory
+    flag      : (flag_x, flag_y) en tuiles ou None
     """
     init()
     # Sérialisation JSON de l'inventaire
     resources_json = json.dumps(inventory.resources)
     # equip : clés converties en str pour JSON ({0: [...]} → {"0": [...]})
+    # "sm" = sword_mat (None si pas d'épée)
     equip_raw = {str(k): [[item[0], item[1]] for item in v]
                  for k, v in inventory.equip.items()}
+    equip_raw["sm"] = {"mats": inventory.swords,   "idx": inventory.sword_idx}
+    equip_raw["pm"] = {"mats": inventory.pickaxes, "idx": inventory.pickaxe_idx}
     equip_json = json.dumps(equip_raw)
+    flag_x = flag[0] if flag else None
+    flag_y = flag[1] if flag else None
     with _connect() as conn:
         conn.execute("""
             INSERT OR REPLACE INTO players
-                (world_id, player_idx, x, y, tool, resources, equip)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (world_id, player_idx, x, y, tool, resources, equip, flag_x, flag_y)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (world_id, player_idx, x, y, inventory.tool,
-              resources_json, equip_json))
+              resources_json, equip_json, flag_x, flag_y))
 
 
 def load_players(world_id):
@@ -182,18 +196,37 @@ def load_players(world_id):
     init()
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT player_idx, x, y, tool, resources, equip "
+            "SELECT player_idx, x, y, tool, resources, equip, flag_x, flag_y "
             "FROM players WHERE world_id = ?",
             (world_id,)
         ).fetchall()
     result = {}
-    for player_idx, x, y, tool, res_json, eq_json in rows:
+    for player_idx, x, y, tool, res_json, eq_json, flag_x, flag_y in rows:
         resources = json.loads(res_json)   # [[tile, count], ...]
-        eq_raw    = json.loads(eq_json)    # {"0": [[s, m], ...], ...}
+        eq_raw    = json.loads(eq_json)    # {"0": [[s, m], ...], "sm": ..., "pm": ...}
+        sm_raw = eq_raw.pop("sm", None)
+        if isinstance(sm_raw, dict):
+            swords    = sm_raw.get("mats", [])
+            sword_idx = sm_raw.get("idx", 0)
+        elif sm_raw is not None:
+            swords, sword_idx = [sm_raw], 0   # ancien format : int seul
+        else:
+            swords, sword_idx = [], 0
+        pm_raw = eq_raw.pop("pm", None)
+        if isinstance(pm_raw, dict):
+            pickaxes    = pm_raw.get("mats", [])
+            pickaxe_idx = pm_raw.get("idx", 0)
+        else:
+            pickaxes, pickaxe_idx = [], 0
         equip = {int(k): [tuple(item) for item in v] for k, v in eq_raw.items()}
         result[player_idx] = {
             "x": x, "y": y, "tool": tool,
             "resources": resources,
             "equip": equip,
+            "swords": swords,
+            "sword_idx": sword_idx,
+            "pickaxes": pickaxes,
+            "pickaxe_idx": pickaxe_idx,
+            "flag": (flag_x, flag_y) if flag_x is not None and flag_y is not None else None,
         }
     return result

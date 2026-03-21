@@ -442,18 +442,15 @@ class World:
     def chest_loot(self):
         """
         Tire un item d'équipement aléatoire à l'ouverture d'un coffre.
-        - 15 % de chance que ce soit une épée (EQUIP_SWORD)
-        - Sinon : tête/corps/pieds à égalité
+        -  sword/tête/corps/pieds à égalité
         - Matériau : bois 65 %, fer 28 %, or 7 %
         Retourne (equip_slot, material).
         """
         from config import (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD,
-                            MAT_WOOD, MAT_IRON, MAT_GOLD)
-        r = random.random()
-        if r < 0.15:
-            equip_slot = EQUIP_SWORD
-        else:
-            equip_slot = random.choice([EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
+                            EQUIP_PICKAXE, MAT_WOOD, MAT_IRON, MAT_GOLD)
+
+        equip_slot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                                    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
         r2 = random.random()
         if r2 < 0.65:
             material = MAT_WOOD

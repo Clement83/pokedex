@@ -46,16 +46,18 @@ TOOL_HAND    = 0   # saisir / interagir : ouvrir coffres
 TOOL_PICKAXE = 1   # creuser uniquement
 TOOL_PLACER  = 2   # poser des blocs (appui simple MINE)
 TOOL_SWORD   = 3   # épée : attaque les mobs (MINE = coup d'épée)
+TOOL_FLAG    = 4   # drapeau : pose le point de respawn au sol
 TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche",
-                TOOL_PLACER: "Canon", TOOL_SWORD: "Épée"}
-TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD]
+                TOOL_PLACER: "Canon", TOOL_SWORD: "Épée", TOOL_FLAG: "Drapeau"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG]
 
 # ── Équipements ───────────────────────────────────────────────────────────────
 # Slot d'équipement
-EQUIP_HEAD  = 0   # casque
-EQUIP_BODY  = 1   # plastron
-EQUIP_FEET  = 2   # bottes
-EQUIP_SWORD = 3   # épée (main)
+EQUIP_HEAD    = 0   # casque
+EQUIP_BODY    = 1   # plastron
+EQUIP_FEET    = 2   # bottes
+EQUIP_SWORD   = 3   # épée (main)
+EQUIP_PICKAXE = 4   # pioche (main)
 
 # Matériaux
 MAT_WOOD = 0
@@ -86,6 +88,10 @@ EQUIP_NAMES = {
     (EQUIP_SWORD, MAT_WOOD): "Épée Bois",
     (EQUIP_SWORD, MAT_IRON): "Épée Fer",
     (EQUIP_SWORD, MAT_GOLD): "Épée Or",
+    # Pioches
+    (EQUIP_PICKAXE, MAT_WOOD): "Pioche Bois",
+    (EQUIP_PICKAXE, MAT_IRON): "Pioche Fer",
+    (EQUIP_PICKAXE, MAT_GOLD): "Pioche Or",
 }
 
 # Couleurs des tuiles (dessin simple, pas de sprites)

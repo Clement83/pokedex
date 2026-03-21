@@ -145,8 +145,31 @@ def _get(name: str) -> pygame.mixer.Sound | None:
             s.append(math.sin(phase) * env)
         snd = _build(s, vol=_VOLUME * 0.4)
 
-    else:
+    elif name == "sword_hit":
+        # Sifflement métallique court + impact sourd
+        n     = int(0.12 * sr)
+        s     = []
+        for i in range(n):
+            t     = i / sr
+            # Swoosh descendant (haute fréquence → basse)
+            freq  = 900.0 - 600.0 * (i / n)
+            phase = 2.0 * math.pi * freq * t
+            env   = math.exp(-18.0 * i / n)
+            s.append(math.sin(phase) * env * 0.6)
+        # Impact grave bref (bruit filtré)
+        n2  = int(0.04 * sr)
+        imp = _noise(n2)
+        imp = [v * math.exp(-30.0 * k / n2) for k, v in enumerate(imp)]
+        for k in range(min(n2, n)):
+            s[k] += imp[k] * 0.5
+        snd = _build(s, vol=_VOLUME * 0.9)
         snd = None
+
+    elif name == "flag_place":
+        # Jingle court 3 notes montantes : Do-Mi-Sol
+        freqs = [523.25, 659.25, 783.99]
+        s     = _arpeggio(freqs, note_dur=0.08, sr=sr, decay=10.0)
+        snd   = _build(s, vol=_VOLUME * 0.85)
 
     _cache[name] = snd
     return snd
@@ -193,3 +216,9 @@ def inv_change():
 
 def jump():
     _play(_get("jump"))
+
+def sword_hit():
+    _play(_get("sword_hit"))
+
+def flag_place():
+    _play(_get("flag_place"))
