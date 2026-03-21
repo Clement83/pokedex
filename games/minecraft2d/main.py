@@ -16,8 +16,8 @@ from config import (
 )
 
 import db as _db
-import scene_select
-import scene_game
+from scenes import select as scene_select
+from scenes.game import run as _game_run
 
 # ── Palette Minecraft ─────────────────────────────────────────────────────────
 _MC_GREEN  = ( 90, 180,  30)   # herbe / logo vert
@@ -202,7 +202,7 @@ def main():
     result = scene_select.run(screen, joysticks)
     if result is not None:
         slot_id, seed = result
-        scene_game.run(screen, joysticks, slot_id, seed)
+        _game_run(screen, joysticks, slot_id, seed)
 
     pygame.quit()
 
