@@ -23,6 +23,8 @@ def draw_world(screen, chunks: ChunkCache, camera, break_info):
     for cy in range(cy0, cy1 + 1):
         for cx in range(cx0, cx1 + 1):
             surf   = chunks.get(cx, cy)
+            if surf is None:
+                continue   # calcul en background, sera prêt dans 1–2 frames
             dest_x = cx * _CHUNK_W - cam_x
             dest_y = cy * _CHUNK_H - cam_y
             screen.blit(surf, (dest_x, dest_y))

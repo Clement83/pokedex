@@ -247,6 +247,7 @@ def run(screen, joysticks, world_id, seed):
                               (players[0].py() + players[1].py()) // 2, dt)
 
         screen.fill(_sky_c)
+        chunks.flush_ready()   # intègre les chunks calculés par le worker thread
         if is_split:
             for k, (surf, cam) in enumerate(zip(split_surfs, split_cams)):
                 _draw_view(surf, cam, HALF_W, k, break_infos[k])
