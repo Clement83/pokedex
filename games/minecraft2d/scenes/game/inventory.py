@@ -2,7 +2,7 @@
 Inventaire d'un joueur : outils, ressources et équipements.
 """
 from config import (
-    TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG,
+    TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_PICKAXE,
     TILE_AIR, TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
 )
@@ -130,6 +130,7 @@ class Inventory:
         for mat in self.swords:
             items.append((TOOL_SWORD, mat))
         items.append(TOOL_FLAG)
+        items.append(TOOL_CRAFT)
         return items
 
     def _active_tool_idx(self):

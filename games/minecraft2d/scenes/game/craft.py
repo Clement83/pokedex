@@ -127,7 +127,7 @@ class CraftMenu:
         pygame.draw.rect(screen, player_color, (mx, my, _MENU_W, _MENU_H), 2)
 
         # Titre
-        title = font.render("[ CRAFT ]  C=fermer", True, player_color)
+        title = font.render("[ CRAFT ]  Alt=fermer", True, player_color)
         screen.blit(title, (mx + _PAD, my + _PAD))
         pygame.draw.line(screen, player_color,
                          (mx + _PAD, my + _PAD + 12),
@@ -160,5 +160,5 @@ class CraftMenu:
             screen.blit(label, (mx + _PAD, ry + 2))
 
         # Légende
-        legend = font.render("↑↓ nav  E=craft  Tab=tout", True, (120, 120, 120))
+        legend = font.render("↑↓ nav  Action=craft  Alt=fermer", True, (120, 120, 120))
         screen.blit(legend, (mx + _PAD, my + _MENU_H - 14))

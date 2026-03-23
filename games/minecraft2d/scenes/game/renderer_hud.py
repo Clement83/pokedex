@@ -6,7 +6,7 @@ import pygame
 from config import (
     HOTBAR_Y,
     TILE_COLORS, TILE_NAMES,
-    TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG,
+    TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
     TOOL_NAMES,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD,
     EQUIP_NAMES,
@@ -132,6 +132,29 @@ def draw_tool_icon(screen, tool, sx, sy, sw, sh, mat=None):
         R(screen, fc,   (ox + 3, oy + 5,  5,  2))
         R(screen, fc,   (ox + 3, oy + 7,  3,  2))
         R(screen, (220, 200, 120), (ox + 1, oy + 1, 2, 2))
+
+    elif tool == TOOL_CRAFT:
+        WOOD  = (155, 100, 42)
+        WDARK = (100,  62, 20)
+        WLGHT = (195, 145, 75)
+        TOP   = (180, 120, 55)
+        ox = sx + (sw - 16) // 2
+        oy = sy + (sh - 12) // 2
+        # Surface de la table
+        R(screen, TOP,   (ox + 1, oy,     14,  4))
+        R(screen, WLGHT, (ox + 1, oy,     14,  1))
+        R(screen, WDARK, (ox + 1, oy + 3, 14,  1))
+        # Planches verticales
+        R(screen, WOOD,  (ox,     oy + 4,  3,  8))
+        R(screen, WDARK, (ox,     oy + 4,  1,  8))
+        R(screen, WOOD,  (ox + 13,oy + 4,  3,  8))
+        R(screen, WDARK, (ox + 15,oy + 4,  1,  8))
+        # Traverse du bas
+        R(screen, WOOD,  (ox + 3, oy + 10, 10, 2))
+        R(screen, WDARK, (ox + 3, oy + 11, 10, 1))
+        # Haches croisées sur la surface (mini outils)
+        R(screen, (195, 198, 215), (ox + 5, oy + 1, 3, 1))
+        R(screen, (100,  62,  20), (ox + 4, oy + 1, 1, 2))
 
 
 def draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):

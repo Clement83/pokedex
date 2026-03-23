@@ -27,8 +27,6 @@ from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H
 from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions
 from scenes.game.craft       import CraftMenu
 
-_CRAFT_KEYS = [KB_J1_CRAFT, KB_J2_CRAFT]
-
 
 def run(screen, joysticks, world_id, seed):
     """Lance la partie. Retourne True (retour menu) ou None (quitter)."""
@@ -93,7 +91,7 @@ def run(screen, joysticks, world_id, seed):
     ]
     p_dirs=[( 0,0),(0,0)]; break_infos=[None,None]; prev_mine=[False,False]
     prev_dx=[0,0]; prev_dy=[0,0]; mine_tick_cd=[0.0,0.0]
-    loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]; prev_craft=[False,False]
+    loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]
 
     def _draw_view(surf, cam, view_w, k, bi):
         surf.fill(_sky_c)
@@ -141,19 +139,23 @@ def run(screen, joysticks, world_id, seed):
             dx, dy   = get_dir(keys, joy)
             cur_mine = joy_btn(joy, btn_mine) or joy_btn(joy, btn_mine2) or bool(keys[kb_mine])
             cur_mod  = joy_btn(joy, btn_mod)  or bool(keys[kb_mod])
-            cur_cft  = bool(keys[_CRAFT_KEYS[i]])
-            if cur_cft and not prev_craft[i]: craft_menus[i].toggle()
-            prev_craft[i] = cur_cft
+
+            # ── Ouverture menu craft (outil actif = Table de Craft + action) ────────
+            just_opened = False
+            if player.inventory.tool == TOOL_CRAFT and cur_mine and not prev_mine[i]:
+                if not craft_menus[i].visible:
+                    craft_menus[i].toggle(); just_opened = True
 
             if craft_menus[i].visible:
                 if dy == -1 and prev_dy[i] != -1: craft_menus[i].navigate(-1)
                 elif dy == 1 and prev_dy[i] != 1: craft_menus[i].navigate(1)
-                if cur_mine and not prev_mine[i]:
+                if cur_mine and not prev_mine[i] and not just_opened:
                     name = craft_menus[i].craft(player.inventory)
-                    msg  = (f"Craft\u00e9 : {name} !" if name else "Ressources insuffisantes")
+                    msg  = (f"Crafté : {name} !" if name else "Ressources insuffisantes")
                     col2 = player.color if name else (200, 80, 80)
                     loot_notifs.append([msg, 2.5 if name else 1.0, col2])
                     if name: _sounds.chest_open()
+                if cur_mod: craft_menus[i].close()
                 prev_mine[i] = cur_mine; continue
 
             if cur_mod:

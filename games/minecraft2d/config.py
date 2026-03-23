@@ -53,9 +53,11 @@ TOOL_PICKAXE = 1   # creuser uniquement
 TOOL_PLACER  = 2   # poser des blocs (appui simple MINE)
 TOOL_SWORD   = 3   # épée : attaque les mobs (MINE = coup d'épée)
 TOOL_FLAG    = 4   # drapeau : pose le point de respawn au sol
+TOOL_CRAFT   = 5   # table de craft : action=ouvrir menu, alt=fermer
 TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche",
-                TOOL_PLACER: "Canon", TOOL_SWORD: "Épée", TOOL_FLAG: "Drapeau"}
-TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG]
+                TOOL_PLACER: "Canon", TOOL_SWORD: "Épée", TOOL_FLAG: "Drapeau",
+                TOOL_CRAFT: "Table Craft"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT]
 
 # ── Équipements ───────────────────────────────────────────────────────────────
 # Slot d'équipement
