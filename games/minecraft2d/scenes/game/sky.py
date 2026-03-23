@@ -48,17 +48,21 @@ def is_night(t):
 
 
 # Surface pré-allouée pour l'overlay nuit
-_night_overlay = None
+_night_overlay  = None
+_night_last_na  = -1   # dernier alpha rendu → évite le fill si inchangé
 
 
 def draw_night_overlay(screen, t):
-    global _night_overlay
+    global _night_overlay, _night_last_na
     na = night_alpha(t)
     if na <= 0:
         return
     if _night_overlay is None:
         _night_overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    _night_overlay.fill((10, 5, 30, na))
+        _night_last_na = -1
+    if na != _night_last_na:
+        _night_overlay.fill((10, 5, 30, na))
+        _night_last_na = na
     screen.blit(_night_overlay, (0, 0))
 
 

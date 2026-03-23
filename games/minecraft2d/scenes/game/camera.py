@@ -50,9 +50,9 @@ class Camera:
 # Chaque chunk = CHUNK_COLS colonnes × CHUNK_ROWS rangées pré-rendus en Surface.
 # Clé de cache : (cx, cy).  Seuls les chunks visibles sont construits/gardés.
 
-CHUNK_COLS = 30
-CHUNK_ROWS = 20                          # ≈ 1 écran de haut (320px / 16px)
-_CHUNK_W   = CHUNK_COLS * TILE_SIZE      # 480 px
+CHUNK_COLS = 16
+CHUNK_ROWS = 16                          # 16×16 tuiles = 256×256 px par chunk
+_CHUNK_W   = CHUNK_COLS * TILE_SIZE      # 256 px
 _CHUNK_H   = CHUNK_ROWS * TILE_SIZE      # 320 px  (était ROWS×16 = 1920+ px)
 
 
@@ -80,7 +80,7 @@ def _draw_chest_tile(surf, x, y):
 
 
 class ChunkCache:
-    _MAX_CHUNKS = 20   # (cx, cy) pairs — couvre ~5 colonnes × 4 rangées de chunks
+    _MAX_CHUNKS = 32   # chunks 16×16 tuiles — couvre ~3×3 non-split ou 2×(3×3) split
 
     def __init__(self, world):
         self._world   = world
@@ -131,7 +131,7 @@ class ChunkCache:
                     surf.fill(color, (x, y, ts, ts))
                     if tile != TILE_AIR:
                         pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
-        return surf
+        return surf.convert()   # format pixel de l'écran → blits plus rapides
 
     def flush_ready(self):
         """Intègre les chunks calculés en background. Appelé une fois par frame depuis le main thread."""

@@ -11,6 +11,7 @@ from mobs.base import (
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
+    _MOB_PW, _MOB_PH,
 )
 from mobs.physics import _eject_mob
 from mobs.ai import update_mob
@@ -295,7 +296,14 @@ class MobManager:
     # ── Rendu ─────────────────────────────────────────────────────────────────
 
     def draw(self, screen, camera):
+        vw = camera.view_w
+        vh = camera.view_h
         for mob in self._mobs:
+            sx, sy = camera.world_to_screen(mob.px(), mob.py())
+            mw = _MOB_PW[mob.mob_type]
+            mh = _MOB_PH[mob.mob_type]
+            if sx + mw < 0 or sx > vw or sy + mh < 0 or sy > vh:
+                continue   # hors écran
             draw_mob(screen, mob, camera)
 
 
