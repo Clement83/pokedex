@@ -11,7 +11,7 @@ FPS           = 30          # 30 fps pour les performances
 # ── Tuiles ────────────────────────────────────────────────────────────────────
 TILE_SIZE  = 16             # pixels par tuile
 COLS       = 120            # largeur du monde en tuiles
-ROWS       = 60             # hauteur du monde en tuiles
+ROWS       = 120            # hauteur du monde en tuiles
 
 # Indices de tuile
 TILE_AIR   = 0
@@ -124,7 +124,7 @@ TILE_BREAK_TIME = {
 }
 
 # ── Génération du terrain ─────────────────────────────────────────────────────
-SURFACE_Y      = 18     # ligne de surface (tuile de haut en bas)
+SURFACE_Y      = 30     # ligne de surface (tuile de haut en bas)
 TERRAIN_AMPLITUDE = 6   # amplitude max des collines
 TERRAIN_FREQ   = 0.07   # fréquence des collines (plus petit = plus doux)
 STONE_DEPTH    = 8      # nombre de tuiles de terre avant la pierre

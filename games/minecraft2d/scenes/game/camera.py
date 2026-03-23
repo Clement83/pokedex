@@ -111,6 +111,24 @@ class ChunkCache:
             return self._cache[cx]
         return self._build(cx)
 
+    def update_tile(self, col, row, tile):
+        """Met à jour une seule tuile dans le chunk en cache — sans rebuild complet."""
+        cx = col // CHUNK_COLS
+        if cx not in self._cache:
+            return  # pas encore en cache, sera construit correctement à la prochaine frame
+        surf = self._cache[cx]
+        dc = col % CHUNK_COLS
+        x  = dc  * TILE_SIZE
+        y  = row * TILE_SIZE
+        ts = TILE_SIZE
+        if tile == TILE_CHEST:
+            _draw_chest_tile(surf, x, y)
+        else:
+            color = TILE_COLORS[tile]
+            surf.fill(color, (x, y, ts, ts))
+            if tile != TILE_AIR:
+                pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+
     def invalidate(self, col):
         self._cache.pop(col // CHUNK_COLS, None)
 

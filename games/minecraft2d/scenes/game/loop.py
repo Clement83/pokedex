@@ -266,7 +266,7 @@ def run(screen, joysticks, world_id, seed):
                             )
                             if not occupied:
                                 world.set(cur_col, cur_row, selected)
-                                chunks.invalidate(cur_col)
+                                chunks.update_tile(cur_col, cur_row, selected)
                                 for p in players:
                                     eject_from_blocks(p, world)
                                 player.inventory.consume()
@@ -286,7 +286,7 @@ def run(screen, joysticks, world_id, seed):
                                 player.inventory.add_equip(item)
                                 loot_notifs.append([EQUIP_NAMES.get(item, "?"), 2.5, player.color])
                                 world.set(cur_col, cur_row, TILE_AIR)
-                                chunks.invalidate(cur_col)
+                                chunks.update_tile(cur_col, cur_row, TILE_AIR)
                                 break_infos[i] = None
                                 player._break_time = 0.0
                                 player._action_cd  = 0.3
@@ -311,7 +311,7 @@ def run(screen, joysticks, world_id, seed):
                                     mob_mgr.trigger_cabin_break(cur_col)
                                 player.inventory.add(tile_at)
                                 world.set(cur_col, cur_row, TILE_AIR)
-                                chunks.invalidate(cur_col)
+                                chunks.update_tile(cur_col, cur_row, TILE_AIR)
                                 break_infos[i] = None
                                 player._break_time = 0.0
                                 player._action_cd  = 0.1
