@@ -147,6 +147,7 @@ class Mob:
         self._push_cd    = 0.0
         self._fly_phase  = 0.0    # oscillation verticale mouette
         self.hp          = _MOB_HP[mob_type]
+        self.vanish      = False   # True → supprimé au prochain tick
         self._rng = random.Random(int(col) * 1000 + int(row) + mob_type + seed)
 
     # ── Helpers géométriques ──────────────────────────────────────────────────

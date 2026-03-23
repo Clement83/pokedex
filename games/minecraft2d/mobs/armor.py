@@ -13,7 +13,7 @@ from config import (
 )
 from mobs.base import (
     _PASSIVE_MOBS, _GOLD_NEUTRAL_MOBS, _MOB_ATTACK_DMG,
-    _mw, _mh,
+    _mw, _mh, MOB_DEMON,
 )
 
 _SLOTS = (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET)
@@ -64,5 +64,9 @@ def _apply_contact_dmg(mob, players):
         mob._push_cd = 0.5
         eff = max(0, raw_dmg - armor_def(p))
         if eff > 0:
+            was_alive    = p.hp > 0
             p.hp         = max(0, p.hp - eff)
             p._dmg_flash = 0.4
+            # Le démon disparaît s'il tue un joueur
+            if mob.mob_type == MOB_DEMON and was_alive and p.hp <= 0:
+                mob.vanish = True

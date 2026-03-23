@@ -258,6 +258,7 @@ class MobManager:
     def update(self, dt, players, world):
         for mob in self._mobs:
             update_mob(mob, dt, players, world)
+        self._mobs = [m for m in self._mobs if not m.vanish]
 
     # ── Attaque épée avec tier + drops ────────────────────────────────────────
 

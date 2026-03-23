@@ -288,6 +288,13 @@ def update_mob(mob, dt, players, world):  # noqa: C901
     if mob.mob_type in _FLYING_MOBS:
         mob.x += mob.vx * dt
         mob.y += mob.vy * dt
+        # Le démon ne peut pas remonter trop haut (évite poursuite infinie en surface)
+        if mob.mob_type == MOB_DEMON:
+            min_row = world.surface_at(int(mob.center_col())) + 30
+            if mob.y < min_row:
+                mob.y  = float(min_row)
+                if mob.vy < 0:
+                    mob.vy = 0.0
     else:
         mob.vy = min(mob.vy + GRAVITY * dt, MAX_FALL_SPEED)
         _move_mob_x(mob, world, mob.vx * dt)
