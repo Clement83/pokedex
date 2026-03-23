@@ -16,6 +16,9 @@ _SKIN  = (255, 210, 160)
 _BLACK = (  0,   0,   0)
 _DARK  = ( 40,  40,  40)
 
+# Surfaces pré-allouées (initialisées au premier appel)
+_COMPASS_BG = None
+
 # ── Cœurs ────────────────────────────────────────────────────────────────────
 _HEART_MASK = [
     (1, 0), (2, 0), (4, 0), (5, 0),
@@ -30,19 +33,45 @@ _HEART_FULL  = (220,  50,  50)
 _HEART_EMPTY = ( 70,  20,  20)
 _HEART_SHINE = (255, 140, 140)
 
+# Surfaces pré-rendues d'un cœur plein et d'un cœur vide (6×5 px)
+_HEART_SURF_FULL  = None
+_HEART_SURF_EMPTY = None
+
+
+def _build_heart_surfs():
+    global _HEART_SURF_FULL, _HEART_SURF_EMPTY
+    _HEART_SURF_FULL  = pygame.Surface((_HEART_W, 5), pygame.SRCALPHA)
+    _HEART_SURF_EMPTY = pygame.Surface((_HEART_W, 5), pygame.SRCALPHA)
+    for surf, color, shine in (
+        (_HEART_SURF_FULL,  _HEART_FULL,  _HEART_SHINE),
+        (_HEART_SURF_EMPTY, _HEART_EMPTY, None),
+    ):
+        for dx, dy in _HEART_MASK:
+            surf.fill(color, (dx, dy, 1, 1))
+        if shine:
+            surf.fill(shine, (1, 1, 1, 1))
+
 
 def draw_hearts(surf, hp, max_hp, x, y):
     """Dessine max_hp//2 cœurs en demi-cœurs."""
+    global _HEART_SURF_FULL, _HEART_SURF_EMPTY
+    if _HEART_SURF_FULL is None:
+        _build_heart_surfs()
     n = max_hp // 2
-    R = pygame.draw.rect
     for i in range(n):
         hx = x + i * (_HEART_W + _HEART_GAP)
-        for dx, dy in _HEART_MASK:
-            half   = 0 if dx < 3 else 1
-            filled = hp > i * 2 + half
-            R(surf, _HEART_FULL if filled else _HEART_EMPTY, (hx + dx, y + dy, 1, 1))
-        if hp > i * 2:
-            R(surf, _HEART_SHINE, (hx + 1, y + 1, 1, 1))
+        # moitié gauche
+        left_filled  = hp > i * 2
+        # moitié droite
+        right_filled = hp > i * 2 + 1
+        # Fond vide (toujours) puis recouvre les moitiés remplies
+        surf.blit(_HEART_SURF_EMPTY, (hx, y))
+        if left_filled:
+            # bliter seulement les 3 pixels gauche du cœur plein
+            surf.blit(_HEART_SURF_FULL,  (hx, y), (0, 0, 3, 5))
+        if right_filled:
+            # bliter seulement les 3 pixels droits
+            surf.blit(_HEART_SURF_FULL,  (hx + 3, y), (3, 0, 3, 5))
 
 
 def draw_compass(surf, cam, me, other, surf_w, color):
@@ -50,9 +79,12 @@ def draw_compass(surf, cam, me, other, surf_w, color):
     R   = 12
     cx  = surf_w - R - 6
     cy  = R + 6
-    bg  = pygame.Surface((R*2+2, R*2+2), pygame.SRCALPHA)
-    pygame.draw.circle(bg, (0, 0, 0, 110), (R+1, R+1), R+1)
-    surf.blit(bg, (cx - R - 1, cy - R - 1))
+    # Fond statique pré-alloué (même taille, même cercle noir semi-transparent)
+    global _COMPASS_BG
+    if _COMPASS_BG is None:
+        _COMPASS_BG = pygame.Surface((R*2+2, R*2+2), pygame.SRCALPHA)
+        pygame.draw.circle(_COMPASS_BG, (0, 0, 0, 110), (R+1, R+1), R+1)
+    surf.blit(_COMPASS_BG, (cx - R - 1, cy - R - 1))
     pygame.draw.circle(surf, (50, 50, 50),    (cx, cy), R)
     pygame.draw.circle(surf, (180, 180, 180), (cx, cy), R, 1)
     dx    = (other.px() + PLAYER_W / 2) - (me.px() + PLAYER_W / 2)
@@ -69,10 +101,14 @@ def draw_compass(surf, cam, me, other, surf_w, color):
     pygame.draw.circle(surf, (220, 220, 220), (cx, cy), 2)
 
 
+# Cache des labels J1/J2 : {(idx, font_id): Surface}
+_LABEL_CACHE = {}
+
+
 def draw_player(screen, player, camera, font):
     px, py = camera.world_to_screen(player.px(), player.py())
     c  = player.color
-    dc = tuple(max(0, v - 55) for v in c)
+    dc = player.dark_color
     inv = player.inventory
 
     head_item  = inv.worn_equip(EQUIP_HEAD)
@@ -120,8 +156,11 @@ def draw_player(screen, player, camera, font):
     # Outil en main
     _draw_tool_in_hand(screen, inv, c, px, py)
 
-    # Étiquette J1 / J2
-    label = font.render("J" + str(player.idx + 1), True, (255, 255, 255))
+    # Étiquette J1 / J2 (pré-rendue et cachée)
+    key = (player.idx, id(font))
+    if key not in _LABEL_CACHE:
+        _LABEL_CACHE[key] = font.render("J" + str(player.idx + 1), True, (255, 255, 255))
+    label = _LABEL_CACHE[key]
     lw = label.get_width()
     pygame.draw.rect(screen, _BLACK, (px + (10 - lw) // 2 - 1, hy - 9, lw + 2, 9))
     screen.blit(label, (px + (10 - lw) // 2, hy - 9))

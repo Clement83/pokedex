@@ -35,8 +35,11 @@ class MobManager:
         world = self._world
         seed  = self._seed
 
+        _MAX_MOBS = 20   # cap global pour garder les perfs
         for center_col in centers:
             for col in range(center_col - _SPAWN_RANGE, center_col + _SPAWN_RANGE):
+                if len(self._mobs) >= _MAX_MOBS:
+                    break
                 surf = world.surface_at(col)
                 self._try_spawn_golem(col, surf, world, seed)
                 self._try_spawn_slime(col, surf, world, seed)
@@ -87,7 +90,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 97 + 13, seed ^ 0xC1C2) >= 0.08:
+        if _hash1(col * 97 + 13, seed ^ 0xC1C2) >= 0.04:   # 0.08 -> 0.04
             return
         for row in range(surf + 5, min(surf + 40, ROWS - 2)):
             if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
@@ -102,7 +105,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 131 + 29, seed ^ 0xDEAD) >= 0.06:
+        if _hash1(col * 131 + 29, seed ^ 0xDEAD) >= 0.03:  # 0.06 -> 0.03
             return
         deep_min = surf + 18
         for row in range(deep_min, min(deep_min + 30, ROWS - 2)):
@@ -118,7 +121,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 113 + 41, seed ^ 0x5B1D) >= 0.07:
+        if _hash1(col * 113 + 41, seed ^ 0x5B1D) >= 0.035: # 0.07 -> 0.035
             return
         for row in range(surf + 3, min(surf + 25, ROWS - 2)):
             if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
@@ -133,7 +136,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 143 + 37, seed ^ 0x5CE1) >= 0.05:
+        if _hash1(col * 143 + 37, seed ^ 0x5CE1) >= 0.025: # 0.05 -> 0.025
             return
         deep_min = surf + 15
         for row in range(deep_min, min(deep_min + 35, ROWS - 2)):
@@ -149,7 +152,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 79 + 53, seed ^ 0xBA7) >= 0.06:
+        if _hash1(col * 79 + 53, seed ^ 0xBA7) >= 0.03:    # 0.06 -> 0.03
             return
         cave_start = surf + 8
         for row in range(cave_start, min(cave_start + 50, ROWS - 2)):
@@ -165,7 +168,7 @@ class MobManager:
         self._spawned.add(key)
         if world.get(col, surf) != TILE_SAND:
             return
-        if _hash1(col * 67 + 31, seed ^ 0xCBA5) >= 0.04:
+        if _hash1(col * 67 + 31, seed ^ 0xCBA5) >= 0.02:   # 0.04 -> 0.02
             return
         top = surf - math.ceil(_mh(MOB_CRAB))
         if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_CRAB)))):
@@ -178,7 +181,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 157 + 61, seed ^ 0xDE11) >= 0.012:
+        if _hash1(col * 157 + 61, seed ^ 0xDE11) >= 0.006: # 0.012 -> 0.006
             return
         deep_min = surf + 55
         for row in range(deep_min, min(deep_min + 20, ROWS - 2)):
@@ -194,7 +197,7 @@ class MobManager:
         self._spawned.add(key)
         if world.get(col, surf) not in (TILE_GRASS, TILE_DIRT):
             return
-        if _hash1(col * 103 + 47, seed ^ 0xB0A1) >= 0.05:
+        if _hash1(col * 103 + 47, seed ^ 0xB0A1) >= 0.025: # 0.05 -> 0.025
             return
         top = surf - math.ceil(_mh(MOB_BOAR))
         if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_BOAR)))):
@@ -207,7 +210,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 73 + 11, seed ^ 0xC0DE) >= 0.035:
+        if _hash1(col * 73 + 11, seed ^ 0xC0DE) >= 0.018:  # 0.035 -> 0.018
             return
         top = surf - math.ceil(_mh(MOB_CHICKEN))
         if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_CHICKEN)))):
@@ -220,7 +223,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 89 + 17, seed ^ 0xF09B) >= 0.025:
+        if _hash1(col * 89 + 17, seed ^ 0xF09B) >= 0.012:  # 0.025 -> 0.012
             return
         top = surf - math.ceil(_mh(MOB_FROG))
         if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_FROG)))):
@@ -233,7 +236,7 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
-        if _hash1(col * 61 + 23, seed ^ 0xBEEF) >= 0.018:
+        if _hash1(col * 61 + 23, seed ^ 0xBEEF) >= 0.009:  # 0.018 -> 0.009
             return
         fly_row = surf - 7
         if fly_row >= 1:

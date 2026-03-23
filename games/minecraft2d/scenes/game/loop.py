@@ -41,6 +41,17 @@ def run(screen, joysticks, world_id, seed):
     chunks = ChunkCache(world); _day_time = [0.12]
     _pending = {}; _last_flush = [0.0]; _FLUSH = 2.0
 
+    # Surfaces SRCALPHA pré-allouées (jamais réallouées dans la boucle)
+    _dmg_surf_half = pygame.Surface((SCREEN_WIDTH // 2, SCREEN_HEIGHT), pygame.SRCALPHA)
+    _dmg_surf_full = pygame.Surface((SCREEN_WIDTH,      SCREEN_HEIGHT), pygame.SRCALPHA)
+    # Fond notif loot : réalloué uniquement si le texte change
+    _notif_bg_surf = [None]   # [Surface|None]
+    _notif_prev_w  = [0]
+
+    # Labels statiques pré-rendus
+    _seed_label = font_sm.render("seed: " + str(world_seed), True, (180, 180, 180))
+    _mute_label = font_sm.render("[MUTE] P", True, (255, 80, 80))
+
     def _queue(col, row, tile): _pending[(col, row)] = tile
 
     def _flush():
@@ -93,9 +104,20 @@ def run(screen, joysticks, world_id, seed):
     prev_dx=[0,0]; prev_dy=[0,0]; mine_tick_cd=[0.0,0.0]
     loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]
 
+    # Dirty flags caméra pour éviter preload_around si la cam n'a pas bougé
+    _preload_last = {}   # {cam_id: (x, y)}
+
+    def _preload_if_moved(cam, view_w):
+        key  = id(cam)
+        prev = _preload_last.get(key)
+        cur  = (int(cam.x), int(cam.y))
+        if prev != cur:
+            chunks.preload_around(cam.x, cam.y, view_w)
+            _preload_last[key] = cur
+
     def _draw_view(surf, cam, view_w, k, bi):
         surf.fill(_sky_c)
-        chunks.preload_around(cam.x, cam.y, view_w)
+        _preload_if_moved(cam, view_w)
         draw_world(surf, chunks, cam, bi)
         for j, pl in enumerate(players):
             if pl.inventory.tool != TOOL_SWORD:
@@ -108,8 +130,9 @@ def run(screen, joysticks, world_id, seed):
         for pl in players: draw_player(surf, pl, cam, font_sm)
         pi = players[k]
         if pi._dmg_flash > 0:
-            _ds = pygame.Surface((view_w, SCREEN_HEIGHT), pygame.SRCALPHA)
-            _ds.fill((200, 0, 0, min(140, int(140 * pi._dmg_flash / 0.4)))); surf.blit(_ds, (0, 0))
+            _ds = _dmg_surf_half if view_w < SCREEN_WIDTH else _dmg_surf_full
+            _ds.fill((200, 0, 0, min(140, int(140 * pi._dmg_flash / 0.4))))
+            surf.blit(_ds, (0, 0))
         _hy = HOTBAR_Y + (_HOTBAR_SLOT_H - 5) // 2 + 1
         draw_hotbar(surf, pi.inventory, 4, pi.color, font_sm)
         draw_hearts(surf, pi.hp, pi.max_hp, 4 + HOTBAR_TOTAL + 4, _hy)
@@ -203,7 +226,7 @@ def run(screen, joysticks, world_id, seed):
 
         _mob_cd[0] -= dt
         if _mob_cd[0] <= 0:
-            mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 3.0
+            mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 6.0
         mob_mgr.update(dt, players, world)
 
         dx_d = abs(players[0].px() - players[1].px()); dy_d = abs(players[0].py() - players[1].py())
@@ -228,8 +251,7 @@ def run(screen, joysticks, world_id, seed):
             for k, (surf, cam) in enumerate(zip(split_surfs, split_cams)):
                 _draw_view(surf, cam, HALF_W, k, break_infos[k])
             pygame.draw.line(screen, (200, 200, 200), (HALF_W, 0), (HALF_W, SCREEN_HEIGHT), 2)
-            _sl = font_sm.render("seed:" + str(world_seed), True, (180, 180, 180))
-            split_surfs[1].blit(_sl, (HALF_W - _sl.get_width() - 4, SCREEN_HEIGHT - _sl.get_height() - 2))
+            split_surfs[1].blit(_seed_label, (HALF_W - _seed_label.get_width() - 4, SCREEN_HEIGHT - _seed_label.get_height() - 2))
         else:
             _draw_view(screen, shared_cam, SCREEN_WIDTH, 0, break_infos[0] or break_infos[1])
             _hy = HOTBAR_Y + (_HOTBAR_SLOT_H - 5) // 2 + 1
@@ -238,21 +260,19 @@ def run(screen, joysticks, world_id, seed):
             draw_hearts(screen, players[1].hp, players[1].max_hp,
                         SCREEN_WIDTH - HOTBAR_TOTAL - 4 - 4 - _hw, _hy)
             if players[1]._dmg_flash > 0:
-                _ds = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                _ds = _dmg_surf_full
                 _ds.fill((200, 0, 0, min(140, int(140 * players[1]._dmg_flash / 0.4))))
                 screen.blit(_ds, (0, 0))
             if craft_menus[1].visible:
                 craft_menus[1].draw(screen, players[1].inventory, P2_COLOR, font_sm)
-            _sl = font_sm.render("seed: " + str(world_seed), True, (180, 180, 180))
-            screen.blit(_sl, (SCREEN_WIDTH - _sl.get_width() - 4, SCREEN_HEIGHT - _sl.get_height() - 2))
+            screen.blit(_seed_label, (SCREEN_WIDTH - _seed_label.get_width() - 4, SCREEN_HEIGHT - _seed_label.get_height() - 2))
 
         if night_alpha(_day_time[0]) > 0: draw_night_overlay(screen, _day_time[0])
         draw_sky_hud(screen, _day_time[0], font_sm)
         if quit_combo.update_and_draw(screen): _flush(); return True
         if _sounds.is_muted():
-            _ml = font_sm.render("[MUTE] P", True, (255, 80, 80))
-            screen.blit(_ml, (SCREEN_WIDTH // 2 - _ml.get_width() // 2,
-                               SCREEN_HEIGHT - _ml.get_height() - 2))
+            screen.blit(_mute_label, (SCREEN_WIDTH // 2 - _mute_label.get_width() // 2,
+                               SCREEN_HEIGHT - _mute_label.get_height() - 2))
 
         ni = 0
         while ni < len(loot_notifs):
@@ -264,9 +284,12 @@ def run(screen, joysticks, world_id, seed):
             _na  = 255 if _ntime > 0.6 else int(_ntime / 0.6 * 255)
             _lbl = font_med.render(_ntxt, True, (255, 220, 60)); _lbl.set_alpha(_na)
             _lw, _lh = _lbl.get_size(); _p = 6
-            _nbg = pygame.Surface((_lw + _p * 2, _lh + _p * 2), pygame.SRCALPHA)
-            _nbg.fill((0, 0, 0, int(_na * 0.7)))
-            _nx = SCREEN_WIDTH // 2 - (_lw + _p * 2) // 2; _ny = SCREEN_HEIGHT // 3
-            screen.blit(_nbg, (_nx, _ny)); screen.blit(_lbl, (_nx + _p, _ny + _p))
+            _nbg_w = _lw + _p * 2
+            if _notif_bg_surf[0] is None or _notif_prev_w[0] != _nbg_w:
+                _notif_bg_surf[0] = pygame.Surface((_nbg_w, _lh + _p * 2), pygame.SRCALPHA)
+                _notif_prev_w[0] = _nbg_w
+            _notif_bg_surf[0].fill((0, 0, 0, int(_na * 0.7)))
+            _nx = SCREEN_WIDTH // 2 - _nbg_w // 2; _ny = SCREEN_HEIGHT // 3
+            screen.blit(_notif_bg_surf[0], (_nx, _ny)); screen.blit(_lbl, (_nx + _p, _ny + _p))
 
         pygame.display.flip()

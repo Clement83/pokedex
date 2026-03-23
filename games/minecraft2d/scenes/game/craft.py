@@ -40,9 +40,8 @@ CRAFT_RECIPES = [
 ]
 
 
-def _has_resources(inventory, ingredients):
-    """Vérifie que l'inventaire contient tous les ingrédients requis."""
-    res_map = {tile: count for tile, count in inventory.resources}
+def _has_resources(res_map, ingredients):
+    """Vérifie que res_map contient tous les ingrédients requis."""
     for tile, needed in ingredients.items():
         if res_map.get(tile, 0) < needed:
             return False
@@ -82,6 +81,9 @@ class CraftMenu:
         self._sel     = 0      # index sélectionné dans les recettes filtrées
         self._recipes = []     # recettes disponibles (cache)
         self._all     = False  # False = seulement craftables, True = toutes
+        # Surface de fond pré-allouée (jamais ré-allouée)
+        self._bg_surf = pygame.Surface((_MENU_W, _MENU_H), pygame.SRCALPHA)
+        self._bg_surf.fill((20, 20, 30, 220))
 
     def toggle(self):
         self.visible = not self.visible
@@ -91,11 +93,13 @@ class CraftMenu:
         self.visible = False
 
     def _refresh(self, inventory):
+        res_map = {tile: count for tile, count in inventory.resources}
         if self._all:
             self._recipes = CRAFT_RECIPES[:]
         else:
             self._recipes = [r for r in CRAFT_RECIPES
-                             if _has_resources(inventory, r[1])]
+                             if _has_resources(res_map, r[1])]
+        self._res_map = res_map  # réutilisé dans draw/craft
 
     def navigate(self, dy):
         if not self._recipes:
@@ -107,7 +111,8 @@ class CraftMenu:
         if not self._recipes:
             return None
         result, ingredients, _ = self._recipes[self._sel]
-        if not _has_resources(inventory, ingredients):
+        res_map = {tile: count for tile, count in inventory.resources}
+        if not _has_resources(res_map, ingredients):
             return None
         _consume_resources(inventory, ingredients)
         inventory.add_equip(result)
@@ -120,10 +125,8 @@ class CraftMenu:
         mx = (SCREEN_WIDTH  - _MENU_W) // 2
         my = (SCREEN_HEIGHT - _MENU_H) // 2
 
-        # Fond
-        surf = pygame.Surface((_MENU_W, _MENU_H), pygame.SRCALPHA)
-        surf.fill((20, 20, 30, 220))
-        screen.blit(surf, (mx, my))
+        # Fond (surface réutilisée)
+        screen.blit(self._bg_surf, (mx, my))
         pygame.draw.rect(screen, player_color, (mx, my, _MENU_W, _MENU_H), 2)
 
         # Titre
@@ -152,7 +155,7 @@ class CraftMenu:
 
             name  = EQUIP_NAMES.get(result, "?")
             color = (255, 230, 80) if act else (200, 200, 200)
-            can   = _has_resources(inventory, ingredients)
+            can   = _has_resources(self._res_map, ingredients)
             if not can:
                 color = (100, 100, 100)
 

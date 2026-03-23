@@ -20,6 +20,7 @@ class Player:
         self.on_ground = False
         self.on_wall   = False
         self.color = color
+        self.dark_color = tuple(max(0, v - 55) for v in color)
         self.idx   = idx
         self.inventory    = Inventory()
         self._action_cd   = 0.0
