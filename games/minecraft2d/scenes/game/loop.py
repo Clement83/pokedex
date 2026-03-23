@@ -81,7 +81,7 @@ def run(screen, joysticks, world_id, seed):
     shared_cam.x = max(0, (players[0].px() + players[1].px()) // 2 - SCREEN_WIDTH  // 2)
     shared_cam.y = max(0, min((players[0].py() + players[1].py()) // 2 - SCREEN_HEIGHT // 2, max_cy))
     for sc in split_cams: sc.x, sc.y = shared_cam.x, shared_cam.y
-    chunks.preload_around(shared_cam.x, SCREEN_WIDTH)
+    chunks.preload_around(shared_cam.x, shared_cam.y, SCREEN_WIDTH)
 
     mob_mgr = _mobs.MobManager(world); _mob_cd = [0.0]
     joy1 = joysticks[0] if joysticks else None
@@ -95,7 +95,7 @@ def run(screen, joysticks, world_id, seed):
 
     def _draw_view(surf, cam, view_w, k, bi):
         surf.fill(_sky_c)
-        chunks.preload_around(cam.x, view_w)
+        chunks.preload_around(cam.x, cam.y, view_w)
         draw_world(surf, chunks, cam, bi)
         for j, pl in enumerate(players):
             if pl.inventory.tool != TOOL_SWORD:

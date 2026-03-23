@@ -4,23 +4,28 @@ Rendu du monde : tuiles via cache de chunks, curseur et drapeau de respawn.
 import pygame
 from config import TILE_SIZE, ROWS, BREAK_BAR_COLOR
 
-from scenes.game.camera import ChunkCache, _CHUNK_W, _CHUNK_H, SCREEN_HEIGHT
+from scenes.game.camera import ChunkCache, _CHUNK_W, _CHUNK_H
 
 _CURSOR_SURF = None   # pré-allouée au premier appel
 
 
 def draw_world(screen, chunks: ChunkCache, camera, break_info):
-    """Rendu du terrain via blit de chunks. Aussi dessine la barre de cassage."""
+    """Rendu du terrain via blit de chunks 2D. Aussi dessine la barre de cassage."""
     w      = screen.get_width()
+    h      = screen.get_height()
     ts     = TILE_SIZE
     cam_x  = int(camera.x)
-    cam_y  = max(0, min(int(camera.y), _CHUNK_H - SCREEN_HEIGHT))
+    cam_y  = int(camera.y)
     cx0    = cam_x // _CHUNK_W
     cx1    = (cam_x + w - 1) // _CHUNK_W
-    for cx in range(cx0, cx1 + 1):
-        surf   = chunks.get(cx)
-        dest_x = cx * _CHUNK_W - cam_x
-        screen.blit(surf, (dest_x, 0), (0, cam_y, _CHUNK_W, SCREEN_HEIGHT))
+    cy0    = max(0, cam_y // _CHUNK_H)
+    cy1    = (cam_y + h - 1) // _CHUNK_H
+    for cy in range(cy0, cy1 + 1):
+        for cx in range(cx0, cx1 + 1):
+            surf   = chunks.get(cx, cy)
+            dest_x = cx * _CHUNK_W - cam_x
+            dest_y = cy * _CHUNK_H - cam_y
+            screen.blit(surf, (dest_x, dest_y))
 
     if break_info:
         col, row, progress = break_info
