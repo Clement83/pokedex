@@ -1,226 +1,18 @@
 """
 Génération du monde infini – accès procédural tile par tile.
-Aucune grille complète en mémoire : la tuile est calculée à la demande.
 Seules les modifications joueurs (mine/pose) sont stockées dans un dict.
-Perf-first : pas de numpy, Python 3.8 compatible, Odroid GO Advance.
 """
 import random
 from config import (
     ROWS,
     TILE_AIR, TILE_DIRT, TILE_STONE, TILE_GRASS, TILE_SAND, TILE_WOOD, TILE_COAL,
-    TILE_BRICK, TILE_CHEST, TILE_OBSIDIAN, TILE_GLASS,
+    TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE, TILE_CHEST,
     SURFACE_Y, TERRAIN_AMPLITUDE, TERRAIN_FREQ, STONE_DEPTH,
 )
-
-
-# ── Bruit déterministe ────────────────────────────────────────────────────────
-
-def _hash1(n, seed):
-    n = (n + seed * 0x9E3779B9) & 0xFFFF_FFFF
-    n = (n ^ (n >> 16)) & 0xFFFF_FFFF
-    n = (n * 0x45D9F3B) & 0xFFFF_FFFF
-    n = (n ^ (n >> 16)) & 0xFFFF_FFFF
-    return (n & 0xFFFF) / 0xFFFF
-
-
-def _hash2(x, y, seed):
-    n = (x + y * 2971 + seed * 0x9E3779B9) & 0xFFFF_FFFF
-    n = (n ^ (n >> 16)) & 0xFFFF_FFFF
-    n = (n * 0x45D9F3B) & 0xFFFF_FFFF
-    n = (n ^ (n >> 16)) & 0xFFFF_FFFF
-    return (n & 0xFFFF) / 0xFFFF
-
-
-def _smooth1(col, freq, seed):
-    """Bruit 1D smoothstep déterministe."""
-    x  = col * freq
-    ix = int(x)
-    t  = x - ix
-    t  = t * t * (3 - 2 * t)
-    a  = _hash1(ix,     seed)
-    b  = _hash1(ix + 1, seed)
-    return a + (b - a) * t
-
-
-def _smooth2(col, row, freq, seed):
-    """Bruit 2D bilinéaire smoothstep déterministe."""
-    x  = col * freq;  ix = int(x);  tx = x - ix;  tx = tx * tx * (3 - 2 * tx)
-    y  = row * freq;  iy = int(y);  ty = y - iy;  ty = ty * ty * (3 - 2 * ty)
-    a  = _hash2(ix,     iy,     seed)
-    b  = _hash2(ix + 1, iy,     seed)
-    c  = _hash2(ix,     iy + 1, seed)
-    d  = _hash2(ix + 1, iy + 1, seed)
-    return a*(1-tx)*(1-ty) + b*tx*(1-ty) + c*(1-tx)*ty + d*tx*ty
-
-
-# ── Classe Monde infini ───────────────────────────────────────────────────────
-
-
-# ── Structures procédurales ───────────────────────────────────────────────────
-#
-# Une structure est définie comme un dict {(dc, dr): tile} dont l'ancre (0,0)
-# est le coin supérieur-gauche.  Les coordonnées négatives sont à gauche / au-dessus.
-# Les structures aériennes sont ancrées sur la rangée de surface ;
-# les souterraines sont ancrées à surface + offset profondeur.
-
-def _build_castle(col, seed):
-    """Château médiéval ~11×9 blocs. Ancre = coin bas-gauche de la base."""
-    # Tour gauche (3 large × 9 haut), corps central (5 large × 6 haut), tour droite
-    blocks = {}
-    W = 11   # largeur totale
-
-    # Remplissage intérieur air (nettoie le terrain pour dégager l'espace)
-    for dc in range(1, W - 1):
-        for dr in range(-8, 0):
-            blocks[(dc, dr)] = TILE_AIR
-
-    # Murs extérieurs
-    for dr in range(-8, 1):
-        blocks[(0, dr)]      = TILE_BRICK
-        blocks[(W - 1, dr)]  = TILE_BRICK
-    for dc in range(W):
-        blocks[(dc, 0)]  = TILE_BRICK  # base
-        blocks[(dc, -8)] = TILE_BRICK  # toit
-
-    # Mur central gauche / droite (divise tours du corps)
-    for dr in range(-5, 0):
-        blocks[(2, dr)]      = TILE_BRICK
-        blocks[(W - 3, dr)]  = TILE_BRICK
-
-    # Portes (vides au sol)
-    for dc in (4, 5, 6):
-        blocks[(dc, 0)]  = TILE_AIR
-        blocks[(dc, -1)] = TILE_AIR
-
-    # Fenêtres dans le corps central
-    blocks[(4, -4)] = TILE_GLASS
-    blocks[(6, -4)] = TILE_GLASS
-
-    # Créneaux du toit (alternés)
-    for dc in range(0, W, 2):
-        blocks[(dc, -9)] = TILE_BRICK
-
-    # Coffre dans la tour droite (accès par la porte + couloir)
-    blocks[(W - 2, -1)] = TILE_CHEST
-
-    return blocks
-
-
-def _build_pirate_ship(col, seed):
-    """Épave de navire pirate ~14×8. Ancre = plancher de cale (sous-sol du bateau)."""
-    blocks = {}
-    # Coque en bois – forme ellipsoïde grossière
-    hull = [
-        # (dc, dr, tile)
-        # Fond de cale (-3 à -1)
-        *[(dc, dr, TILE_WOOD) for dc in range(1, 13) for dr in (-1, 0)],
-        # Flancs gauche/droit
-        *[(0, dr, TILE_WOOD) for dr in range(-6, 0)],
-        *[(13, dr, TILE_WOOD) for dr in range(-6, 0)],
-    ]
-    for dc, dr, tile in hull:
-        blocks[(dc, dr)] = tile
-
-    # Pont
-    for dc in range(1, 13):
-        blocks[(dc, -2)] = TILE_WOOD
-    # Trou dans le pont (descente cale)
-    blocks[(6, -2)] = TILE_AIR
-    blocks[(7, -2)] = TILE_AIR
-
-    # Intérieur cale dégagé
-    for dc in range(1, 13):
-        blocks[(dc, -1)] = TILE_AIR
-
-    # Mât (bois au centre, s'élève de -2 à -7)
-    for dr in range(-8, -1):
-        blocks[(7, dr)] = TILE_WOOD
-    # Voile en bois (2 large × 3 haut, accrochée au mât)
-    for dr in range(-7, -4):
-        blocks[(5, dr)] = TILE_WOOD
-        blocks[(6, dr)] = TILE_WOOD
-
-    # Vigie (petite cabane au sommet du mât)
-    blocks[(6, -8)]  = TILE_WOOD
-    blocks[(7, -9)]  = TILE_WOOD
-    blocks[(8, -8)]  = TILE_WOOD
-
-    # Coffre dans la cale
-    blocks[(3, 0)] = TILE_CHEST
-    blocks[(10, 0)] = TILE_CHEST
-
-    # Trou dans la coque gauche (effet naufrage)
-    blocks[(0, -3)] = TILE_AIR
-    blocks[(0, -2)] = TILE_AIR
-
-    return blocks
-
-
-def _build_dungeon(col, surface, seed):
-    """Donjon souterrain ~9×5. Ancre = coin supérieur-gauche du couloir."""
-    blocks = {}
-    W, H = 9, 5
-    # Couloir principal
-    for dc in range(W):
-        blocks[(dc, 0)]      = TILE_BRICK  # plafond
-        blocks[(dc, H - 1)]  = TILE_OBSIDIAN  # sol obsidienne
-    for dr in range(1, H - 1):
-        blocks[(0, dr)]      = TILE_BRICK
-        blocks[(W - 1, dr)]  = TILE_BRICK
-    # Intérieur vide
-    for dc in range(1, W - 1):
-        for dr in range(1, H - 1):
-            blocks[(dc, dr)] = TILE_AIR
-    # Coffre central
-    blocks[(4, H - 2)] = TILE_CHEST
-    # Piliers charbon (décoratifs / obstacles)
-    blocks[(2, H - 2)] = TILE_COAL
-    blocks[(6, H - 2)] = TILE_COAL
-    # Entrée (trou dans le plafond à gauche)
-    blocks[(1, 0)] = TILE_AIR
-    blocks[(2, 0)] = TILE_AIR
-    return blocks
-
-
-def _build_pyramid(col, seed):
-    """Pyramide aztèque ~11×6. Ancre = coin bas-gauche au niveau du sol."""
-    blocks = {}
-    levels = [
-        (0, 11),  # base  dr=0 : 11 large
-        (1,  9),  # dr=-1 :  9 large (décalé de 1)
-        (2,  7),
-        (3,  5),
-        (4,  3),
-        (5,  1),  # sommet
-    ]
-    for dr_neg, width in levels:
-        offset = (11 - width) // 2
-        for dc in range(offset, offset + width):
-            blocks[(dc, -dr_neg)] = TILE_BRICK
-
-    # Crypte sous la pyramide (3 de large × 3 de prof, centrée)
-    for dc in range(4, 7):
-        for dr in range(1, 4):
-            blocks[(dc, dr)] = TILE_AIR
-    # Sol obsidienne de la crypte
-    for dc in range(4, 7):
-        blocks[(dc, 4)] = TILE_OBSIDIAN
-    # Coffre dans la crypte
-    blocks[(5, 3)] = TILE_CHEST
-    return blocks
-
-
-# ── Catalogue des structures de surface ──────────────────────────────────────
-#
-# Chaque entrée : (id_unique, probabilité_par_colonne, espace_min_entre_structures)
-# La probability est vérifiée via _hash1 sur la colonne candidate.
-
-_STRUCTURES = [
-    # (tag,       prob,    min_gap, builder_fn)
-    ("castle",   0.003,   120,  _build_castle),
-    ("ship",     0.004,   100,  _build_pirate_ship),
-    ("pyramid",  0.003,   110,  _build_pyramid),
-]
+from world_builders import (
+    _hash1, _hash2, _smooth1, _smooth2,
+    _build_dungeon, _STRUCTURES,
+)
 
 
 class World:
@@ -422,6 +214,14 @@ class World:
         # Veines de charbon
         if _smooth2(col * 1.3, row * 1.1, 0.22, self.seed ^ 0xC0A1) > 0.80 and row >= s + STONE_DEPTH + 2:
             return TILE_COAL
+        # Veines de minerai (plus profondes)
+        depth = row - s
+        if 10 <= depth <= 45 and _smooth2(col * 1.15, row * 0.95, 0.24, self.seed ^ 0xFE11) > 0.84:
+            return TILE_IRON_ORE
+        if 28 <= depth <= 65 and _smooth2(col * 1.25, row * 1.05, 0.27, self.seed ^ 0x60D1) > 0.88:
+            return TILE_GOLD_ORE
+        if depth >= 58 and _smooth2(col * 1.35, row * 1.15, 0.30, self.seed ^ 0xD1A5) > 0.92:
+            return TILE_DIAMOND_ORE
         return TILE_STONE
 
     # ── API publique ──────────────────────────────────────────────────────
@@ -439,25 +239,34 @@ class World:
         """Enregistre une modification joueur en mémoire."""
         self.mods[(col, row)] = tile
 
-    def chest_loot(self):
+    def chest_loot(self, depth=0):
         """
         Tire un item d'équipement aléatoire à l'ouverture d'un coffre.
-        -  sword/tête/corps/pieds à égalité
-        - Matériau : bois 65 %, fer 28 %, or 7 %
+        depth : profondeur en tuiles sous la surface (0 = surface).
         Retourne (equip_slot, material).
         """
         from config import (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD,
-                            EQUIP_PICKAXE, MAT_WOOD, MAT_IRON, MAT_GOLD)
+                            EQUIP_PICKAXE, MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND)
 
         equip_slot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
                                     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
         r2 = random.random()
-        if r2 < 0.65:
-            material = MAT_WOOD
-        elif r2 < 0.93:
-            material = MAT_IRON
+        # Plus profond = meilleur loot
+        if depth >= 50:
+            # Donjon profond : or 50%, diamant 20%, fer le reste
+            if r2 < 0.30:   material = MAT_IRON
+            elif r2 < 0.80: material = MAT_GOLD
+            else:           material = MAT_DIAMOND
+        elif depth >= 20:
+            # Grotte : bois 20%, fer 55%, or 25%
+            if r2 < 0.20:   material = MAT_WOOD
+            elif r2 < 0.75: material = MAT_IRON
+            else:           material = MAT_GOLD
         else:
-            material = MAT_GOLD
+            # Surface : bois 65%, fer 28%, or 7%
+            if r2 < 0.65:   material = MAT_WOOD
+            elif r2 < 0.93: material = MAT_IRON
+            else:           material = MAT_GOLD
         return (equip_slot, material)
 
 

@@ -7,9 +7,12 @@ from config import GRAVITY, MAX_FALL_SPEED, JUMP_VEL, PLAYER_W, PLAYER_H, TILE_S
 from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
-    _PASSIVE_MOBS, _mw, _mh,
+    MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
+    _PASSIVE_MOBS, _FLYING_MOBS, _DEEP_MOBS, _mw, _mh,
 )
 from mobs.physics import _solid, _move_mob_x, _move_mob_y
+from mobs.armor import _apply_contact_dmg, wears_gold
+from mobs.deep import _update_deep_mob
 
 
 # ── Utilitaires ───────────────────────────────────────────────────────────────
@@ -43,7 +46,7 @@ def _has_los(col0, row0, col1, row1, world):
 
 # ── Logique principale ────────────────────────────────────────────────────────
 
-def update_mob(mob, dt, players, world):
+def update_mob(mob, dt, players, world):  # noqa: C901
     mob._state_cd = max(0.0, mob._state_cd - dt)
     mob._jump_cd  = max(0.0, mob._jump_cd  - dt)
     mob._push_cd  = max(0.0, mob._push_cd  - dt)
@@ -110,6 +113,129 @@ def update_mob(mob, dt, players, world):
         else:
             mob.vx *= 0.8
 
+    # ── Araignée ──────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_SPIDER:
+        if dist <= 7.0:
+            mob.state     = "chase"
+            mob._state_cd = 3.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 3.0 * dir_to
+            # Escalade : si mur devant, monte
+            next_col = int(mob.x + dir_to * (_mw(MOB_SPIDER) + 0.1))
+            if mob.on_ground and mob._jump_cd <= 0:
+                if _solid(world, next_col, int(cy)):
+                    mob.vy       = JUMP_VEL * 0.9
+                    mob._jump_cd = 0.4
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 1.0 + mob._rng.random() * 2.0
+            mob.vx = 2.0 * mob._wander_dir
+
+    # ── Squelette ─────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_SKELETON:
+        if dist <= 10.0 and _has_los(int(cx), int(cy), int(pcx), int(pcy), world):
+            mob.state     = "chase"
+            mob._state_cd = 3.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            # Garde 3-6 tiles de distance (archer)
+            if dist < 3.0:
+                mob.vx = -2.5 * dir_to
+            elif dist > 6.0:
+                mob.vx = 2.5 * dir_to
+            else:
+                mob.vx = mob.vx * 0.7
+            if mob.on_ground and mob._jump_cd <= 0:
+                next_col = int(mob.x + dir_to * (_mw(MOB_SKELETON) + 0.1))
+                if _solid(world, next_col, int(cy)):
+                    mob.vy       = JUMP_VEL
+                    mob._jump_cd = 0.5
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 2.0 + mob._rng.random() * 2.0
+            mob.vx = 1.0 * mob._wander_dir
+
+    # ── Chauve-souris ─────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_BAT:
+        mob._fly_phase += dt * 2.5
+        if dist <= 4.0 and mob._state_cd <= 0:
+            mob.state     = "chase"
+            mob._state_cd = 2.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 3.5 * dir_to
+            mob.vy = (pcy - cy) * 2.0 + math.sin(mob._fly_phase) * 0.5
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 1.5 + mob._rng.random() * 3.0
+            mob.vx = 2.5 * mob._wander_dir
+            mob.vy = math.sin(mob._fly_phase) * 0.8
+
+    # ── Crabe ────────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_CRAB:
+        if dist <= 6.0:
+            mob.state     = "chase"
+            mob._state_cd = 1.5
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 2.8 * dir_to
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 1.0 + mob._rng.random() * 2.5
+            mob.vx = 1.5 * mob._wander_dir
+            check_col = int(mob.x + mob._wander_dir * (_mw(MOB_CRAB) + 0.1))
+            if _solid(world, check_col, int(cy)):
+                mob._wander_dir *= -1
+
+    # ── Démon ────────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_DEMON:
+        mob._fly_phase += dt * 1.0
+        if dist <= 15.0:
+            mob.state     = "chase"
+            mob._state_cd = 4.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 2.2 * dir_to
+            mob.vy = (pcy - cy) * 1.5 + math.sin(mob._fly_phase) * 0.4
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 2.0 + mob._rng.random() * 4.0
+            mob.vx = 1.5 * mob._wander_dir
+            mob.vy = math.sin(mob._fly_phase) * 0.6
+
+    # ── Sanglier ──────────────────────────────────────────────────────────────
+    elif mob.mob_type == MOB_BOAR:
+        if player and wears_gold(player): mob.state = "idle"
+        elif dist <= 6.0: mob.state = "chase"; mob._state_cd = 2.5
+        elif mob._state_cd <= 0: mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 3.5 * dir_to
+            nc = int(mob.x + dir_to * (_mw(MOB_BOAR) + 0.1))
+            if mob.on_ground and mob._jump_cd <= 0 and _solid(world, nc, int(cy)):
+                mob.vy = JUMP_VEL * 0.8; mob._jump_cd = 0.5
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 2.0 + mob._rng.random() * 3.0
+            mob.vx = 2.0 * mob._wander_dir
+
     # ── Poule ─────────────────────────────────────────────────────────────────
     elif mob.mob_type == MOB_CHICKEN:
         if dist <= 4.0:
@@ -157,9 +283,9 @@ def update_mob(mob, dt, players, world):
         if _solid(world, check_col, int(mob.center_row())):
             mob._wander_dir *= -1
             mob._wander_cd   = 0.0
-
+    elif mob.mob_type in _DEEP_MOBS: return _update_deep_mob(mob, dt, players, world)
     # ── Gravité + déplacement ─────────────────────────────────────────────────
-    if mob.mob_type == MOB_SEAGULL:
+    if mob.mob_type in _FLYING_MOBS:
         mob.x += mob.vx * dt
         mob.y += mob.vy * dt
     else:
@@ -167,20 +293,7 @@ def update_mob(mob, dt, players, world):
         _move_mob_x(mob, world, mob.vx * dt)
         _move_mob_y(mob, world, mob.vy * dt)
 
-    # ── Contact joueur → poussée (agressifs seulement) ────────────────────────
-    if mob.mob_type in _PASSIVE_MOBS:
-        return
-    if mob._push_cd <= 0:
-        pw = PLAYER_W / TILE_SIZE
-        ph = PLAYER_H / TILE_SIZE
-        mw = _mw(mob.mob_type)
-        mh = _mh(mob.mob_type)
-        for p in players:
-            ox = (mob.x < p.x + pw) and (mob.x + mw > p.x)
-            oy = (mob.y < p.y + ph) and (mob.y + mh > p.y)
-            if ox and oy:
-                push = math.copysign(1.0, p.x + pw / 2 - (mob.x + mw / 2))
-                p.vx         = push * 5.0
-                mob._push_cd = 0.5
-                p.hp          = max(0, p.hp - 1)
-                p._dmg_flash  = 0.4
+    _apply_contact_dmg(mob, players)
+
+
+

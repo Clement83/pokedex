@@ -25,20 +25,26 @@ TILE_BRICK = 7              # brique (structures)
 TILE_CHEST = 8              # coffre (contient du loot d'équipement)
 TILE_OBSIDIAN = 9           # obsidienne (très dure, fonds de donjon)
 TILE_GLASS = 10             # vitre (fenêtres et hublots)
+TILE_IRON_ORE    = 11       # minerai de fer
+TILE_GOLD_ORE    = 12       # minerai d'or
+TILE_DIAMOND_ORE = 13       # minerai de diamant
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
-    TILE_AIR:      "Air",
-    TILE_DIRT:     "Terre",
-    TILE_STONE:    "Pierre",
-    TILE_GRASS:    "Herbe",
-    TILE_SAND:     "Sable",
-    TILE_WOOD:     "Bois",
-    TILE_COAL:     "Charbon",
-    TILE_BRICK:    "Brique",
-    TILE_CHEST:    "Coffre",
-    TILE_OBSIDIAN: "Obsidienne",
-    TILE_GLASS:    "Vitre",
+    TILE_AIR:         "Air",
+    TILE_DIRT:        "Terre",
+    TILE_STONE:       "Pierre",
+    TILE_GRASS:       "Herbe",
+    TILE_SAND:        "Sable",
+    TILE_WOOD:        "Bois",
+    TILE_COAL:        "Charbon",
+    TILE_BRICK:       "Brique",
+    TILE_CHEST:       "Coffre",
+    TILE_OBSIDIAN:    "Obsidienne",
+    TILE_GLASS:       "Vitre",
+    TILE_IRON_ORE:    "Minerai de Fer",
+    TILE_GOLD_ORE:    "Minerai d'Or",
+    TILE_DIAMOND_ORE: "Minerai de Diamant",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -60,17 +66,26 @@ EQUIP_SWORD   = 3   # épée (main)
 EQUIP_PICKAXE = 4   # pioche (main)
 
 # Matériaux
-MAT_WOOD = 0
-MAT_IRON = 1
-MAT_GOLD = 2
-MAT_NAMES = {MAT_WOOD: "Bois", MAT_IRON: "Fer", MAT_GOLD: "Or"}
+MAT_WOOD    = 0
+MAT_IRON    = 1
+MAT_GOLD    = 2
+MAT_DIAMOND = 3
+MAT_NAMES = {MAT_WOOD: "Bois", MAT_IRON: "Fer", MAT_GOLD: "Or", MAT_DIAMOND: "Diamant"}
 
 # Couleurs des matériaux sur le bonhomme
 MAT_COLORS = {
-    MAT_WOOD: (139,  90,  43),   # brun bois
-    MAT_IRON: (170, 170, 185),   # gris métal
-    MAT_GOLD: (255, 200,   0),   # jaune or
+    MAT_WOOD:    (139,  90,  43),   # brun bois
+    MAT_IRON:    (170, 170, 185),   # gris métal
+    MAT_GOLD:    (255, 200,   0),   # jaune or
+    MAT_DIAMOND: ( 80, 220, 235),   # cyan diamant
 }
+
+# Tier de matériau (pour vérification pioche/épée)
+MAT_TIER = {MAT_WOOD: 1, MAT_IRON: 2, MAT_GOLD: 3, MAT_DIAMOND: 4}
+
+# Défense d'armure par matériau (par pièce portée)
+# Full Fer=3, Full Or=3, Full Diamant=6
+ARMOR_DEF = {MAT_WOOD: 0, MAT_IRON: 1, MAT_GOLD: 1, MAT_DIAMOND: 2}
 
 # item_id = (slot, material) — tuples uniques
 # ex. (EQUIP_HEAD, MAT_WOOD) = casque en bois
@@ -88,6 +103,13 @@ EQUIP_NAMES = {
     (EQUIP_SWORD, MAT_WOOD): "Épée Bois",
     (EQUIP_SWORD, MAT_IRON): "Épée Fer",
     (EQUIP_SWORD, MAT_GOLD): "Épée Or",
+    # Épées diamant / pioches diamant
+    (EQUIP_SWORD,   MAT_DIAMOND): "Épée Diamant",
+    (EQUIP_PICKAXE, MAT_DIAMOND): "Pioche Diamant",
+    # Armures diamant
+    (EQUIP_HEAD, MAT_DIAMOND):   "Casque Diamant",
+    (EQUIP_BODY, MAT_DIAMOND):   "Plastron Diamant",
+    (EQUIP_FEET, MAT_DIAMOND):   "Bottes Diamant",
     # Pioches
     (EQUIP_PICKAXE, MAT_WOOD): "Pioche Bois",
     (EQUIP_PICKAXE, MAT_IRON): "Pioche Fer",
@@ -96,31 +118,54 @@ EQUIP_NAMES = {
 
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
-    TILE_AIR:      (100, 160, 220),   # ciel
-    TILE_DIRT:     (139,  90,  43),
-    TILE_STONE:    (120, 120, 130),
-    TILE_GRASS:    ( 76, 153,  0),
-    TILE_SAND:     (210, 190, 110),
-    TILE_WOOD:     (180, 120,  60),
-    TILE_COAL:     ( 60,  60,  70),
-    TILE_BRICK:    (180,  80,  50),   # rouge brique
-    TILE_CHEST:    (200, 140,  50),   # coffre brun-doré
-    TILE_OBSIDIAN: ( 30,  20,  50),   # violet très sombre
-    TILE_GLASS:    (180, 220, 250),   # bleu clair translucide
+    TILE_AIR:         (100, 160, 220),   # ciel
+    TILE_DIRT:        (139,  90,  43),
+    TILE_STONE:       (120, 120, 130),
+    TILE_GRASS:       ( 76, 153,   0),
+    TILE_SAND:        (210, 190, 110),
+    TILE_WOOD:        (180, 120,  60),
+    TILE_COAL:        ( 60,  60,  70),
+    TILE_BRICK:       (180,  80,  50),   # rouge brique
+    TILE_CHEST:       (200, 140,  50),   # coffre brun-doré
+    TILE_OBSIDIAN:    ( 30,  20,  50),   # violet très sombre
+    TILE_GLASS:       (180, 220, 250),   # bleu clair translucide
+    TILE_IRON_ORE:    (135, 108,  92),   # brun-rouille
+    TILE_GOLD_ORE:    (180, 155,  55),   # jaune-pierre
+    TILE_DIAMOND_ORE: ( 70, 200, 215),   # bleu glacier
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
 TILE_BREAK_TIME = {
-    TILE_DIRT:     0.4,
-    TILE_STONE:    0.9,
-    TILE_GRASS:    0.4,
-    TILE_SAND:     0.3,
-    TILE_WOOD:     0.5,
-    TILE_COAL:     0.8,
-    TILE_BRICK:    1.2,
-    TILE_CHEST:    0.3,   # coffre : s'ouvre vite avec la main
-    TILE_OBSIDIAN: 3.0,
-    TILE_GLASS:    0.3,
+    TILE_DIRT:        0.4,
+    TILE_STONE:       0.9,
+    TILE_GRASS:       0.4,
+    TILE_SAND:        0.3,
+    TILE_WOOD:        0.5,
+    TILE_COAL:        0.8,
+    TILE_BRICK:       1.2,
+    TILE_CHEST:       0.3,   # coffre : s'ouvre vite avec la main
+    TILE_OBSIDIAN:    3.0,
+    TILE_GLASS:       0.3,
+    TILE_IRON_ORE:    1.2,
+    TILE_GOLD_ORE:    1.8,
+    TILE_DIAMOND_ORE: 2.5,
+}
+
+# Tier de pioche minimum requis pour miner un bloc
+# 0=main/n'importe, 1=Bois, 2=Fer, 3=Or, 4=Diamant
+TILE_PICKAXE_TIER = {
+    TILE_DIRT:        0,
+    TILE_GRASS:       0,
+    TILE_SAND:        0,
+    TILE_WOOD:        0,
+    TILE_COAL:        1,
+    TILE_STONE:       1,
+    TILE_GLASS:       1,
+    TILE_BRICK:       2,
+    TILE_IRON_ORE:    1,
+    TILE_GOLD_ORE:    2,
+    TILE_OBSIDIAN:    3,
+    TILE_DIAMOND_ORE: 3,
 }
 
 # ── Génération du terrain ─────────────────────────────────────────────────────
@@ -203,3 +248,7 @@ KB_J2_LEFT     = pygame.K_LEFT
 KB_J2_RIGHT    = pygame.K_RIGHT
 KB_J2_MINE     = pygame.K_RCTRL   # RCTRL seul = miner
 KB_J2_MODIFIER = pygame.K_RETURN  # ENTREE + dirs = slot | ENTREE + RCTRL = poser
+
+# Craft (menu de fabrication)
+KB_J1_CRAFT = pygame.K_c
+KB_J2_CRAFT = pygame.K_n
