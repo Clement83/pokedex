@@ -8,7 +8,7 @@ import pygame
 
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE, ROWS,
-    TILE_AIR, TILE_COLORS, TILE_CHEST, TILE_LAVA, TILE_WATER,
+    TILE_AIR, TILE_COLORS, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_TORCH,
     BIOME_SKY_COLORS,
 )
 
@@ -114,6 +114,20 @@ def _draw_water_tile(surf, x, y, dc, dr):
     pygame.draw.rect(surf, (25, 60, 140), (x, y, 16, 16), 1)
 
 
+def _draw_torch_tile(surf, x, y):
+    """Torche pixel-art 16×16 — bâton brun + flamme jaune."""
+    # Bâton central
+    surf.fill((110, 72, 30),  (x + 7, y + 6,  2, 8))
+    surf.fill((80,  50, 15),  (x + 7, y + 13, 2, 2))
+    # Tête de la torche
+    surf.fill((180, 130, 40), (x + 6, y + 4,  4, 3))
+    # Flamme (jaune vif au centre, orange sur les bords)
+    surf.fill((255, 200,  20), (x + 7, y + 1,  2, 4))
+    surf.fill((255, 140,   0), (x + 6, y + 2,  1, 3))
+    surf.fill((255, 140,   0), (x + 9, y + 2,  1, 3))
+    surf.fill((255, 240, 100), (x + 7, y + 1,  2, 1))
+
+
 class ChunkCache:
     _MAX_CHUNKS = 16   # chunks 16×16 tuiles — ~6 visibles + marge split screen
 
@@ -174,6 +188,9 @@ class ChunkCache:
                     _draw_lava_tile(surf, x, y, dc, dr)
                 elif tile == TILE_WATER:
                     _draw_water_tile(surf, x, y, dc, dr)
+                elif tile == TILE_TORCH:
+                    surf.fill((80, 70, 60), (x, y, ts, ts))   # fond pierre sombre
+                    _draw_torch_tile(surf, x, y)
                 else:
                     color = BIOME_SKY_COLORS[biomes[dc]] if tile == TILE_AIR else TILE_COLORS[tile]
                     surf.fill(color, (x, y, ts, ts))
@@ -231,6 +248,9 @@ class ChunkCache:
             _draw_lava_tile(surf, x, y, col % 16, row % 16)
         elif tile == TILE_WATER:
             _draw_water_tile(surf, x, y, col % 16, row % 16)
+        elif tile == TILE_TORCH:
+            surf.fill((80, 70, 60), (x, y, TILE_SIZE, TILE_SIZE))   # fond pierre sombre
+            _draw_torch_tile(surf, x, y)
         else:
             if tile == TILE_AIR:
                 color = BIOME_SKY_COLORS[self._world.biome_at(col)]

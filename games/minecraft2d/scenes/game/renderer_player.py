@@ -6,7 +6,8 @@ import pygame
 
 from config import (
     TILE_SIZE, PLAYER_W, PLAYER_H,
-    TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG,
+    TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_TORCH,
+    TOOL_BOW, TOOL_ROD,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_COLORS,
 )
@@ -16,8 +17,77 @@ _SKIN  = (255, 210, 160)
 _BLACK = (  0,   0,   0)
 _DARK  = ( 40,  40,  40)
 
-# Surfaces pré-allouées (initialisées au premier appel)
-# ── Cœurs ────────────────────────────────────────────────────────────────────
+# ── Effet flamme torche : pixels opaque animés, zéro Surface/alpha ───────────
+_FLAME_TICK  = 0
+_FLAME_SPEED = 5   # change de pattern toutes les N frames (~6fps à 30fps)
+
+# 4 patterns très différents : base large qui change, et pointe qui danse
+_YEL = (255, 210,   0)
+_ORG = (255, 110,   0)
+_RED = (200,  20,   0)
+
+_FLAME_PATTERNS = [
+    # frame 0 : penche fort à gauche
+    [( 0, -4, _YEL), (-1, -3, _YEL), (-2, -2, _ORG), (-1, -1, _ORG),
+     ( 0, -1, _RED), ( 1,  0, _RED)],
+    # frame 1 : droite et haute
+    [( 1, -4, _YEL), ( 2, -3, _YEL), ( 1, -2, _ORG), ( 0, -2, _ORG),
+     ( 1, -1, _RED), (-1,  0, _RED)],
+    # frame 2 : large et basse (flamme écrasée)
+    [(-2, -2, _YEL), ( 0, -3, _ORG), ( 2, -2, _YEL), (-1, -1, _ORG),
+     ( 1, -1, _ORG), ( 0,  0, _RED)],
+    # frame 3 : pointe haute centre
+    [( 0, -5, _YEL), (-1, -4, _ORG), ( 1, -3, _ORG), (-1, -2, _RED),
+     ( 0, -1, _YEL), ( 0,  0, _RED)],
+]
+
+def draw_torch_halo(screen, px, py):
+    """Dessine les étincelles de flamme autour de la torche tenue en main."""
+    global _FLAME_TICK
+    _FLAME_TICK += 1
+    pattern = _FLAME_PATTERNS[(_FLAME_TICK // _FLAME_SPEED) % 4]
+    # pointe de flamme : tx+1,ty-2 avec tx=px+11, ty=py+2 → (px+12, py)
+    fx, fy = px + 12, py
+    R = pygame.draw.rect
+    for dx, dy, col in pattern:
+        R(screen, col, (fx + dx, fy + dy, 1, 1))
+
+
+# ── Fumée torche : pool fixe de 8 particules, zéro allocation en jeu ─────────
+_SMK_MAX  = 8
+_SMK_POOL = []        # chaque particule : [x, y, age, wobble_phase]
+_SMK_CD   = 0         # compteur spawn
+_SMK_INTERVAL = 7     # 1 particule toutes les 7 frames (~4/s à 30fps)
+# Palette gris du plus clair (jeune) au plus sombre (vieux)
+_SMK_COLS = [(180, 180, 180), (140, 140, 140), (100, 100, 100), (65, 65, 65)]
+
+def draw_smoke(screen, fx, fy, vx):
+    """Met à jour et dessine les particules de fumée. fx/fy = pointe de flamme."""
+    global _SMK_POOL, _SMK_CD
+    # ── Spawn ────────────────────────────────────────────────────────────────
+    _SMK_CD -= 1
+    if _SMK_CD <= 0 and len(_SMK_POOL) < _SMK_MAX:
+        _SMK_POOL.append([float(fx), float(fy - 2), 0, len(_SMK_POOL)])
+        _SMK_CD = _SMK_INTERVAL
+    # ── Update + draw ────────────────────────────────────────────────────────
+    R   = pygame.draw.rect
+    keep = []
+    trail = -vx * 0.25          # dérive opposée au mouvement (traîne)
+    for p in _SMK_POOL:
+        # Monte et dérive
+        p[1] -= 0.55
+        p[0] += trail
+        # Léger zigzag déterministe (phase décalée par particule)
+        age = int(p[2])
+        p[0] += 0.25 if (age + p[3]) % 6 < 3 else -0.25
+        p[2] += 1
+        if p[2] < 22:           # 22 frames de vie max
+            keep.append(p)
+            col = _SMK_COLS[min(int(p[2] / 6), 3)]
+            R(screen, col, (int(p[0]), int(p[1]), 1, 1))
+    _SMK_POOL[:] = keep
+
+
 _HEART_MASK = [
     (1, 0), (2, 0), (4, 0), (5, 0),
     (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1),
@@ -127,7 +197,11 @@ def draw_player(screen, player, camera, font):
     # Outil en main
     _draw_tool_in_hand(screen, inv, c, px, py)
 
-    # Étiquette J1 / J2 (pré-rendue et cachée)
+    # Halo torche (dessiné après le corps pour se superposer via BLEND_ADD)
+    if inv.tool == TOOL_TORCH:
+        draw_torch_halo(screen, px, py)
+        draw_smoke(screen, px + 12, py, player.vx)
+
     key = (player.idx, id(font))
     if key not in _LABEL_CACHE:
         _LABEL_CACHE[key] = font.render("J" + str(player.idx + 1), True, (255, 255, 255))
@@ -193,3 +267,15 @@ def _draw_tool_in_hand(screen, inv, player_color, px, py):
         R(screen, fc,   (tx + 3, ty + 2, 5, 2))
         R(screen, fc,   (tx + 3, ty + 4, 3, 1))
         R(screen, (220, 200, 120), (tx + 1, ty + 0, 2, 2))
+
+    elif tool == TOOL_TORCH:
+        # Bâton en bois tenu verticalement, flamme au sommet
+        STICK  = (110,  72,  30)
+        HEAD   = (180, 130,  40)
+        FLAME  = (255, 210,  30)
+        FLAME2 = (255, 130,   0)
+        R(screen, STICK,  (tx + 1, ty + 2,  2, 6))   # manche
+        R(screen, HEAD,   (tx + 0, ty + 1,  4, 2))   # tête
+        R(screen, FLAME,  (tx + 1, ty - 2,  2, 4))   # flamme centrale
+        R(screen, FLAME2, (tx + 0, ty - 1,  1, 3))   # flamme bord gauche
+        R(screen, FLAME2, (tx + 3, ty - 1,  1, 3))   # flamme bord droit

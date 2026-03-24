@@ -3,8 +3,9 @@ Inventaire d'un joueur : outils, ressources et équipements.
 """
 from config import (
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
-    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_PICKAXE,
-    TILE_AIR, TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
+    TOOL_BOW, TOOL_ROD, TOOL_TORCH,
+    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
+    TILE_AIR, TILE_TORCH, TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
 )
 
 
@@ -39,6 +40,9 @@ class Inventory:
         self.sword_idx    = 0
         self.pickaxes     = []          # matériaux de pioches trouvées
         self.pickaxe_idx  = 0
+        self.bows         = []          # matériaux d'arcs craftés
+        self.bow_idx      = 0
+        self.has_rod      = False       # canne à pêche débloquée
         self.craft_tier   = 1           # niveau table de craft (1=Bois … 4=Diamant)
         self.equip = {
             EQUIP_HEAD: [],
@@ -57,6 +61,18 @@ class Inventory:
     def pickaxe_mat(self):
         return self.pickaxes[self.pickaxe_idx] if self.pickaxes else None
 
+    @property
+    def bow_mat(self):
+        return self.bows[self.bow_idx] if self.bows else None
+
+    @property
+    def torch_count(self):
+        """Nombre de torches dans les ressources."""
+        for t, c in self.resources:
+            if t == TILE_TORCH:
+                return c
+        return 0
+
     # ── Équipement porté ──────────────────────────────────────────────────────
 
     def worn_equip(self, equip_slot):
@@ -73,9 +89,17 @@ class Inventory:
         elif eslot == EQUIP_PICKAXE:
             if mat not in self.pickaxes:
                 self.pickaxes.append(mat)
+        elif eslot == EQUIP_BOW:
+            if mat not in self.bows:
+                self.bows.append(mat)
         else:
             if item not in self.equip[eslot]:
                 self.equip[eslot].append(item)
+
+    def unlock_tool(self, tool_id):
+        """Débloque un outil spécial (canne à pêche, etc.)."""
+        if tool_id == TOOL_ROD:
+            self.has_rod = True
 
     def drop_equip(self, equip_slot):
         lst = self.equip[equip_slot]
@@ -130,8 +154,14 @@ class Inventory:
             items = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER]
         for mat in self.swords:
             items.append((TOOL_SWORD, mat))
+        for mat in self.bows:
+            items.append((TOOL_BOW, mat))
         items.append(TOOL_FLAG)
         items.append(TOOL_CRAFT)
+        if self.has_rod:
+            items.append(TOOL_ROD)
+        if self.torch_count > 0:
+            items.append(TOOL_TORCH)
         return items
 
     def _active_tool_idx(self):
@@ -140,6 +170,8 @@ class Inventory:
             target = (TOOL_SWORD, self.swords[self.sword_idx])
         elif self.tool == TOOL_PICKAXE and self.pickaxes:
             target = (TOOL_PICKAXE, self.pickaxes[self.pickaxe_idx])
+        elif self.tool == TOOL_BOW and self.bows:
+            target = (TOOL_BOW, self.bows[self.bow_idx])
         else:
             target = self.tool
         try:
@@ -155,6 +187,9 @@ class Inventory:
             elif item[0] == TOOL_PICKAXE:
                 self.tool = TOOL_PICKAXE
                 self.pickaxe_idx = self.pickaxes.index(item[1])
+            elif item[0] == TOOL_BOW:
+                self.tool = TOOL_BOW
+                self.bow_idx = self.bows.index(item[1])
         else:
             self.tool = item
 

@@ -174,9 +174,11 @@ def save_player(world_id, player_idx, x, y, inventory, flag=None):
     # "sm" = sword_mat (None si pas d'épée)
     equip_raw = {str(k): [[item[0], item[1]] for item in v]
                  for k, v in inventory.equip.items()}
-    equip_raw["sm"] = {"mats": inventory.swords,   "idx": inventory.sword_idx}
-    equip_raw["pm"] = {"mats": inventory.pickaxes, "idx": inventory.pickaxe_idx}
-    equip_raw["ct"] = inventory.craft_tier          # niveau table de craft
+    equip_raw["sm"]  = {"mats": inventory.swords,   "idx": inventory.sword_idx}
+    equip_raw["pm"]  = {"mats": inventory.pickaxes, "idx": inventory.pickaxe_idx}
+    equip_raw["bm"]  = {"mats": inventory.bows,     "idx": inventory.bow_idx}
+    equip_raw["rod"] = inventory.has_rod
+    equip_raw["ct"]  = inventory.craft_tier          # niveau table de craft
     equip_json = json.dumps(equip_raw)
     flag_x = flag[0] if flag else None
     flag_y = flag[1] if flag else None
@@ -220,6 +222,13 @@ def load_players(world_id):
             pickaxe_idx = pm_raw.get("idx", 0)
         else:
             pickaxes, pickaxe_idx = [], 0
+        bm_raw = eq_raw.pop("bm", None)
+        if isinstance(bm_raw, dict):
+            bows    = bm_raw.get("mats", [])
+            bow_idx = bm_raw.get("idx", 0)
+        else:
+            bows, bow_idx = [], 0
+        has_rod    = bool(eq_raw.pop("rod", False))
         craft_tier = eq_raw.pop("ct", 1)             # niveau table de craft
         equip = {int(k): [tuple(item) for item in v] for k, v in eq_raw.items()}
         result[player_idx] = {
@@ -230,6 +239,9 @@ def load_players(world_id):
             "sword_idx": sword_idx,
             "pickaxes": pickaxes,
             "pickaxe_idx": pickaxe_idx,
+            "bows": bows,
+            "bow_idx": bow_idx,
+            "has_rod": has_rod,
             "craft_tier": craft_tier,
             "flag": (flag_x, flag_y) if flag_x is not None and flag_y is not None else None,
         }

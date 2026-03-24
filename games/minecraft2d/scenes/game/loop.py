@@ -24,9 +24,10 @@ from scenes.game.sky         import sky_color, night_alpha, is_night, draw_night
 from scenes.game.renderer_world  import draw_world, draw_cursor, draw_flag_in_world
 from scenes.game.renderer_player import draw_player, draw_hearts, draw_compass, _HEART_W, _HEART_GAP
 from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H as _HOTBAR_SLOT_H
-from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions
-from scenes.game.craft       import CraftMenu
-from scenes.game.trade       import TradeMenu
+from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch
+from scenes.game.craft        import CraftMenu
+from scenes.game.trade        import TradeMenu
+from scenes.game.projectiles  import ProjectileManager
 
 
 def run(screen, joysticks, world_id, seed):
@@ -78,6 +79,8 @@ def run(screen, joysticks, world_id, seed):
         p.inventory.resources = [tuple(r) for r in sv["resources"]]
         p.inventory.swords      = sv.get("swords", []);    p.inventory.sword_idx   = sv.get("sword_idx", 0)
         p.inventory.pickaxes    = sv.get("pickaxes", []);  p.inventory.pickaxe_idx = sv.get("pickaxe_idx", 0)
+        p.inventory.bows        = sv.get("bows", []);      p.inventory.bow_idx     = sv.get("bow_idx", 0)
+        p.inventory.has_rod     = sv.get("has_rod", False)
         p.inventory.craft_tier  = sv.get("craft_tier", 1)
         p.inventory.equip = {k: [tuple(e) for e in v] for k, v in sv["equip"].items()}
         for sl, lst in p.inventory.equip.items():
@@ -106,6 +109,7 @@ def run(screen, joysticks, world_id, seed):
     prev_dx=[0,0]; prev_dy=[0,0]; mine_tick_cd=[0.0,0.0]
     prev_mod=[False,False]; mod_used=[False,False]  # détection tap sur modifier
     loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]; trade_menu=TradeMenu()
+    proj_mgr = ProjectileManager()
     lava_dmg_cd = [0.0, 0.0]   # cooldown dégâts lave par joueur (1 PV/s)
     _liquid_cd = [0.0]         # tick physique liquides (lave/eau future)
 
@@ -267,8 +271,12 @@ def run(screen, joysticks, world_id, seed):
             cur_col, cur_row = get_cursor(player, cdx, cdy, world)
             cur_row = max(0, min(ROWS - 1, cur_row))
             handle_sword(player, mob_mgr, loot_notifs, cur_mine, prev_mine[i], cur_mod)
+            handle_bow(player, proj_mgr, loot_notifs, cur_mine, prev_mine[i], cur_mod, p_dirs[i])
             handle_flag(player, flag_positions, loot_notifs, cur_mine, prev_mine[i], cur_mod)
-            if in_reach(player, cur_col, cur_row) and player.inventory.tool != TOOL_SWORD:
+            handle_rod(player, world, loot_notifs, cur_mine, prev_mine[i], cur_mod)
+            handle_torch(player, world, chunks, players, loot_notifs,
+                         cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, _queue)
+            if in_reach(player, cur_col, cur_row) and player.inventory.tool not in (TOOL_SWORD, TOOL_TORCH):
                 handle_block_actions(player, i, world, chunks, mob_mgr, players,
                     break_infos, mine_tick_cd, loot_notifs,
                     cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, dt, _queue)
@@ -305,6 +313,7 @@ def run(screen, joysticks, world_id, seed):
             mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 6.0
         mob_mgr.update(dt, players, world)
         mob_mgr.tick_day_night(_is_nite, world, players)
+        proj_mgr.update(dt, world, mob_mgr, loot_notifs, players)
 
         # ── Tick liquides (lave + eau) : itère seulement world.mods ──────
         _liquid_cd[0] -= dt

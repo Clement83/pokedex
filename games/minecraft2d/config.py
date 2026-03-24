@@ -32,6 +32,13 @@ TILE_SNOW        = 14       # neige (surface biome glace)
 TILE_ICE         = 15       # glace (sous-sol biome glace)
 TILE_LAVA        = 16       # lave (non-solide, dégâts au contact)
 TILE_WATER       = 17       # eau (non-solide, ralentit le joueur)
+TILE_TORCH       = 18       # torche (éclairage, plaçable)
+TILE_ARROW       = 19       # flèches  (munitions arc, item uniquement)
+TILE_SILK        = 20       # fil d'araignée (composant de craft, item uniquement)
+TILE_FISH        = 21       # poisson (pêche, nourriture future)
+
+# Tiles qui sont des items purs (non plaçables dans le monde)
+TILE_ITEMS = frozenset({19, 20, 21})   # TILE_ARROW, TILE_SILK, TILE_FISH
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -53,6 +60,10 @@ TILE_NAMES = {
     TILE_ICE:         "Glace",
     TILE_LAVA:        "Lave",
     TILE_WATER:       "Eau",
+    TILE_TORCH:       "Torche",
+    TILE_ARROW:       "Flèches",
+    TILE_SILK:        "Fil d'araignée",
+    TILE_FISH:        "Poisson",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -62,10 +73,15 @@ TOOL_PLACER  = 2   # poser des blocs (appui simple MINE)
 TOOL_SWORD   = 3   # épée : attaque les mobs (MINE = coup d'épée)
 TOOL_FLAG    = 4   # drapeau : pose le point de respawn au sol
 TOOL_CRAFT   = 5   # table de craft : action=ouvrir menu, alt=fermer
+TOOL_BOW     = 6   # arc : tirer une flèche (consomme TILE_ARROW)
+TOOL_ROD     = 7   # canne à pêche : pêcher dans l'eau
+TOOL_TORCH   = 8   # torche en main : poser une torche à portée
 TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche",
                 TOOL_PLACER: "Canon", TOOL_SWORD: "Épée", TOOL_FLAG: "Drapeau",
-                TOOL_CRAFT: "Table Craft"}
-TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT]
+                TOOL_CRAFT: "Table Craft", TOOL_BOW: "Arc", TOOL_ROD: "Canne à pêche",
+                TOOL_TORCH: "Torche"}
+TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
+                TOOL_BOW, TOOL_ROD, TOOL_TORCH]
 
 # ── Équipements ───────────────────────────────────────────────────────────────
 # Slot d'équipement
@@ -74,6 +90,7 @@ EQUIP_BODY    = 1   # plastron
 EQUIP_FEET    = 2   # bottes
 EQUIP_SWORD   = 3   # épée (main)
 EQUIP_PICKAXE = 4   # pioche (main)
+EQUIP_BOW     = 5   # arc (arme à distance)
 
 # Matériaux
 # ── Biomes ───────────────────────────────────────────────────────────────────
@@ -139,6 +156,9 @@ EQUIP_NAMES = {
     (EQUIP_PICKAXE, MAT_WOOD): "Pioche Bois",
     (EQUIP_PICKAXE, MAT_IRON): "Pioche Fer",
     (EQUIP_PICKAXE, MAT_GOLD): "Pioche Or",
+    # Arcs
+    (EQUIP_BOW, MAT_WOOD):  "Arc Bois",
+    (EQUIP_BOW, MAT_IRON):  "Arc Fer",
 }
 
 # Couleurs des tuiles (dessin simple, pas de sprites)
@@ -161,6 +181,10 @@ TILE_COLORS = {
     TILE_ICE:         (150, 200, 240),   # bleu glace
     TILE_LAVA:        (220,  80,   0),   # orange lave
     TILE_WATER:       ( 40,  90, 200),   # bleu eau
+    TILE_TORCH:       (255, 190,  40),   # jaune flamme
+    TILE_ARROW:       (180, 155,  90),   # beige bois
+    TILE_SILK:        (210, 215, 225),   # gris blanc
+    TILE_FISH:        ( 60, 180, 180),   # cyan aquatique
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -180,6 +204,7 @@ TILE_BREAK_TIME = {
     TILE_DIAMOND_ORE: 2.5,
     TILE_SNOW:        0.3,
     TILE_ICE:         0.5,
+    TILE_TORCH:       0.2,   # torche cassable rapidement à la main
 }
 
 # Tier de pioche minimum requis pour miner un bloc

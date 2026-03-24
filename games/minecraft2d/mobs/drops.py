@@ -5,6 +5,7 @@ import random
 
 from config import (
     TILE_STONE, TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE,
+    TILE_SILK,
     EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
     MAT_WOOD, MAT_IRON, MAT_GOLD,
 )
@@ -45,7 +46,9 @@ _MOB_DROPS = {
     MOB_CHICKEN:  [],
     MOB_FROG:     [],
     MOB_SEAGULL:  [],
-    MOB_SPIDER:   [],
+    MOB_SPIDER:   [
+        (TILE_SILK, 1, 2, 0.80),   # fil d'araignée (composant craft arc/canne)
+    ],
     MOB_SKELETON: [
         (TILE_STONE,               1, 2, 0.80),
         ((EQUIP_SWORD, MAT_WOOD),  1, 1, 0.08),

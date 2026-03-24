@@ -9,10 +9,12 @@ Chaque tier débloque de nouvelles recettes et se fabrique
 import pygame
 
 from config import (
-    TILE_WOOD, TILE_STONE, TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE,
-    EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
+    TILE_WOOD, TILE_STONE, TILE_COAL, TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE,
+    TILE_TORCH, TILE_ARROW, TILE_SILK,
+    EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_BOW,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND,
-    EQUIP_NAMES, TILE_NAMES,
+    TOOL_ROD,
+    EQUIP_NAMES, TILE_NAMES, TOOL_NAMES,
     SCREEN_WIDTH, SCREEN_HEIGHT,
 )
 
@@ -38,10 +40,15 @@ CRAFT_RECIPES = [
     # ── Tier 1 : Table Bois ──────────────────────────────────────────────────
     ((EQUIP_PICKAXE, MAT_WOOD),  {TILE_WOOD: 3},                          "Bois x3",          1),
     ((EQUIP_SWORD,   MAT_WOOD),  {TILE_WOOD: 2},                          "Bois x2",          1),
+    (("__tiles__", TILE_TORCH, 4), {TILE_WOOD: 1, TILE_COAL: 1},          "Bois x1 Charbon x1", 1),
+    (("__tiles__", TILE_ARROW, 8), {TILE_WOOD: 1, TILE_STONE: 1},         "Bois x1 Pierre x1",  1),
+    ((EQUIP_BOW,     MAT_WOOD),  {TILE_WOOD: 2, TILE_SILK: 1},            "Bois x2 Fil x1",   1),
+    (("__tool__", TOOL_ROD),     {TILE_WOOD: 2, TILE_SILK: 1},            "Bois x2 Fil x1",   1),
     (("__upgrade__", 2),         {TILE_WOOD: 5, TILE_IRON_ORE: 3},        "Bois x5 Fer x3",   1),
     # ── Tier 2 : Table Fer ───────────────────────────────────────────────────
     ((EQUIP_PICKAXE, MAT_IRON),  {TILE_IRON_ORE: 3},                      "Minerai Fer x3",   2),
     ((EQUIP_SWORD,   MAT_IRON),  {TILE_IRON_ORE: 2},                      "Minerai Fer x2",   2),
+    ((EQUIP_BOW,     MAT_IRON),  {TILE_IRON_ORE: 2, TILE_SILK: 1},        "Fer x2 Fil x1",    2),
     ((EQUIP_HEAD,    MAT_IRON),  {TILE_IRON_ORE: 3},                      "Minerai Fer x3",   2),
     ((EQUIP_BODY,    MAT_IRON),  {TILE_IRON_ORE: 5},                      "Minerai Fer x5",   2),
     ((EQUIP_FEET,    MAT_IRON),  {TILE_IRON_ORE: 2},                      "Minerai Fer x2",   2),
@@ -64,6 +71,25 @@ CRAFT_RECIPES = [
 
 def _is_upgrade(result):
     return isinstance(result, tuple) and len(result) == 2 and result[0] == "__upgrade__"
+
+def _is_tiles(result):
+    """Résultat qui produit N ressources (tuiles) dans l'inventaire."""
+    return isinstance(result, tuple) and len(result) == 3 and result[0] == "__tiles__"
+
+def _is_tool_unlock(result):
+    """Résultat qui débloque un outil (ex. canne à pêche)."""
+    return isinstance(result, tuple) and len(result) == 2 and result[0] == "__tool__"
+
+def _result_name(result):
+    """Retourne le nom affichable du résultat d'une recette."""
+    if _is_upgrade(result):
+        return CRAFT_TABLE_NAMES.get(result[1], "Table Craft ?")
+    if _is_tiles(result):
+        _, tile, count = result
+        return f"{TILE_NAMES.get(tile, '?')} ×{count}"
+    if _is_tool_unlock(result):
+        return TOOL_NAMES.get(result[1], "?")
+    return EQUIP_NAMES.get(result, "?")
 
 
 def _has_resources(res_map, ingredients):
@@ -153,6 +179,14 @@ class CraftMenu:
         if _is_upgrade(result):
             inventory.craft_tier = result[1]
             return CRAFT_TABLE_NAMES.get(result[1], "Table Craft ?")
+        elif _is_tiles(result):
+            _, tile, count = result
+            for _ in range(count):
+                inventory.add(tile)
+            return f"{TILE_NAMES.get(tile, '?')} ×{count}"
+        elif _is_tool_unlock(result):
+            inventory.unlock_tool(result[1])
+            return TOOL_NAMES.get(result[1], "?")
         else:
             inventory.add_equip(result)
             return EQUIP_NAMES.get(result, "?")
@@ -215,7 +249,7 @@ class CraftMenu:
                 else:
                     color = CRAFT_TIER_COLORS.get(target_tier, (200, 200, 200))
             else:
-                name = EQUIP_NAMES.get(result, "?")
+                name = _result_name(result)
                 if not can:
                     color = (100, 100, 100)
                 elif act:

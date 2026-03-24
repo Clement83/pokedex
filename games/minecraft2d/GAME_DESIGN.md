@@ -223,6 +223,110 @@ La table se craft/upgrade progressivement. Chaque tier débloque de nouvelles re
 | **Grappin** | Fer ×3 + Fil ×2 | 3 | ⭐ |
 | **Armure Vrille** | Cœur de Vrille ×1 + Diamant ×3 | 4 | ⭐ |
 
+### 5.4 Drops de mobs utilisables en craft 💡
+
+Pour que les nouvelles recettes fonctionnent, les mobs doivent dropper des matériaux uniques.
+Ces drops sont à ajouter dans `mobs/drops.py`.
+
+| Drop | Mob source | Probabilité | Qté | Utilisation |
+|---|---|---|---|---|
+| **Fil d'araignée** | Araignée | 80% | ×1-2 | Arc, Canne à pêche, Grappin, Toile-piège |
+| **Os** | Squelette | 90% | ×1-2 | Farine d'os (fertilisant), Potion de Soin |
+| **Plume** | Poule, Vautour | 70% | ×1-2 | Flèches améliorées, Lit |
+| **Viande crue** | Sanglier, Poule | 90% / 60% | ×1-2 | Nourriture, cuisson au Four |
+| **Cuir** | Sanglier, Loup | 50% | ×1 | Palmes, Cape, armures légères |
+| **Glu de Slime** | Slime | 70% | ×1 | Colle, Potion de Vitesse, pièges |
+| **Carapace** | Crabe, Scorpion | 60% | ×1 | Amulette de Résistance, Trident |
+| **Dard** | Scorpion | 40% | ×1 | Flèches Envenimées |
+| **Fragment d'Âme** | Démon | 40% | ×1 | Potion de Force, Épée du Chaos |
+| **Ectoplasme** | Spectre | 60% | ×1-2 | Potion de Vision nocturne, Arc du Néant, Cape de l'Ombre |
+| **Cœur de Vrille** | Vrille (boss) | 100% | ×1 | Armure Vrille |
+
+### 5.5 Recettes étendues par thème 💡
+
+#### Éclairage & Environnement
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Torche ×4** | Bois ×1 + Charbon ×1 | 1 | Éclaire rayon 5 blocs quand tenue ou placée |
+| **Lanterne** | Vitre ×4 + Charbon ×2 | 2 | Éclaire rayon 7 blocs, s'éteint pas dans l'eau |
+| **Lampe à Lave** | Obsidienne ×1 + Vitre ×2 | 3 | Éclaire rayon 9 blocs, indestructible |
+
+#### Armes à distance
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Arc** | Bois ×2 + Fil d'araignée ×1 | 1 | 2 dégâts de base, drop Araignée |
+| **Flèches ×8** | Bois ×1 + Pierre ×1 | 1 | Munitions standard |
+| **Flèches de Feu ×4** | Flèches ×4 + Charbon ×1 | 1 | Applique Brûlure 3s |
+| **Flèches Envenimées ×4** | Flèches ×4 + Dard ×1 | 2 | Applique Poison 5s, drop Scorpion |
+| **Flèches de Glace ×4** | Flèches ×4 + Glace ×1 | 3 | Applique Lenteur 3s, drop biome Glace |
+| **Arc en Fer** | Minerai Fer ×2 + Fil ×1 | 2 | 3 dégâts, portée +2 blocs |
+| **Arc du Néant** | Diamant ×2 + Ectoplasme ×2 | 4 | 5 dégâts, projectile traversant, drop Spectre |
+
+#### Défense & Protection
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Bouclier Bois** | Bois ×3 | 1 | -20% dégâts frontaux, bloque les projectiles |
+| **Bouclier Fer** | Minerai Fer ×3 | 2 | -40% dégâts frontaux |
+| **Bouclier Or** | Minerai Or ×3 | 3 | -40% dégâts + les Sangliers n'attaquent pas |
+| **Amulette de Résistance** | Carapace ×2 + Minerai Or ×1 | 3 | -1 dégât reçu en permanence |
+| **Armure Vrille** | Cœur de Vrille ×1 + Diamant ×3 | 4 | Regen passive +1 PV/10s |
+
+#### Utilitaires & Mobilité
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Échelle ×4** | Bois ×3 | 1 | Grimpe verticale sur les murs |
+| **Canne à pêche** | Bois ×2 + Fil ×1 | 1 | Pêcher dans l'eau (si biome Eau dispo) |
+| **Boussole** | Minerai Fer ×2 + Pierre ×1 | 2 | Indique la direction du point de spawn |
+| **Grappin** | Minerai Fer ×3 + Fil ×2 | 2 | Se propulse vers un bloc ciblé |
+| **Masque de plongée** | Vitre ×2 + Minerai Fer ×1 | 2 | Jauge d'oxygène ×2 sous l'eau |
+| **Palmes** | Cuir ×2 | 2 | Vitesse de nage ×1.5, drop Sanglier/Loup |
+
+#### Blocs craftables
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Brique ×4** | Pierre ×2 | 1 | Bloc de construction résistant |
+| **Vitre ×4** | Sable ×3 | 1 | Fenêtres transparentes |
+| **Coffre** | Bois ×4 | 1 | Stockage supplémentaire (16 slots) |
+| **Lit** | Bois ×2 + Plume ×3 | 1 | Passer la nuit, réinitialise le point de spawn |
+| **Four** | Pierre ×5 | 2 | Cuire la nourriture crue |
+| **Alambic** | Pierre ×4 + Vitre ×2 | 2 | Brasser des potions |
+| **Toile-piège** | Fil ×3 + Bois ×1 | 1 | Ralentit les mobs qui marchent dessus (3s) |
+| **Piège à ressort** | Minerai Fer ×2 + Pierre ×1 | 2 | 1 dégât aux mobs qui marchent dessus |
+
+#### Nourriture & Survie
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Viande rôtie** | Viande crue ×1 (au Four) | 2 | Restaure 5 faim, drop Sanglier/Poule |
+| **Soupe de Crapaud** | Bois ×1 + Pierre ×1 | 1 | Restaure 2 faim + Regen 5s, blague |
+| **Galette de Sable** | Sable ×2 + Charbon ×1 | 1 | Restaure 1 faim, biome Désert |
+| **Pain ×2** | Blé ×3 (système farming) | 1 | Restaure 3 faim |
+
+#### Potions (nécessitent un Alambic)
+
+| Résultat | Ingrédients | Tier | Effet |
+|---|---|---|---|
+| **Potion de Soin** | Os ×2 + Glu de Slime ×1 | 2 | +3 PV instantané |
+| **Potion de Vitesse** | Glu de Slime ×2 + Plume ×1 | 2 | Vitesse ×1.5 pendant 10s |
+| **Potion de Force** | Fragment d'Âme ×1 + Minerai Or ×2 | 3 | Dégâts ×1.5 pendant 15s |
+| **Potion de Vision nocturne** | Ectoplasme ×1 + Charbon ×2 | 3 | Voir dans le noir complet pendant 20s |
+| **Potion de Respiration** | Ectoplasme ×1 + Vitre ×2 | 3 | Pas de jauge d'oxygène pendant 30s |
+| **Potion Anti-Poison** | Os ×1 + Pierre ×2 | 2 | Immunisé au Poison pendant 60s |
+
+#### Armes & équipements spéciaux (drops rares)
+
+| Résultat | Ingrédients | Tier | Notes |
+|---|---|---|---|
+| **Trident** | Minerai Fer ×2 + Carapace ×1 | 2 | Mêlée + lancer, dégâts ×2 sous l'eau |
+| **Cape de l'Ombre** | Ectoplasme ×3 + Cuir ×2 | 3 | Invisibilité 5s (cooldown 30s), drop Spectre |
+| **Épée du Chaos** | Diamant ×2 + Fragment d'Âme ×2 | 4 | 10% chance d'éliminer un mob non-boss |
+| **Armure d'Écaille** | Écaille ×5 (drop Serpent de mer) | 3 | Respiration illimitée sous l'eau |
+
 ---
 
 ## 6. Mobs

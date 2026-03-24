@@ -7,8 +7,9 @@ from config import (
     HOTBAR_Y,
     TILE_COLORS, TILE_NAMES,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
+    TOOL_BOW, TOOL_ROD, TOOL_TORCH,
     TOOL_NAMES,
-    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD,
+    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_BOW,
     EQUIP_NAMES,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_COLORS, MAT_NAMES,
     TILE_AIR,
@@ -171,6 +172,62 @@ def draw_tool_icon(screen, tool, sx, sy, sw, sh, mat=None):
         R(screen, (195, 198, 215), (ox + 5, oy + 1, 3, 1))
         R(screen, (100,  62,  20), (ox + 4, oy + 1, 1, 2))
 
+    elif tool == TOOL_BOW:
+        # Arc en bois tendu — forme en D 14×14 px
+        _mat_c = {MAT_WOOD: (155, 100, 42), MAT_IRON: (170, 170, 185)}
+        BOW   = _mat_c.get(mat, (155, 100, 42))
+        BDARK = (max(0, BOW[0]-55), max(0, BOW[1]-55), max(0, BOW[2]-55))
+        STR   = (210, 215, 225)   # corde
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 14) // 2
+        # Corps de l'arc
+        R(screen, BOW,   (ox + 1, oy,      2, 2))
+        R(screen, BOW,   (ox,     oy + 2,  2, 9))
+        R(screen, BOW,   (ox + 1, oy + 11, 2, 3))
+        R(screen, BDARK, (ox,     oy + 2,  1, 9))
+        # Corde
+        R(screen, STR,   (ox + 8, oy + 1,  1, 2))
+        R(screen, STR,   (ox + 9, oy + 3,  1, 2))
+        R(screen, STR,   (ox + 10,oy + 5,  1, 4))
+        R(screen, STR,   (ox + 9, oy + 9,  1, 2))
+        R(screen, STR,   (ox + 8, oy + 11, 1, 2))
+        # Flèche encochée
+        R(screen, (200, 165, 70), (ox + 2, oy + 6, 7, 1))
+        R(screen, (220, 60,  60), (ox + 9, oy + 5, 2, 3))
+
+    elif tool == TOOL_ROD:
+        # Canne à pêche 14×14 px
+        CANE  = (155, 100, 42)
+        CDARK = (100,  62, 20)
+        LINE  = (200, 210, 220)
+        FLOAT = (220,  80,  80)
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 14) // 2
+        # Manche en bois (diagonale montante)
+        R(screen, CANE,  (ox,     oy + 9,  3, 3))
+        R(screen, CANE,  (ox + 2, oy + 6,  3, 3))
+        R(screen, CANE,  (ox + 4, oy + 4,  3, 2))
+        R(screen, CANE,  (ox + 6, oy + 2,  3, 2))
+        R(screen, CANE,  (ox + 8, oy,      3, 2))
+        R(screen, CDARK, (ox,     oy + 11, 3, 1))
+        # Fil de pêche
+        R(screen, LINE,  (ox + 11, oy + 1, 1, 9))
+        # Flotteur rouge
+        R(screen, FLOAT, (ox + 10, oy + 10, 3, 3))
+
+    elif tool == TOOL_TORCH:
+        # Torche pixel-art 14×14 px (bâton + flamme)
+        STICK = (110,  72,  30)
+        HEAD  = (180, 130,  40)
+        FLAME = (255, 200,  20)
+        FLAME2= (255, 140,   0)
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 14) // 2
+        R(screen, STICK,  (ox + 6, oy + 7,  2, 7))
+        R(screen, HEAD,   (ox + 5, oy + 5,  4, 3))
+        R(screen, FLAME,  (ox + 6, oy + 1,  2, 5))
+        R(screen, FLAME2, (ox + 5, oy + 2,  1, 3))
+        R(screen, FLAME2, (ox + 8, oy + 2,  1, 3))
 
 def draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):
     """Icône pixel-art de l'équipement centrée dans le slot (sw×sh)."""
@@ -249,10 +306,17 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
             _tool_mat = (
                 inventory.sword_mat   if inventory.tool == TOOL_SWORD   else
                 inventory.pickaxe_mat if inventory.tool == TOOL_PICKAXE else
+                inventory.bow_mat     if inventory.tool == TOOL_BOW     else
                 color                 if inventory.tool == TOOL_FLAG    else
                 inventory.craft_tier  if inventory.tool == TOOL_CRAFT   else None
             )
             draw_tool_icon(screen, inventory.tool, sx, y, sw, sh, mat=_tool_mat)
+            # Torche en main : afficher le stock restant
+            if inventory.tool == TOOL_TORCH:
+                tc = inventory.torch_count
+                cnt_s = font.render(str(tc), True, (255, 210, 80))
+                screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
+                                    y + sh - cnt_s.get_height()))
             items = inventory._tool_items()
             if len(items) > 1:
                 tidx  = inventory._active_tool_idx()
@@ -295,6 +359,13 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
         if inventory.tool == TOOL_SWORD:
             mat_name = MAT_NAMES.get(inventory.sword_mat, "") if inventory.sword_mat is not None else ""
             name = ("Épée " + mat_name).strip()
+        elif inventory.tool == TOOL_BOW:
+            mat_name = MAT_NAMES.get(inventory.bow_mat, "") if inventory.bow_mat is not None else ""
+            name = ("Arc " + mat_name).strip()
+        elif inventory.tool == TOOL_ROD:
+            name = "Canne à pêche"
+        elif inventory.tool == TOOL_TORCH:
+            name = f"Torche ({inventory.torch_count})"
         elif inventory.tool == TOOL_CRAFT:
             _ct_names = {1: "Bois", 2: "Fer", 3: "Or", 4: "Diamant"}
             name = "Table " + _ct_names.get(inventory.craft_tier, "")
