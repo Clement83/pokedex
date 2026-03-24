@@ -94,7 +94,8 @@ def create_world(slot_id, seed):
     init()
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     with _connect() as conn:
-        conn.execute("DELETE FROM blocks WHERE world_id = ?", (slot_id,))
+        conn.execute("DELETE FROM blocks  WHERE world_id = ?", (slot_id,))
+        conn.execute("DELETE FROM players WHERE world_id = ?", (slot_id,))
         conn.execute("""
             INSERT OR REPLACE INTO worlds (id, seed, created_at, last_played)
             VALUES (?, ?, ?, ?)
@@ -175,6 +176,7 @@ def save_player(world_id, player_idx, x, y, inventory, flag=None):
                  for k, v in inventory.equip.items()}
     equip_raw["sm"] = {"mats": inventory.swords,   "idx": inventory.sword_idx}
     equip_raw["pm"] = {"mats": inventory.pickaxes, "idx": inventory.pickaxe_idx}
+    equip_raw["ct"] = inventory.craft_tier          # niveau table de craft
     equip_json = json.dumps(equip_raw)
     flag_x = flag[0] if flag else None
     flag_y = flag[1] if flag else None
@@ -218,6 +220,7 @@ def load_players(world_id):
             pickaxe_idx = pm_raw.get("idx", 0)
         else:
             pickaxes, pickaxe_idx = [], 0
+        craft_tier = eq_raw.pop("ct", 1)             # niveau table de craft
         equip = {int(k): [tuple(item) for item in v] for k, v in eq_raw.items()}
         result[player_idx] = {
             "x": x, "y": y, "tool": tool,
@@ -227,6 +230,7 @@ def load_players(world_id):
             "sword_idx": sword_idx,
             "pickaxes": pickaxes,
             "pickaxe_idx": pickaxe_idx,
+            "craft_tier": craft_tier,
             "flag": (flag_x, flag_y) if flag_x is not None and flag_y is not None else None,
         }
     return result

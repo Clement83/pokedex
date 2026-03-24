@@ -137,12 +137,27 @@ def draw_tool_icon(screen, tool, sx, sy, sw, sh, mat=None):
         WOOD  = (155, 100, 42)
         WDARK = (100,  62, 20)
         WLGHT = (195, 145, 75)
-        TOP   = (180, 120, 55)
+        # Couleur du dessus selon le tier de la table
+        _TIER_TOPS = {
+            1: (180, 120, 55),    # bois
+            2: (170, 170, 185),   # fer
+            3: (255, 200,   0),   # or
+            4: ( 80, 220, 235),   # diamant
+        }
+        _TIER_SHINE = {
+            1: (210, 160, 85),
+            2: (215, 215, 230),
+            3: (255, 230, 80),
+            4: (140, 240, 250),
+        }
+        tier = mat if isinstance(mat, int) else 1
+        TOP   = _TIER_TOPS.get(tier, (180, 120, 55))
+        SHINE = _TIER_SHINE.get(tier, (210, 160, 85))
         ox = sx + (sw - 16) // 2
         oy = sy + (sh - 12) // 2
         # Surface de la table
         R(screen, TOP,   (ox + 1, oy,     14,  4))
-        R(screen, WLGHT, (ox + 1, oy,     14,  1))
+        R(screen, SHINE, (ox + 1, oy,     14,  1))
         R(screen, WDARK, (ox + 1, oy + 3, 14,  1))
         # Planches verticales
         R(screen, WOOD,  (ox,     oy + 4,  3,  8))
@@ -234,7 +249,8 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
             _tool_mat = (
                 inventory.sword_mat   if inventory.tool == TOOL_SWORD   else
                 inventory.pickaxe_mat if inventory.tool == TOOL_PICKAXE else
-                color                 if inventory.tool == TOOL_FLAG    else None
+                color                 if inventory.tool == TOOL_FLAG    else
+                inventory.craft_tier  if inventory.tool == TOOL_CRAFT   else None
             )
             draw_tool_icon(screen, inventory.tool, sx, y, sw, sh, mat=_tool_mat)
             items = inventory._tool_items()
@@ -279,6 +295,9 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
         if inventory.tool == TOOL_SWORD:
             mat_name = MAT_NAMES.get(inventory.sword_mat, "") if inventory.sword_mat is not None else ""
             name = ("Épée " + mat_name).strip()
+        elif inventory.tool == TOOL_CRAFT:
+            _ct_names = {1: "Bois", 2: "Fer", 3: "Or", 4: "Diamant"}
+            name = "Table " + _ct_names.get(inventory.craft_tier, "")
         else:
             name = TOOL_NAMES.get(inventory.tool, "")
     elif s == Inventory.SLOT_RES and inventory.resources:

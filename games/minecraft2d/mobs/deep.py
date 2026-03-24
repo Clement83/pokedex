@@ -15,7 +15,7 @@ from mobs.base import (
     _mw, _mh,
 )
 from mobs.physics import _solid, _move_mob_x, _move_mob_y, _eject_mob
-from mobs.armor import _apply_contact_dmg, armor_def
+from mobs.armor import _apply_contact_dmg, combat_roll, _CRIT_MULT
 
 TENDRIL_REACH  = 6.0   # rayon d'attaque tentacules (tiles)
 TENDRIL_DETECT = 10.0  # rayon de détection (tiles)
@@ -134,10 +134,11 @@ def _update_tendril(mob, dt, players):
     # Attaque par tentacules quand le joueur est à portée
     if dist <= TENDRIL_REACH and mob._tendril_cd <= 0 and player:
         raw_dmg = 3
-        eff = max(0, raw_dmg - armor_def(player))
-        if eff > 0:
-            player.hp = max(0, player.hp - eff)
-            player._dmg_flash = 0.4
+        hit, crit = combat_roll(player, mob.mob_type)
+        if hit:
+            dmg = raw_dmg * _CRIT_MULT if crit else raw_dmg
+            player.hp = max(0, player.hp - dmg)
+            player._dmg_flash = 0.6 if crit else 0.4
         mob._tendril_cd = 2.0   # 1 attaque toutes les 2 secondes
 
 

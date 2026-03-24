@@ -78,6 +78,7 @@ def run(screen, joysticks, world_id, seed):
         p.inventory.resources = [tuple(r) for r in sv["resources"]]
         p.inventory.swords      = sv.get("swords", []);    p.inventory.sword_idx   = sv.get("sword_idx", 0)
         p.inventory.pickaxes    = sv.get("pickaxes", []);  p.inventory.pickaxe_idx = sv.get("pickaxe_idx", 0)
+        p.inventory.craft_tier  = sv.get("craft_tier", 1)
         p.inventory.equip = {k: [tuple(e) for e in v] for k, v in sv["equip"].items()}
         for sl, lst in p.inventory.equip.items():
             p.inventory.equip_idx[sl] = min(p.inventory.equip_idx.get(sl, 0), max(0, len(lst) - 1))

@@ -1,6 +1,10 @@
 """
 Système de craft : recettes et menu de fabrication in-game.
 Déclenché par KB_J1_CRAFT (C) ou KB_J2_CRAFT (N).
+
+La table de craft possède un **niveau** (tier 1-4).
+Chaque tier débloque de nouvelles recettes et se fabrique
+à partir du tier précédent.
 """
 import pygame
 
@@ -12,32 +16,54 @@ from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
 )
 
-# ── Recettes ──────────────────────────────────────────────────────────────────
-# Format : (résultat, {tile: count_requis}, label_coût)
+# ── Niveaux de table de craft ────────────────────────────────────────────────
+CRAFT_TIER_LABELS = {1: "Bois", 2: "Fer", 3: "Or", 4: "Diamant"}
+CRAFT_TIER_COLORS = {
+    1: (180, 120,  60),   # brun bois
+    2: (170, 170, 185),   # gris fer
+    3: (255, 200,   0),   # jaune or
+    4: ( 80, 220, 235),   # cyan diamant
+}
+CRAFT_TABLE_NAMES = {
+    2: "Table Craft Fer",
+    3: "Table Craft Or",
+    4: "Table Craft Diamant",
+}
+
+# ── Recettes ─────────────────────────────────────────────────────────────────
+# Format : (résultat, {tile: count_requis}, label_coût, tier_requis)
+#   résultat = (equip_slot, material)  pour un équipement
+#            = ("__upgrade__", tier)    pour améliorer la table de craft
 CRAFT_RECIPES = [
-    # ── Pioches ──
-    ((EQUIP_PICKAXE, MAT_WOOD),    {TILE_WOOD:        3}, "Bois x3"),
-    ((EQUIP_PICKAXE, MAT_IRON),    {TILE_IRON_ORE:    3}, "Minerai Fer x3"),
-    ((EQUIP_PICKAXE, MAT_GOLD),    {TILE_GOLD_ORE:    3}, "Minerai Or x3"),
-    ((EQUIP_PICKAXE, MAT_DIAMOND), {TILE_DIAMOND_ORE: 3}, "Minerai Diamant x3"),
-    # ── Épées ────
-    ((EQUIP_SWORD,   MAT_WOOD),    {TILE_WOOD:        2}, "Bois x2"),
-    ((EQUIP_SWORD,   MAT_IRON),    {TILE_IRON_ORE:    2}, "Minerai Fer x2"),
-    ((EQUIP_SWORD,   MAT_GOLD),    {TILE_GOLD_ORE:    2}, "Minerai Or x2"),
-    ((EQUIP_SWORD,   MAT_DIAMOND), {TILE_DIAMOND_ORE: 2}, "Minerai Diamant x2"),
-    # ── Armures Fer ──
-    ((EQUIP_HEAD,    MAT_IRON),    {TILE_IRON_ORE:    3}, "Minerai Fer x3"),
-    ((EQUIP_BODY,    MAT_IRON),    {TILE_IRON_ORE:    5}, "Minerai Fer x5"),
-    ((EQUIP_FEET,    MAT_IRON),    {TILE_IRON_ORE:    2}, "Minerai Fer x2"),
-    # ── Armures Or ──
-    ((EQUIP_HEAD,    MAT_GOLD),    {TILE_GOLD_ORE:    3}, "Minerai Or x3"),
-    ((EQUIP_BODY,    MAT_GOLD),    {TILE_GOLD_ORE:    5}, "Minerai Or x5"),
-    ((EQUIP_FEET,    MAT_GOLD),    {TILE_GOLD_ORE:    2}, "Minerai Or x2"),
-    # ── Armures Diamant ──
-    ((EQUIP_HEAD,    MAT_DIAMOND), {TILE_DIAMOND_ORE: 3}, "Minerai Diamant x3"),
-    ((EQUIP_BODY,    MAT_DIAMOND), {TILE_DIAMOND_ORE: 5}, "Minerai Diamant x5"),
-    ((EQUIP_FEET,    MAT_DIAMOND), {TILE_DIAMOND_ORE: 2}, "Minerai Diamant x2"),
+    # ── Tier 1 : Table Bois ──────────────────────────────────────────────────
+    ((EQUIP_PICKAXE, MAT_WOOD),  {TILE_WOOD: 3},                          "Bois x3",          1),
+    ((EQUIP_SWORD,   MAT_WOOD),  {TILE_WOOD: 2},                          "Bois x2",          1),
+    (("__upgrade__", 2),         {TILE_WOOD: 5, TILE_IRON_ORE: 3},        "Bois x5 Fer x3",   1),
+    # ── Tier 2 : Table Fer ───────────────────────────────────────────────────
+    ((EQUIP_PICKAXE, MAT_IRON),  {TILE_IRON_ORE: 3},                      "Minerai Fer x3",   2),
+    ((EQUIP_SWORD,   MAT_IRON),  {TILE_IRON_ORE: 2},                      "Minerai Fer x2",   2),
+    ((EQUIP_HEAD,    MAT_IRON),  {TILE_IRON_ORE: 3},                      "Minerai Fer x3",   2),
+    ((EQUIP_BODY,    MAT_IRON),  {TILE_IRON_ORE: 5},                      "Minerai Fer x5",   2),
+    ((EQUIP_FEET,    MAT_IRON),  {TILE_IRON_ORE: 2},                      "Minerai Fer x2",   2),
+    (("__upgrade__", 3),         {TILE_IRON_ORE: 5, TILE_GOLD_ORE: 3},    "Fer x5 Or x3",     2),
+    # ── Tier 3 : Table Or ────────────────────────────────────────────────────
+    ((EQUIP_PICKAXE, MAT_GOLD),  {TILE_GOLD_ORE: 3},                      "Minerai Or x3",    3),
+    ((EQUIP_SWORD,   MAT_GOLD),  {TILE_GOLD_ORE: 2},                      "Minerai Or x2",    3),
+    ((EQUIP_HEAD,    MAT_GOLD),  {TILE_GOLD_ORE: 3},                      "Minerai Or x3",    3),
+    ((EQUIP_BODY,    MAT_GOLD),  {TILE_GOLD_ORE: 5},                      "Minerai Or x5",    3),
+    ((EQUIP_FEET,    MAT_GOLD),  {TILE_GOLD_ORE: 2},                      "Minerai Or x2",    3),
+    (("__upgrade__", 4),         {TILE_GOLD_ORE: 5, TILE_DIAMOND_ORE: 3}, "Or x5 Diamant x3", 3),
+    # ── Tier 4 : Table Diamant ───────────────────────────────────────────────
+    ((EQUIP_PICKAXE, MAT_DIAMOND), {TILE_DIAMOND_ORE: 3},                 "Diamant x3",       4),
+    ((EQUIP_SWORD,   MAT_DIAMOND), {TILE_DIAMOND_ORE: 2},                 "Diamant x2",       4),
+    ((EQUIP_HEAD,    MAT_DIAMOND), {TILE_DIAMOND_ORE: 3},                 "Diamant x3",       4),
+    ((EQUIP_BODY,    MAT_DIAMOND), {TILE_DIAMOND_ORE: 5},                 "Diamant x5",       4),
+    ((EQUIP_FEET,    MAT_DIAMOND), {TILE_DIAMOND_ORE: 2},                 "Diamant x2",       4),
 ]
+
+
+def _is_upgrade(result):
+    return isinstance(result, tuple) and len(result) == 2 and result[0] == "__upgrade__"
 
 
 def _has_resources(res_map, ingredients):
@@ -67,7 +93,7 @@ def _consume_resources(inventory, ingredients):
 
 # ── Menu de craft ─────────────────────────────────────────────────────────────
 
-_MENU_W = 180
+_MENU_W = 190
 _MENU_H = 200
 _ROW_H  = 18
 _PAD    = 6
@@ -80,7 +106,6 @@ class CraftMenu:
         self.visible  = False
         self._sel     = 0      # index sélectionné dans les recettes filtrées
         self._recipes = []     # recettes disponibles (cache)
-        self._all     = False  # False = seulement craftables, True = toutes
         # Surface de fond pré-allouée (jamais ré-allouée)
         self._bg_surf = pygame.Surface((_MENU_W, _MENU_H), pygame.SRCALPHA)
         self._bg_surf.fill((20, 20, 30, 220))
@@ -93,13 +118,22 @@ class CraftMenu:
         self.visible = False
 
     def _refresh(self, inventory):
+        tier = inventory.craft_tier
         res_map = {tile: count for tile, count in inventory.resources}
-        if self._all:
-            self._recipes = CRAFT_RECIPES[:]
-        else:
-            self._recipes = [r for r in CRAFT_RECIPES
-                             if _has_resources(res_map, r[1])]
-        self._res_map = res_map  # réutilisé dans draw/craft
+        filtered = []
+        for r in CRAFT_RECIPES:
+            result, ingredients, cost, recipe_tier = r
+            if _is_upgrade(result):
+                # Upgrade : visible uniquement au tier courant (pas avant, pas après)
+                if recipe_tier != tier:
+                    continue
+            else:
+                # Recette classique : visible si tier suffisant
+                if recipe_tier > tier:
+                    continue
+            filtered.append(r)
+        self._recipes = filtered
+        self._res_map = res_map
 
     def navigate(self, dy):
         if not self._recipes:
@@ -110,29 +144,38 @@ class CraftMenu:
         """Tente de crafter la recette sélectionnée. Retourne le nom crafté ou None."""
         if not self._recipes:
             return None
-        result, ingredients, _ = self._recipes[self._sel]
+        result, ingredients, _, _ = self._recipes[self._sel]
         res_map = {tile: count for tile, count in inventory.resources}
         if not _has_resources(res_map, ingredients):
             return None
         _consume_resources(inventory, ingredients)
-        inventory.add_equip(result)
-        return EQUIP_NAMES.get(result, "?")
+
+        if _is_upgrade(result):
+            inventory.craft_tier = result[1]
+            return CRAFT_TABLE_NAMES.get(result[1], "Table Craft ?")
+        else:
+            inventory.add_equip(result)
+            return EQUIP_NAMES.get(result, "?")
 
     def draw(self, screen, inventory, player_color, font):
         """Dessine le menu craft centré à l'écran."""
         self._refresh(inventory)
+
+        tier       = inventory.craft_tier
+        tier_color = CRAFT_TIER_COLORS.get(tier, player_color)
+        tier_label = CRAFT_TIER_LABELS.get(tier, "?")
 
         mx = (SCREEN_WIDTH  - _MENU_W) // 2
         my = (SCREEN_HEIGHT - _MENU_H) // 2
 
         # Fond (surface réutilisée)
         screen.blit(self._bg_surf, (mx, my))
-        pygame.draw.rect(screen, player_color, (mx, my, _MENU_W, _MENU_H), 2)
+        pygame.draw.rect(screen, tier_color, (mx, my, _MENU_W, _MENU_H), 2)
 
-        # Titre
-        title = font.render("[ CRAFT ]  Alt=fermer", True, player_color)
+        # Titre avec nom du tier
+        title = font.render(f"[ CRAFT {tier_label} ]  Alt=fermer", True, tier_color)
         screen.blit(title, (mx + _PAD, my + _PAD))
-        pygame.draw.line(screen, player_color,
+        pygame.draw.line(screen, tier_color,
                          (mx + _PAD, my + _PAD + 12),
                          (mx + _MENU_W - _PAD, my + _PAD + 12), 1)
 
@@ -146,22 +189,42 @@ class CraftMenu:
         start    = max(0, self._sel - max_vis + 1)
         visible  = self._recipes[start: start + max_vis]
 
-        for vi, (result, ingredients, cost) in enumerate(visible):
+        for vi, (result, ingredients, cost, recipe_tier) in enumerate(visible):
             ri   = start + vi
             ry   = my + 22 + vi * _ROW_H
             act  = (ri == self._sel)
-            bg   = (60, 50, 10) if act else (30, 30, 40)
+            can  = _has_resources(self._res_map, ingredients)
+            is_up = _is_upgrade(result)
+
+            # Fond de ligne
+            if is_up:
+                bg = (30, 50, 30) if act else (20, 35, 25)
+            else:
+                bg = (60, 50, 10) if act else (30, 30, 40)
             pygame.draw.rect(screen, bg, (mx + 2, ry, _MENU_W - 4, _ROW_H - 1))
 
-            name  = EQUIP_NAMES.get(result, "?")
-            color = (255, 230, 80) if act else (200, 200, 200)
-            can   = _has_resources(self._res_map, ingredients)
-            if not can:
-                color = (100, 100, 100)
+            # Nom & couleur
+            if is_up:
+                target_tier = result[1]
+                name = f"^ Table {CRAFT_TIER_LABELS[target_tier]}"
+                if not can:
+                    color = (100, 100, 100)
+                elif act:
+                    color = CRAFT_TIER_COLORS.get(target_tier, (255, 230, 80))
+                else:
+                    color = CRAFT_TIER_COLORS.get(target_tier, (200, 200, 200))
+            else:
+                name = EQUIP_NAMES.get(result, "?")
+                if not can:
+                    color = (100, 100, 100)
+                elif act:
+                    color = (255, 230, 80)
+                else:
+                    color = (200, 200, 200)
 
             label = font.render(f"{name}  [{cost}]", True, color)
             screen.blit(label, (mx + _PAD, ry + 2))
 
         # Légende
-        legend = font.render("↑↓ nav  Action=craft  Alt=fermer", True, (120, 120, 120))
+        legend = font.render("nav  Action=craft  Alt=fermer", True, (120, 120, 120))
         screen.blit(legend, (mx + _PAD, my + _MENU_H - 14))

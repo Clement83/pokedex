@@ -39,6 +39,7 @@ class Inventory:
         self.sword_idx    = 0
         self.pickaxes     = []          # matériaux de pioches trouvées
         self.pickaxe_idx  = 0
+        self.craft_tier   = 1           # niveau table de craft (1=Bois … 4=Diamant)
         self.equip = {
             EQUIP_HEAD: [],
             EQUIP_BODY: [],
