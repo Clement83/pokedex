@@ -5,7 +5,7 @@ Extrait de loop.py pour garder les fichiers sous 300 lignes.
 import sounds as _sounds
 
 from config import (
-    TILE_AIR, TILE_CHEST, TILE_SIZE, REACH_RADIUS,
+    TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_SIZE, REACH_RADIUS,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG,
     TILE_BREAK_TIME, TILE_PICKAXE_TIER, MAT_TIER,
     EQUIP_NAMES, PLAYER_W, PLAYER_H,
@@ -153,7 +153,8 @@ def handle_block_actions(
         return
 
     # ── Minage (pioche) ────────────────────────────────────────────────────
-    if tile_at != TILE_AIR and tile_at != TILE_CHEST and tool == TOOL_PICKAXE:
+    _UNMINABLE = (TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER)
+    if tile_at not in _UNMINABLE and tool == TOOL_PICKAXE:
         if cur_mine and not cur_mod:
             # Vérification du tier
             req_tier  = TILE_PICKAXE_TIER.get(tile_at, 0)
@@ -171,7 +172,7 @@ def handle_block_actions(
 
             if break_infos[i] and break_infos[i][:2] == (cur_col, cur_row):
                 player._break_time += dt
-                req_time = TILE_BREAK_TIME.get(tile_at, 0.5) / player_t
+                req_time = TILE_BREAK_TIME.get(tile_at, 0.5) / max(1, player_t)
                 progress = min(player._break_time / req_time, 1.0)
                 break_infos[i] = (cur_col, cur_row, progress)
                 if mine_tick_cd[i] <= 0.0:
@@ -187,6 +188,11 @@ def handle_block_actions(
                     player._break_time = 0.0
                     player._action_cd  = 0.1
                     queue_block_fn(cur_col, cur_row, TILE_AIR)
+                    # Activer les liquides voisins (pour qu'ils coulent au prochain tick)
+                    for _ac, _ar in ((cur_col, cur_row - 1), (cur_col, cur_row + 1),
+                                     (cur_col - 1, cur_row), (cur_col + 1, cur_row)):
+                        if (_ac, _ar) not in world.mods and world.get(_ac, _ar) in (TILE_LAVA, TILE_WATER):
+                            world.mods[(_ac, _ar)] = world.get(_ac, _ar)
                     _sounds.mine_done()
                     mine_tick_cd[i] = 0.0
             else:

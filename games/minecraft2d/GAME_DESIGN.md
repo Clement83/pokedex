@@ -1,564 +1,622 @@
-# Minecraft 2D – Feuille de route : Loot, Mobs & Progression
+# Minecraft 2D – Game Design Document
 
-> État actuel condensé pour référence rapide
+> Dernière mise à jour : 2026-03-24
 
-| Domaine | Ce qui existe |
+---
+
+## Légende des statuts
+
+| Icône | Signification |
 |---|---|
-| **Outils** | Main / Pioche / Canon / Épée / Drapeau |
-| **Matériaux** | Bois (0) · Fer (1) · Or (2) · **Diamant (3)** |
-| **Blocs** | Air, Terre, Pierre, Herbe, Sable, Bois, Charbon, Brique, Coffre, Obsidienne, Vitre |
-| **Mobs agressifs** | Slime (2 PV) · Zombie (3 PV) · Golem (5 PV) · **Vrille (25 PV, boss souterrain)** |
-| **Mobs passifs** | Poule · Grenouille · Mouette |
-| **Loot coffre** | Épée/Pioche/Casque/Plastron/Bottes — Bois 65 % · Fer 28 % · Or 7 % |
-| **Dégâts épée** | Bois = 1 · Fer = 2 · Or = 3 |
+| ✅ | Implémenté et fonctionnel |
+| 🔧 | Partiellement implémenté |
+| ❌ | Pas encore implémenté |
+| 💡 | Nouvelle idée (proposition) |
 
 ---
 
-## 1. Tier de pioche requis par bloc
+## 1. Vue d'ensemble du jeu
 
-### Idée centrale
-Introduire un attribut `TILE_PICKAXE_TIER` : le tier **minimum** de pioche nécessaire pour miner un bloc.  
-Frapper un bloc avec une pioche insuffisante ne le détruira pas (ou le détruira sans loot).
+Un jeu de survie/exploration 2D inspiré de Minecraft en local splitscreen (2 joueurs).
+Le joueur mine des blocs, craft des outils/armures, explore des structures et combat des mobs dans un monde généré procéduralement.
 
-### Tiers proposés
-| Tier | Pioche | Valeur |
-|---|---|---|
-| 0 | Main / N'importe quelle pioche | tous matériaux |
-| 1 | Pioche Bois minimum | `MAT_WOOD` |
-| 2 | Pioche Fer minimum | `MAT_IRON` |
-| 3 | Pioche Or minimum | `MAT_GOLD` |
-| 4 | *(futur) Pioche Diamant* | `MAT_DIAMOND` |
-
-### Assignation des blocs actuels
-| Bloc | Tier requis | Justification |
-|---|---|---|
-| Terre / Herbe / Sable | 0 | ramassable à la main |
-| Pierre | 1 (Bois) | bloc de base |
-| Charbon | 1 (Bois) | drop de charbon |
-| Bois | 1 (Bois) | les arbres, hache dans le futur |
-| Brique | 2 (Fer) | structures construites |
-| Vitre | 2 (Fer) | fragile mais "craftée" |
-| Obsidienne | 3 (Or) | fond des donjons, très dur |
-
-### Nouveaux blocs à ajouter (voir §3)
-| Nouveau bloc | Tier requis |
-|---|---|
-| Minerai de Fer | 2 (Fer) |
-| Minerai d'Or | 2 (Fer) |
-| Minerai de Diamant | 3 (Or) |
-| Roc infernal / Bedrock | Non minable |
-
-### Implémentation (résumé technique)
-
-```python
-# config.py – à ajouter
-TILE_PICKAXE_TIER = {
-    TILE_DIRT:     0,
-    TILE_GRASS:    0,
-    TILE_SAND:     0,
-    TILE_WOOD:     1,
-    TILE_COAL:     1,
-    TILE_STONE:    1,
-    TILE_BRICK:    2,
-    TILE_GLASS:    2,
-    TILE_OBSIDIAN: 3,
-    # nouveaux blocs :
-    TILE_IRON_ORE:    2,
-    TILE_GOLD_ORE:    2,
-    TILE_DIAMOND_ORE: 3,
-}
-
-MAT_TIER = {MAT_WOOD: 1, MAT_IRON: 2, MAT_GOLD: 3}  # (MAT_DIAMOND: 4)
-```
-
-Dans `scenes/game/loop.py` (ou `scene_game.py`), lors du break d'un bloc :
-- Si `player.inventory.pickaxe_mat is None` → tier = 0
-- Sinon `tier = MAT_TIER[pickaxe_mat]`
-- Si `tier < TILE_PICKAXE_TIER.get(tile, 0)` → ne pas accorder le loot (bloc résistant)
-
----
-
-## 2. Mobs avec résistance à certaines épées
-
-### Idée centrale
-Chaque mob possède un `min_sword_mat` : tier d'épée **minimum** pour infliger des dégâts.  
-En dessous du seuil, les coups font 0 dégât (l'épée rebondit, feedback visuel/sonore).
-
-### Table proposée
-| Mob | PV actuels | Tier épée min | Raison narrative |
-|---|---|---|---|
-| Slime | 2 | 0 (Main ok) | mob de base |
-| Zombie | 3 | 1 (Bois) | chair morte, résiste aux poings |
-| **Araignée** *(nouveau)* | 3 | 1 (Bois) | carapace chitineuse |
-| Golem | 5 | 2 (Fer) | armure de pierre |
-| **Squelette** *(nouveau)* | 4 | 1 (Bois) | os solides |
-| **Démon** *(nouveau)* | 8 | 3 (Or) | créature magique, immunisée fer |
-| **Boss Liche** *(nouveau)* | 20 | 3 (Or) | boss de donjon |
-
-### Implémentation (résumé technique)
-
-```python
-# mobs/base.py – à ajouter
-_MOB_MIN_SWORD_TIER = {
-    MOB_SLIME:    0,
-    MOB_ZOMBIE:   1,
-    MOB_GOLEM:    2,
-    MOB_SPIDER:   1,   # nouveau
-    MOB_SKELETON: 1,   # nouveau
-    MOB_DEMON:    3,   # nouveau
-    MOB_LICHE:    3,   # boss
-}
-```
-
-Dans la logique de hit (scene_game / loop) :
-```python
-player_tier = MAT_TIER.get(player.inventory.sword_mat, 0)
-mob_min_tier = _MOB_MIN_SWORD_TIER.get(mob.mob_type, 0)
-if player_tier < mob_min_tier:
-    dmg = 0   # feedback "IMMUNE" affiché
-else:
-    dmg = _SWORD_DMG[player.inventory.sword_mat]
-```
-
----
-
-## 3. Nouveaux blocs et minerais
-
-| ID | Nom | Couleur | Tier requis | Drop |
-|---|---|---|---|---|
-| `TILE_IRON_ORE` | Minerai de Fer | gris-rouille `(120,100,90)` | 2 | Lingot de Fer |
-| `TILE_GOLD_ORE` | Minerai d'Or | jaune-pierre `(180,155,60)` | 2 | Lingot d'Or |
-| `TILE_DIAMOND_ORE` | Minerai de Diamant | bleu glacier `(80,210,220)` | 3 | Gemme de Diamant |
-| `TILE_LAVA` | Lave | orange `(220,80,0)` | – (indestructible) | dégâts si touché |
-| `TILE_ICE` | Glace | bleu-blanc `(180,220,255)` | 1 | glisse le joueur |
-| `TILE_MOSS` | Mousse | vert foncé `(50,120,60)` | 0 | décor / herbe profonde |
-| `TILE_CRATE` | Caisse en bois | brun clair `(160,120,70)` | 1 | loot de surface (nourriture, bois) |
-
-### Génération dans `world.py`
-- **Minerai de Fer** : entre `surface + 10` et `surface + 30`, probabilité ~12 % par colonne
-- **Minerai d'Or** : entre `surface + 25` et `surface + 55`, probabilité ~6 %
-- **Minerai de Diamant** : entre `surface + 50` et `ROWS - 5`, probabilité ~2 %
-- **Lave** : poches aléatoires très profondes (`surface + 60+`), petits lacs 3-5 blocs
-- **Glace** : biome "froid" (colonnes avec seed tendant vers `hash > 0.7`), remplace eau/surface
-
----
-
-## 4. Système de drop de ressources par mob
-
-### Loot table des mobs
-| Mob | Drop |
-|---|---|
-| Slime | Slime gel (nouvelle ressource cosmétique) |
-| Zombie | Lingot de Fer (20 %) |
-| Golem | Pierre × 3, Fer (50 %) |
-| Poule | Plume (décoration, future flèche) |
-| Grenouille | Rien |
-| **Araignée** | Fil d'araignée (future corde/filet) |
-| **Squelette** | Os × 1–2, Arc (rarement) |
-| **Démon** | Gemme de Diamant (30 %) |
-| **Boss Liche** | Équipement Or garanti + clé de portail |
-
-### Implémentation
-
-```python
-# mobs/base.py
-_MOB_DROPS = {
-    MOB_SLIME:   [(ITEM_SLIME_GEL, 1, 1.0)],
-    MOB_ZOMBIE:  [(TILE_IRON_ORE,  1, 0.2)],
-    MOB_GOLEM:   [(TILE_STONE, 3, 1.0), (TILE_IRON_ORE, 1, 0.5)],
-    MOB_CHICKEN: [(ITEM_FEATHER,   1, 0.8)],
-    MOB_SPIDER:  [(ITEM_SILK,      1, 0.9)],
-    # ...
-}
-# (item_id, quantité, probabilité)
-```
-
----
-
-## 5. Système de craft minimal (sans interface lourde)
-
-### Principe : recettes automatiques à l'inventaire
-Le joueur accède à un menu de craft "simple" :  
-**bouton MODIFIER + bas** → ouvre un panneau de 4 recettes disponibles.
-
-### Recettes de base
-| Résultat | Ingrédients |
-|---|---|
-| Pioche Bois | Bois × 3 |
-| Pioche Fer | Lingot Fer × 3 |
-| Pioche Or | Lingot Or × 3 |
-| **Pioche Diamant** | Gemme Diamant × 3 |
-| Épée Bois | Bois × 2 |
-| Épée Fer | Lingot Fer × 2 |
-| Épée Or | Lingot Or × 2 |
-| **Épée Diamant** | Gemme Diamant × 2 |
-| Torche | Bois × 1 + Charbon × 1 |
-| Brique | Pierre × 2 |
-
-> Actuellement les équipements sont trouvés **uniquement** dans les coffres. Ajouter le craft permet de les fabriquer avec les minerais récoltés — ce qui donne enfin un sens au minage !
-
----
-
-## 6. Nouveaux mobs
-
-### 6.1 Araignée (`MOB_SPIDER`)
-- Spawn : forêts, arbres, caves peu profondes (surface + 5 à + 20)
-- Comportement : escalade les murs (pas de gravité contre les murs)
-- PV : 3 · Dégâts : 1 · Tier min épée : Bois
-- Spécial : peut tirer un fil qui **ralentit** le joueur 1 s
-
-### 6.2 Squelette (`MOB_SKELETON`)
-- Spawn : caves profondes (surface + 20+), nuit uniquement
-- Comportement : maintient sa distance, tire des **flèches** (projectile)
-- PV : 4 · Dégâts flèche : 1 à distance · Tier min épée : Bois
-- Drop : Os, rarement un Arc
-
-### 6.3 Chauve-souris (`MOB_BAT`)
-- Spawn : caves, toujours actives (jour/nuit)
-- Comportement : vol erratique, passive mais fonce sur le joueur la nuit
-- PV : 1 · Dégâts : 0 (distraction) · Tier min épée : 0
-
-### 6.4 Crabe (`MOB_CRAB`)
-- Spawn : plages (sable + proche de la surface)
-- Comportement : marche latéralement, charge courte
-- PV : 3 · Dégâts : 1 · Tier min épée : Bois
-- Drop : Pince de crabe (ressource de craft future)
-
-### 6.5 Démon (`MOB_DEMON`)
-- Spawn : zones profondes (surface + 60+), près de la lave
-- Comportement : vole lentement, lance des boules de feu (projectile)
-- PV : 8 · Dégâts : 2 · **Immunisé aux épées Bois et Fer**
-- Drop : Gemme de Diamant (30 %)
-
-### 6.6 Boss Liche (`MOB_LICHE`) — boss de donjon
-- Spawn : unique, généré dans un donjon spécial (1 par monde)
-- Comportement : invoque des squelettes, projectiles multiples
-- PV : 20 · Dégâts : 3 · Tier min épée : Or
-- Drop : **Équipement Or garanti × 3** + clé de portail
-
----
-
-## 7. Améliorations diverses
-
-### 7.1 Loot contextualisé par structure
-| Structure | Loot coffre (modificateurs) |
-|---|---|
-| Château | +chances Fer/Or, peut contenir Épée Fer garantie |
-| Donjon | +chances Or, peut contenir Pioche Or ou Épée Or |
-| Bateau pirate | Matériaux nautiques (futur), carte au trésor |
-| Pyramide | +chances Or, peut contenir artefact unique |
-| Cabane | Bois/Nourriture uniquement |
-
-### 7.2 Matériau Diamant (4e tier)
-- Nouveau `MAT_DIAMOND = 3` (décalage de `MAT_GOLD` vers 2 déjà en place)
-- Pioche Diamant : mine **tout** (obsidienne, roc)
-- Épée Diamant : tue tout mob, dégâts = 5
-- Se craft avec Gemme de Diamant (drop démon / minerai profond)
-
-### 7.3 Feedback visuel "tier insuffisant"
-- Bloc résistant : animation de **rebond** + particule rouge "trop dur !"
-- Mob immunisé : flash blanc + texte flottant **"IMMUNE"** pendant 0.5 s
-
-### 7.4 Barre de durabilité des outils (optionnel)
-- Chaque outil a un nombre d'usages (Bois=30, Fer=80, Or=50 "mais rapide", Diamant=200)
-- Quand durabilité = 0, l'outil disparaît de l'inventaire
-- Incite à crafter et à progresser dans les tiers
-
-### 7.5 Coffres de niveaux
-Actuellement tous les coffres ont le même pool de loot. Proposer :
-- `CHEST_SURFACE` → bois/fer uniquement
-- `CHEST_CAVE` → fer/or
-- `CHEST_DUNGEON` → or/diamant (post-boss)
-
-Implémentation : stocker la **profondeur** du coffre au moment de la génération de la structure, et passer ce context à `chest_loot()`.
-
----
-
-## 8. Résumé de la progression cible
+### Progression cible
 
 ```
 Départ (mains vides)
   ↓ Miner Bois/Terre à la main
-Craft Pioche Bois
-  ↓ Miner Pierre, Charbon
-Craft Épée Bois → tuer Zombies, Araignées
-  ↓ Trouver/obtenir Lingot Fer (coffre ou drop zombie)
-Craft Pioche Fer → miner Brique, Vitre, Minerai de Fer
-  ↓ Miner Minerai d'Or
-Craft Épée Fer → tuer Golems, Squelettes
+Craft Pioche Bois (Table Tier 1)
+  ↓ Miner Pierre, Charbon, Minerai de Fer
+Craft Épée Bois → tuer Slimes, Araignées, Zombies
+  ↓ Craft Table Tier 2 (Fer)
+Craft Pioche Fer → miner Brique, Vitre, Minerai d'Or
+Craft Épée Fer → tuer Golems, Trolls
+  ↓ Craft Table Tier 3 (Or)
 Craft Pioche Or → miner Obsidienne, Minerai de Diamant
-  ↓ Drop Démon ou minage profond → Gemme Diamant
-Craft Épée Or → tuer Démons, Liche
-Craft Pioche/Épée Diamant → tuer Vrille (boss final souterrain) → end game
+Craft Épée Or → tuer Démons, Spectres
+  ↓ Craft Table Tier 4 (Diamant)
+Craft Pioche/Épée Diamant → tuer Vrille (boss final) → endgame
 ```
 
 ---
 
-## 9. Ordre de priorité suggéré
+## 2. Blocs & Matériaux
 
-| Priorité | Fonctionnalité | Complexité | Impact |
-|---|---|---|---|
-| ⭐⭐⭐ | Tier pioche requis par bloc | Faible | Très fort |
-| ⭐⭐⭐ | Drop de ressource par mob | Faible | Fort |
-| ⭐⭐⭐ | Mob immunisé (tier épée) | Faible | Très fort |
-| ⭐⭐⭐ | **Armure Diamant + outils Diamant** | Faible | Fort |
-| ⭐⭐⭐ | **Système de troc P1 ↔ P2** | Moyen | Fort |
-| ⭐⭐⭐ | **Fix : fantômes / mobs à travers murs** | Faible | Fort |
-| ⭐⭐⭐ | **Zombies nocturnes (surface)** | Faible | Fort |
-| ⭐⭐ | Minerais (Fer, Or, Diamant) dans world.py | Moyen | Fort |
-| ⭐⭐ | Nouveau mob : Araignée | Moyen | Moyen |
-| ⭐⭐ | Nouveau mob : Squelette (projectile) | Moyen | Moyen |
-| ⭐⭐ | Craft minimal (menu simple) | Moyen | Très fort |
-| ⭐⭐ | Matériau Diamant + MAT_DIAMOND | Moyen | Fort |
-| ⭐⭐ | **Boss Vrille (végétal souterrain)** | Élevé | Très fort |
-| ⭐⭐ | **Loot coffres amélioré (plus de matériaux)** | Faible | Fort |
-| ⭐ | Loot coffre contextualisé par structure | Faible | Moyen |
-| ⭐ | Nouveau mob : Démon (boss léger) | Élevé | Fort |
-| ⭐ | Boss Liche | Très élevé | Très fort |
-| ⭐ | Durabilité des outils | Moyen | Moyen |
+### 2.1 Blocs existants ✅
 
----
+| ID | Bloc | Couleur | Tier pioche requis | Temps de minage |
+|---|---|---|---|---|
+| 0 | Air | Bleu ciel | – | – |
+| 1 | Terre | Marron | 0 (main) | 0.4s |
+| 2 | Pierre | Gris | 1 (Bois) | 0.9s |
+| 3 | Herbe | Vert | 0 (main) | 0.4s |
+| 4 | Sable | Beige | 0 (main) | 0.3s |
+| 5 | Bois | Brun | 0 (main) | 0.5s |
+| 6 | Charbon | Noir | 1 (Bois) | 0.8s |
+| 7 | Brique | Rouge | 2 (Fer) | 1.2s |
+| 8 | Coffre | Brun-or | – | 0.3s |
+| 9 | Obsidienne | Violet foncé | 3 (Or) | 3.0s |
+| 10 | Vitre | Bleu clair | 1 (Bois) | 0.3s |
+| 11 | Minerai de Fer | Gris-rouille | 1 (Bois) | 1.2s |
+| 12 | Minerai d'Or | Jaune-pierre | 2 (Fer) | 1.8s |
+| 13 | Minerai de Diamant | Cyan | 3 (Or) | 2.5s |
 
-## 10. Armure et outils Diamant (tier 4)
+### 2.2 Matériaux (tiers) ✅
 
-### Nouveaux équipements
-| Item | Tier | Craft | Stats |
-|---|---|---|---|
-| Pioche Diamant | 4 | Gemme Diamant × 3 | Mine **tout** sans exception, rapidité max |
-| Épée Diamant | 4 | Gemme Diamant × 2 | Dégâts = 5, tue tout mob |
-| Casque Diamant | 4 | Gemme Diamant × 2 | Défense = 3 |
-| Plastron Diamant | 4 | Gemme Diamant × 4 | Défense = 5 |
-| Bottes Diamant | 4 | Gemme Diamant × 2 | Défense = 2 |
-
-### Mise à jour `config.py`
-```python
-MAT_DIAMOND = 3           # nouveau tier le plus haut
-
-# Dégâts épée mis à jour
-_SWORD_DMG = {
-    MAT_WOOD:    1,
-    MAT_IRON:    2,
-    MAT_GOLD:    3,
-    MAT_DIAMOND: 5,        # ← nouveau
-}
-
-# Défense armure
-_ARMOR_DEF = {
-    MAT_WOOD:    1,
-    MAT_IRON:    3,
-    MAT_GOLD:    4,
-    MAT_DIAMOND: 10,       # set complet
-}
-```
-
-### Densité de coffres par zone
-
-**Règle générale : moins de coffres en surface, toujours plus intéressants en profondeur.**
-
-| Zone | Fréquence de spawn |
-|---|---|
-| Surface / Cabane | Très rare — 1 coffre max par structure |
-| Cave (tier 1) | Rare — 1 coffre par 3–4 salles |
-| Cave profonde (tier 2) | Modéré — 1 coffre par 2 salles |
-| Donjon | Garanti — 2–3 coffres par donjon |
-
-### Loot coffres — répartition matériaux vs équipement
-
-> **Philosophie** : les coffres donnent principalement des **matériaux bruts** pour alimenter le craft.  
-> L'équipement tout fait est **rare** et réservé aux profondeurs. En surface, on ne trouve presque rien d'utile — ce qui pousse à descendre.
-
-| Niveau coffre | Matériaux bruts | Équipement tout fait |
+| Tier | Matériau | Valeur |
 |---|---|---|
-| Surface | Bois ×2–4 (70 %), Charbon ×1–2 (25 %), Pierre ×2–3 (20 %) | Outil Bois (5 %) — très rare |
-| Cave tier 1 | Lingot Fer ×1–2 (60 %), Charbon ×2 (40 %), Pierre ×3 (30 %) | Outil/Armure Bois (15 %), Fer (5 %) |
-| Cave tier 2 | Lingot Fer ×2–3 (70 %), Lingot Or ×1 (30 %), Charbon ×3 (30 %) | Outil/Armure Fer (20 %), Or (5 %) |
-| Donjon | Lingot Or ×2–4 (80 %), Gemme Diamant ×1–2 (25 %) | Outil/Armure Or (30 %), Diamant (8 %) |
+| 0 | Main | – |
+| 1 | Bois | `MAT_WOOD` |
+| 2 | Fer | `MAT_IRON` |
+| 3 | Or | `MAT_GOLD` |
+| 4 | Diamant | `MAT_DIAMOND` |
 
-**Résumé des changements vs l'ancien système :**
-- Coffres de surface : **fréquence divisée par ~3**, contenu quasi exclusivement en bois/pierre
-- Équipement Bois/Fer en coffre surface : quasi supprimé (5 % max)
-- Matériaux bruts augmentés à tous les niveaux (lingots, gemmes)
-- Équipement Diamant : uniquement dans les donjons, probabilité faible (8 %)
+### 2.3 Nouveaux blocs proposés 💡
 
-Règle : **plus le coffre est profond, plus son contenu est intéressant** (système existant conservé et renforcé).
-
----
-
-## 11. Système de troc entre joueurs
-
-### Déclenchement
-- **Outil actif : Main** · Joueur 1 appuie sur **Action** en étant adjacent à Joueur 2  
-- Un menu de troc s'ouvre au centre de l'écran  
-- Les deux joueurs sont figés (mouvements désactivés) pendant la transaction
-
-### Interface
-```
-┌─────────────────────────────────────────┐
-│           ── TROC ──                    │
-│  [J1]               [J2]               │
-│  ┌──────┐           ┌──────┐           │
-│  │  [X] │◄──────   │  [ ] │           │
-│  │  [ ] │           │  [X] │           │
-│  │  [ ] │   ─────►  │  [ ] │           │
-│  │  [ ] │           │  [ ] │           │
-│  │  [ ] │           │  [ ] │           │
-│  └──────┘           └──────┘           │
-│   ↑↓ : sélectionner  Action : donner   │
-│   Alt : annuler et quitter             │
-└─────────────────────────────────────────┘
-```
-
-### Règles
-- Chaque joueur voit **sa propre colonne** d'inventaire (5 slots visibles, scroll ↑↓)
-- **Flèches haut/bas** : déplacer le curseur sur un item de son propre inventaire
-- **Action** : transférer l'item sélectionné vers l'inventaire de l'autre joueur
-  - Si l'inventaire destinataire est plein → refus avec feedback « INVENTAIRE PLEIN »
-- **Touche Alternative** (Alt / bouton B) : l'un ou l'autre peut quitter → fermeture immédiate, aucun échange forcé
-- Chaque joueur ne peut donner que **depuis son propre inventaire** (pas de vol)
-
-### Implémentation (résumé technique)
-
-```python
-# Nouvel état de jeu
-STATE_TRADE = "trade"
-
-# Ouverture du troc (dans scenes/game/controls.py ou actions.py)
-def try_open_trade(player_src, player_dst):
-    if player_src.tool == TOOL_HAND and is_adjacent(player_src, player_dst):
-        game_state.mode = STATE_TRADE
-        trade_state.p1 = player_src
-        trade_state.p2 = player_dst
-        trade_state.cursor_p1 = 0
-        trade_state.cursor_p2 = 0
-
-# Loop de troc (nouvelle fonction dans loop.py)
-def update_trade(inputs_p1, inputs_p2):
-    for player, inputs, cursor_attr in [(p1, inputs_p1, 'cursor_p1'), ...]:
-        if inputs.up:   trade_state[cursor_attr] = max(0, cursor - 1)
-        if inputs.down: trade_state[cursor_attr] = min(len(inv)-1, cursor + 1)
-        if inputs.action:
-            item = player.inventory[cursor]
-            transfer_item(item, player, other_player)
-        if inputs.alt:
-            game_state.mode = STATE_GAME   # fermeture propre
-
-# Rendu (dans renderer_hud.py)
-def draw_trade_menu(surface, trade_state):
-    # Panneau centré semi-transparent
-    # Colonne gauche : inventaire J1 avec curseur ▶
-    # Colonne droite : inventaire J2 avec curseur ▶
-    # Flèches centrales indiquant le sens du transfert possible
-    ...
-```
-
-> L'interface suit le même modèle que le craft : `MODIFIER + Alt` pour quitter, touches directionnelles pour naviguer.
+| Bloc | Couleur | Tier | Effet | Priorité |
+|---|---|---|---|---|
+| Lave | Orange `(220,80,0)` | Indestructible | Dégâts au contact, éclairage | ⭐⭐⭐ |
+| Glace | Bleu-blanc `(180,220,255)` | 1 (Bois) | Le joueur glisse dessus | ⭐⭐ |
+| Mousse | Vert foncé `(50,120,60)` | 0 (main) | Décor, herbe profonde | ⭐ |
+| Eau | Bleu `(50,100,200)` | – | Physique de fluide, coule, nage, noyade (voir §9.3) | ⭐⭐⭐ |
+| Bedrock | Gris foncé | Indestructible | Fond du monde, inminable | ⭐⭐ |
+| Feuillage | Vert clair | 0 (main) | Traverse, décoration d'arbre | ⭐ |
+| Échelle | Brun | 0 (main) | Permet de grimper verticalement | ⭐⭐ |
+| Torche (bloc) | Jaune | – | Éclaire la zone (rayon 5 blocs) | ⭐⭐⭐ |
 
 ---
 
-## 12. Nouveau boss : La Vrille (`MOB_TENDRIL`)
+## 3. Outils & Armes
 
-### Direction artistique
-Inspirée des créatures végétales de Half-Life 1 — une masse de racines, lianes et filaments lumineux vert-noir qui pousse dans les profondeurs.  
-Elle ne se déplace **jamais** : elle est **ancrée au sol/plafond** et attaque à portée.  
-Elle détecte les joueurs à la **vibration** (mouvement dans un rayon, pas le son).
+### 3.1 Outils existants ✅
 
-### Caractéristiques
-| Attribut | Valeur |
+| ID | Outil | Fonction |
+|---|---|---|
+| 0 | Main | Outil de base, ouvre les coffres, lance les trades |
+| 1 | Pioche | Mine les blocs (selon tier) |
+| 2 | Canon (Placer) | Place des blocs depuis l'inventaire |
+| 3 | Épée | Attaque les mobs (dégâts selon matériau) |
+| 4 | Drapeau | Place un point de respawn |
+| 5 | Table de Craft | Ouvre le menu de craft |
+
+### 3.2 Dégâts des épées ✅
+
+| Matériau | Dégâts |
 |---|---|
-| PV | 25 |
-| Dégâts (tentacule) | 3 par touche |
-| Portée d'attaque | 6 blocs |
-| Portée de détection | 10 blocs |
-| Tier épée min | 3 (Or) — résiste à tout le reste |
-| Spawn | `surface + 70+`, max **1 par monde** (boss unique) |
-| Spawn rate | Très rare (~0.5 % à la génération de monde) |
-| Immunité | Projectiles (flèches, boules de feu) — seule l'épée directe blesse |
+| Bois | 1 |
+| Fer | 2 |
+| Or | 3 |
+| Diamant | 5 |
 
-### Comportement
-1. **Dormante** : visible sous forme de racines entrelacées au plafond/sol, inerte
-2. **Activée** (joueur à < 10 blocs dans son axe vertical) : tentacules qui s'étendent lentement
-3. **Attaque** : 3 tentacules ciblent le joueur, dégâts si contact
-4. **Rage** (< 10 PV) : portée +2, vitesse d'extension ×1.5, tentacules supplémentaires
-5. **Mort** : animation de décomposition lente (3 secondes), drop garanti
+### 3.3 Nouvelles armes & outils proposés 💡
 
-### Drop
-- **Cœur de Vrille** (item unique) × 1 — ressource de craft future (ex : armure végétale)
-- Gemme de Diamant × 2–4
-- Lingot d'Or × 3–6
-
-### Génération
-```python
-# world.py — à la fin de la génération
-if random.random() < 0.005:   # ~0.5 % de chance par monde
-    col = random.randint(COLS // 4, 3 * COLS // 4)
-    row = random.randint(surface[col] + 70, ROWS - 10)
-    spawn_tendril(world, col, row)
-```
-
-### Implémentation mob
-```python
-# mobs/base.py
-MOB_TENDRIL = "tendril"
-
-_MOB_MIN_SWORD_TIER[MOB_TENDRIL] = 3      # Or minimum
-_MOB_DROPS[MOB_TENDRIL] = [
-    (ITEM_TENDRIL_HEART, 1, 1.0),          # toujours
-    (ITEM_DIAMOND_GEM,  3, 1.0),           # 2–4 gemmes
-    (ITEM_GOLD_INGOT,   5, 1.0),           # 3–6 lingots
-]
-
-# Pas de déplacement → pas de physique gravitationnelle
-# Logique dans mobs/ai.py : TendrilAI — gestion des tentacules comme sous-entités
-```
+| Outil | Fonction | Craft | Priorité |
+|---|---|---|---|
+| **Arc** | Attaque à distance (projectile) | Bois ×2 + Fil d'araignée ×1 | ⭐⭐⭐ |
+| **Flèches** | Munitions pour l'arc | Bois ×1 + Pierre ×1 (donne ×8) | ⭐⭐⭐ |
+| **Torche** | Éclaire la zone quand tenue/placée | Bois ×1 + Charbon ×1 | ⭐⭐⭐ |
+| **Bouclier** | Réduit les dégâts frontaux (bloque) | Fer ×3 | ⭐⭐ |
+| **Hache** | Mine le bois plus vite, dégâts moyens | Bois/Fer/Or/Diamant ×2 | ⭐⭐ |
+| **Canne à pêche** | Pêche dans l'eau (nourriture) | Bois ×2 + Fil ×1 | ⭐ |
+| **Grappin** | Se propulse vers un bloc à distance | Fer ×3 + Fil ×2 | ⭐ |
 
 ---
 
-## 13. Corrections & améliorations comportement mobs
+## 4. Équipement & Armure
 
-### 13.1 Mobs traversant les murs — Fix
+### 4.1 Armures existantes ✅
 
-**Problème** : certains mobs (notamment les types "fantôme" ou les slimes à haute vitesse) traversent les blocs solides.
+Chaque pièce existe en 4 matériaux (Bois, Fer, Or, Diamant).
 
-**Solution proposée** :
-- **Supprimer le type fantôme** (`MOB_GHOST` / mob immatériel) s'il existe — trop problématique et peu cohérent avec la DA
-- Pour tous les mobs terrestres : forcer la résolution de collision **tile par tile** (pas de saut de position entre deux frames)
-- Limiter la vitesse max des mobs à `MAX_MOB_SPEED = 0.4 * TILE_SIZE / frame` pour éviter le tunnel effect
-- Ajouter un flag `solid_collision = True` sur tous les mobs non-volants
+| Slot | Pièce | Effet |
+|---|---|---|
+| 2 | Casque | -10% touche, -35% crit |
+| 3 | Plastron | -30% touche |
+| 4 | Bottes | -10% touche |
 
-```python
-# mobs/physics.py — à ajouter
-MAX_MOB_SPEED = 0.4   # fraction de TILE_SIZE par frame
+L'efficacité de l'armure diminue si le tier de l'armure < tier du mob (pénalité 1/4^diff).
 
-def clamp_mob_velocity(mob):
-    """Évite le tunnel effect à haute vitesse."""
-    speed = math.hypot(mob.vx, mob.vy)
-    if speed > MAX_MOB_SPEED:
-        factor = MAX_MOB_SPEED / speed
-        mob.vx *= factor
-        mob.vy *= factor
-```
+### 4.2 Défense par matériau ✅
 
-### 13.2 Zombies nocturnes — Cycle jour/nuit
+| Matériau | Défense par pièce |
+|---|---|
+| Bois | 0 |
+| Fer | 1 |
+| Or | 1 |
+| Diamant | 2 |
 
-**Comportement** :
-- **Nuit** (cycle `sky.is_night == True`) : spawn de 1–3 zombies à la surface, dans des zones sombres
-- **Aube** (transition nuit → jour) : les zombies de surface **prennent feu** et meurent (`hp → 0` en 3 secondes)
-- Les zombies dans les caves ne sont pas affectés par la lumière du jour
+### 4.3 Interaction spéciale ✅
+- **Armure en Or** : les Sangliers (MOB_BOAR) n'attaquent pas les joueurs portant de l'or
 
-```python
-# scenes/game/loop.py (ou sky.py)
-def update_zombie_cycle(world, mobs, sky):
-    if sky.just_became_night():
-        for _ in range(random.randint(1, 3)):
-            col = random.randint(0, COLS - 1)
-            row = world.surface_at(col)
-            spawn_mob(mobs, MOB_ZOMBIE, col, row - 1)
+### 4.4 Améliorations proposées 💡
 
-    if sky.just_became_day():
-        for mob in mobs:
-            if mob.mob_type == MOB_ZOMBIE and mob.y < world.surface_avg:
-                mob.burning = True   # animation feu + dégâts continus
-                mob.burn_timer = 3.0  # secondes avant mort
-```
+| Idée | Description | Priorité |
+|---|---|---|
+| **Durabilité des outils** | Chaque outil a un nombre d'usages (Bois=30, Fer=80, Or=50, Diamant=200). À 0, l'outil casse | ⭐⭐ |
+| **Enchantements** | Bonus aléatoire sur équipement trouvé dans les donjons (ex: +vitesse, +dégâts, regen) | ⭐ |
+| **Armure spéciale Vrille** | Craftée avec Cœur de Vrille, bonus unique (regen ou résistance poison) | ⭐ |
 
-**Feedback visuel** : animation de brûlure (clignotement orange/rouge) quand `burning == True`.
+---
+
+## 5. Système de craft
+
+### 5.1 Table de craft à 4 niveaux ✅
+
+La table se craft/upgrade progressivement. Chaque tier débloque de nouvelles recettes.
+
+| Tier | Nom | Couleur |
+|---|---|---|
+| 1 | Table Bois | Marron |
+| 2 | Table Fer | Gris |
+| 3 | Table Or | Jaune |
+| 4 | Table Diamant | Cyan |
+
+### 5.2 Recettes implémentées ✅
+
+**Tier 1 (Bois) :**
+| Résultat | Ingrédients |
+|---|---|
+| Pioche Bois | Bois ×3 |
+| Épée Bois | Bois ×2 |
+| Upgrade → Tier 2 | Bois ×5 + Minerai Fer ×3 |
+
+**Tier 2 (Fer) :**
+| Résultat | Ingrédients |
+|---|---|
+| Pioche Fer | Minerai Fer ×3 |
+| Épée Fer | Minerai Fer ×2 |
+| Casque Fer | Minerai Fer ×3 |
+| Plastron Fer | Minerai Fer ×5 |
+| Bottes Fer | Minerai Fer ×3 |
+| Upgrade → Tier 3 | Minerai Fer ×5 + Minerai Or ×3 |
+
+**Tier 3 (Or) :**
+| Résultat | Ingrédients |
+|---|---|
+| Pioche Or | Minerai Or ×3 |
+| Épée Or | Minerai Or ×2 |
+| Casque Or | Minerai Or ×2 |
+| Plastron Or | Minerai Or ×5 |
+| Bottes Or | Minerai Or ×2 |
+| Upgrade → Tier 4 | Minerai Or ×5 + Minerai Diamant ×3 |
+
+**Tier 4 (Diamant) :**
+| Résultat | Ingrédients |
+|---|---|
+| Pioche Diamant | Minerai Diamant ×3 |
+| Épée Diamant | Minerai Diamant ×2 |
+| Casque Diamant | Minerai Diamant ×2 |
+| Plastron Diamant | Minerai Diamant ×5 |
+| Bottes Diamant | Minerai Diamant ×2 |
+
+### 5.3 Nouvelles recettes proposées 💡
+
+| Résultat | Ingrédients | Tier requis | Priorité |
+|---|---|---|---|
+| **Torche ×4** | Bois ×1 + Charbon ×1 | 1 | ⭐⭐⭐ |
+| **Arc** | Bois ×2 + Fil d'araignée ×1 | 1 | ⭐⭐⭐ |
+| **Flèches ×8** | Bois ×1 + Pierre ×1 | 1 | ⭐⭐⭐ |
+| **Brique ×4** | Pierre ×2 | 1 | ⭐⭐ |
+| **Vitre ×2** | Sable ×3 | 2 | ⭐⭐ |
+| **Bouclier** | Fer ×3 | 2 | ⭐⭐ |
+| **Échelle ×4** | Bois ×3 | 1 | ⭐⭐ |
+| **Grappin** | Fer ×3 + Fil ×2 | 3 | ⭐ |
+| **Armure Vrille** | Cœur de Vrille ×1 + Diamant ×3 | 4 | ⭐ |
+
+---
+
+## 6. Mobs
+
+### 6.1 Mobs passifs ✅
+
+| Mob | PV | Spawn | Biome | Comportement |
+|---|---|---|---|---|
+| Poule | 1 | Surface | Tous | Marche aléatoire |
+| Grenouille | 1 | Surface | Forêt uniquement | Saute, marche aléatoire |
+| Mouette | 1 | Survol surface | Forêt, Désert | Vol, côtier |
+| Pingouin | 2 | Surface | **Glace uniquement** | Marche, glisse, fuit le joueur |
+
+### 6.2 Mobs agressifs ✅
+
+| Mob | PV | Dégâts | Tier épée min | Zone de spawn | Biome | Comportement spécial |
+|---|---|---|---|---|---|---|
+| Slime | 2 | 1 | 0 (main) | Surface +5 à +40 | Tous | Saute pour chasser |
+| Chauve-souris | 1 | 1 | 0 (main) | Grottes partout | Tous | Passive de jour, agressive la nuit |
+| Zombie | 3 | 1 | 1 (Bois) | Surface +10 à +60 | Tous | Spawn nocturne, brûle à l'aube |
+| Araignée | 3 | 1 | 1 (Bois) | Surface +5 à +20 | Forêt, Glace | Escalade les murs, rapide |
+| Squelette | 4 | 1 (dist) | 1 (Bois) | Grottes +20 | Tous | Maintient distance, attaque à distance |
+| Crabe | 3 | 1 | 1 (Bois) | Surface sable | Désert, Forêt (rare) | Marche latérale, charge |
+| Sanglier | 4 | 1 | 1 (Bois) | Surface herbe | Forêt uniquement | Ignore joueurs en Or |
+| Scorpion | 3 | 2 | 1 (Bois) | Surface | **Désert uniquement** | Rapide, charge directe |
+| Vautour | 3 | 1 | 0 (main) | Survol surface | **Désert uniquement** | Volant, plonge sur le joueur |
+| Ours polaire | 8 | 3 | 2 (Fer) | Surface | **Glace uniquement** | Tanky, charge puissante |
+| Troll | 6 | 2 | 1 (Bois) | Profondeur +20 à +45 | Tous | Lent, saute, détection 9 blocs |
+| Golem | 5 | 4 (perce) | 2 (Fer) | Cabanes (50%) | Forêt, Glace | Gardien de structure |
+| Ver | 9 | 3 | 2 (Fer) | Profondeur +45 à +65 | Tous | Traverse terrain, charge en ligne |
+| Démon | 8 | 6 | 3 (Or) | Profondeur +60+ | Tous | Volant, attaque à distance |
+| Spectre | 12 | 4 | 3 (Or) | Profondeur +65+ | Tous | Volant, détection 20 blocs |
+
+### 6.3 Boss ✅
+
+| Boss | PV | Dégâts | Tier épée min | Spawn | Comportement |
+|---|---|---|---|---|---|
+| **Vrille** | 25 | 3 (tentacule) | 3 (Or) | Profondeur +70+, max 1/monde, 0.5% chance | Stationnaire, portée 6 blocs, détection 10 blocs, immunisée projectiles |
+
+**Drops Vrille :** Minerai Diamant ×2-4 (garanti), Minerai Or ×3-6 (garanti)
+
+### 6.4 Nouveaux mobs proposés 💡
+
+| Mob | PV | Dégâts | Tier épée | Zone | Comportement | Priorité |
+|---|---|---|---|---|---|---|
+| **Liche** (boss donjon) | 20 | 3 | 3 (Or) | Donjon spécial, 1/monde | Invoque des squelettes, projectiles multiples | ⭐⭐ |
+| **Loup** | 3 | 1 | 0 | Forêts surface | Passif, mais attaque en meute si on frappe un loup | ⭐⭐ |
+| **Poisson** | 1 | 0 | 0 | Eau | Passif, pêchable pour nourriture | ⭐ |
+| **Fantôme** | 5 | 2 | 2 (Fer) | Surface la nuit | Volant, apparaît si le joueur n'a pas dormi | ⭐ |
+| **Mimic** | 6 | 2 | 1 (Bois) | Donjons | Ressemble à un coffre, attaque quand on l'ouvre | ⭐⭐⭐ |
+
+---
+
+## 7. Monde & Génération
+
+### 7.1 Terrain ✅
+- Monde infini horizontalement, 120 blocs de hauteur
+- Génération par seed (32 bits)
+- Surface : bruit de Perlin (fréquence 0.07)
+- Biomes : Sable (7% des colonnes), Herbe (défaut)
+- Arbres : 6% de chance, 2-3 blocs de haut
+
+### 7.2 Grottes ✅
+- Automate cellulaire (bruit 2D > 0.67)
+- Spawn sous la couche de pierre (profondeur > 8)
+
+### 7.3 Minerais ✅
+| Minerai | Profondeur | Probabilité |
+|---|---|---|
+| Charbon | 10+ | Variable |
+| Fer | 10 à 45 | ~12% |
+| Or | 28 à 65 | ~6% |
+| Diamant | 58+ | ~2% |
+
+### 7.4 Structures ✅
+| Structure | Taille | Fréquence | Espacement min |
+|---|---|---|---|
+| Cabane | 5 large | 2.5% / ~40 cols | – |
+| Château | 11×9 | 0.3% | 120 cols |
+| Bateau pirate | 14×8 | 0.4% | 100 cols |
+| Pyramide | 11×6 | 0.3% | 110 cols |
+| Donjon | 9×5 | 0.6% | 90 cols |
+
+### 7.5 Loot des coffres par profondeur ✅
+| Zone | Matériaux | Équipement |
+|---|---|---|
+| Surface (<20) | Bois ×2-4 (70%), Charbon (25%), Pierre (20%) | Outil Bois (5%) |
+| Grotte (20-50) | Minerai Fer ×1-2 (70%), Charbon (40%) | Bois (15%), Fer (5%) |
+| Profond (50+) | Minerai Or ×2-4 (80%), Diamant (25%) | Or (30%), Diamant (8%) |
+
+### 7.6 Améliorations monde proposées 💡
+
+| Idée | Description | Priorité |
+|---|---|---|
+| **Biomes variés** | Forêt dense, désert, toundra (neige/glace), marais, volcan — chacun avec mobs et ressources spécifiques | ⭐⭐⭐ |
+| **Lave en profondeur** | Poches de lave à profondeur 60+, dégâts au contact, éclairage ambiant | ⭐⭐⭐ |
+| **Eau & physique fluide** | Rivières en surface, lacs souterrains, le joueur nage/ralentit | ⭐⭐ |
+| **Villages PNJ** | Petits villages avec PNJ marchands (acheter/vendre ressources) | ⭐⭐ |
+| **Portails** | Structures spéciales menant à une dimension alternative (Nether-like) | ⭐ |
+| **Grottes améliorées** | Stalactites, stalagmites, grottes de cristal, biomes souterrains | ⭐⭐ |
+| **Fond du monde (Bedrock)** | Couche indestructible à la profondeur max | ⭐⭐ |
+
+---
+
+## 8. Systèmes de jeu
+
+### 8.1 Cycle jour/nuit ✅
+- Système de ciel avec transitions de couleur
+- Icônes soleil/lune
+- Overlay sombre la nuit
+- Zombies spawn en surface la nuit, brûlent à l'aube
+
+### 8.2 Système de combat ✅
+- Attaque au corps-à-corps avec épée
+- Dégâts selon matériau de l'épée
+- Résistance des mobs par tier d'épée (feedback "IMMUNE")
+- Système de touche/critique (80% touche, 40% crit, ×2 multiplicateur)
+- Armure réduit les chances d'être touché et les crits
+
+### 8.3 Système de minage ✅
+- Hold-to-mine avec barre de progression
+- Temps de minage différent par bloc
+- Tier de pioche requis par bloc
+
+### 8.4 Système de placement ✅
+- Outil Canon place des blocs depuis l'inventaire
+- Collision avec le joueur empêche le placement
+- Cooldown de 0.4s
+
+### 8.5 Inventaire ✅
+- 5 slots : Outils (0), Ressources (1), Casque (2), Plastron (3), Bottes (4)
+- Navigation haut/bas/gauche/droite
+- Compteur de ressources
+
+### 8.6 Trading P2P ✅
+- Activé main + action quand adjacent à l'autre joueur
+- Menu avec les 2 inventaires côte à côte
+- Transfert d'items entre joueurs
+- Alt pour fermer
+
+### 8.7 Respawn ✅
+- Placement de drapeau pour définir le point de respawn
+- 6 PV max, flash rouge quand touché
+
+### 8.8 Sauvegarde ✅
+- Base de données pour sauvegarder le monde et l'inventaire
+- Modifications du monde persistées entre sessions
+
+---
+
+## 9. Nouvelles features proposées 💡
+
+### 9.1 Éclairage & Torches ⭐⭐⭐
+**Impact : IMMERSION**
+
+Actuellement les grottes sont uniformément sombres. Ajouter un système d'éclairage dynamique :
+- **Torche tenue** : éclaire un rayon de ~5 blocs autour du joueur
+- **Torche placée** : bloc lumineux permanent, rayon de 5 blocs
+- **Lave** : source de lumière naturelle (rayon 4)
+- Les mobs agressifs spawnent plus dans l'obscurité
+- Craft : Bois ×1 + Charbon ×1 → Torche ×4
+
+### 9.2 Arc & Combat à distance ⭐⭐⭐
+**Impact : GAMEPLAY**
+
+- **Arc** : arme à distance, tire des flèches en arc de cercle
+- **Flèches** : consommables, craft facile (Bois + Pierre → ×8)
+- Permet de combattre les Squelettes et Démons à leur propre jeu
+- Dégâts de base : 2 (comparable épée Fer)
+- Variantes possibles : Flèches de feu (+ Charbon), Flèches de glace (+ Glace)
+
+### 9.3 Eau & Monde aquatique ⭐⭐⭐
+**Impact : IMMERSION / EXPLORATION / SURVIE**
+
+Système d'eau complet avec physique de fluide et contenu aquatique.
+
+#### Bloc d'eau — physique de fluide
+- **TILE_WATER** : nouveau type de bloc, bleu semi-transparent `(50, 100, 200, 160)`
+- **Gravité de l'eau** : l'eau coule vers le bas si l'espace en dessous est libre (Air)
+  - Vitesse : **1 bloc toutes les ~2 secondes** (tick d'eau)
+  - L'eau se propage aussi latéralement si elle ne peut plus descendre (remplissage en U)
+  - On peut **vider un réservoir** en cassant un bloc en dessous → l'eau s'écoule progressivement
+  - On peut **créer un barrage** en plaçant des blocs pour contenir l'eau
+- **Génération** :
+  - Lacs souterrains : poches d'eau dans les grottes (profondeur 15-50), 3-10 blocs de large
+  - Rivières de surface : rares, coulent dans des dépressions naturelles
+  - Réservoirs dans les structures (Bateau pirate rempli d'eau de cale, pyramide inondée)
+
+#### Physique du joueur dans l'eau
+- **Nage** : le joueur se déplace plus lentement dans l'eau (vitesse ×0.5)
+- **Gravité réduite** : chute ralentie, possibilité de remonter en appuyant sur saut
+- **Jauge d'oxygène** : 10 secondes d'air sous l'eau
+  - Barre d'oxygène affichée dans le HUD (bulles)
+  - À 0, le joueur perd **1 PV/seconde** (noyade)
+  - Se recharge instantanément à la surface
+- **Minage sous l'eau** : vitesse de minage ×0.5 (sauf avec enchantement futur)
+
+#### Mobs aquatiques 💡
+| Mob | PV | Dégâts | Tier épée | Comportement | Drop |
+|---|---|---|---|---|---|
+| **Poisson** | 1 | 0 | 0 | Passif, nage dans l'eau, fuit le joueur | Poisson cru (nourriture) |
+| **Méduse** | 2 | 1 (poison) | 0 | Flotte dans l'eau, inflige poison au contact (3s) | Gel lumineux |
+| **Piranha** | 2 | 1 | 1 (Bois) | Agressif en banc (3-5), rapide dans l'eau | Dent (craft) |
+| **Serpent de mer** | 8 | 3 | 2 (Fer) | Mini-boss aquatique, charge sous l'eau, détection 12 blocs | Écaille (craft armure aqua) |
+| **Kraken** (boss) | 30 | 4 | 3 (Or) | Boss aquatique, tentacules, crée des vagues, max 1/monde | Cœur de Kraken + Diamant ×3-5 |
+
+#### Équipement aquatique 💡
+| Item | Craft | Effet |
+|---|---|---|
+| **Masque de plongée** | Vitre ×2 + Fer ×1 | Oxygène ×2 (20 secondes) |
+| **Palmes** | Cuir ×2 (ou Écaille ×1) | Vitesse nage ×1.5 |
+| **Armure d'écaille** | Écaille ×5 (drop Serpent de mer) | Respiration sous l'eau illimitée + vitesse nage normale |
+| **Trident** | Fer ×2 + Écaille ×1 | Arme de mêlée/lancer, dégâts ×2 sous l'eau |
+
+#### Interactions eau & autres systèmes
+- **Eau + Lave** = Obsidienne (quand l'eau touche la lave, le bloc de lave se transforme)
+- **Eau + Torche** = la torche s'éteint (ne peut pas placer de torche dans l'eau)
+- **Mobs terrestres dans l'eau** : ralentis, certains ne savent pas nager et coulent
+- **Zombies dans l'eau** : deviennent des "Noyés" (variante, même stats mais nagent)
+
+### 9.4 Système de faim / nourriture ⭐⭐
+**Impact : SURVIE / IMMERSION**
+
+- Barre de faim (10 points) qui diminue lentement
+- À 0, le joueur perd des PV
+- Sources de nourriture :
+  - Pommes (drop des arbres)
+  - Viande crue (drop mobs : Poule, Sanglier)
+  - Viande cuite (cuisson au feu/four)
+  - Poisson (pêche)
+- Craft : **Four** (Pierre ×5) pour cuire la nourriture
+- Manger restaure de la faim + petite regen de PV
+
+### 9.5 Système de lumière des grottes ⭐⭐⭐
+**Impact : IMMERSION / EXPLORATION**
+
+- Dégradé de luminosité en fonction de la profondeur
+- Plus on descend, plus c'est sombre (déjà partiellement fait visuellement)
+- Les torches deviennent essentielles en profondeur
+- Les mobs profonds pourraient avoir un avantage dans le noir
+
+### 9.6 Musique & Sons ⭐⭐
+**Impact : IMMERSION**
+
+- Musique d'ambiance (calme en surface, tendue en profondeur)
+- Sons de minage, combat, craft
+- Son d'ambiance dans les grottes (gouttes d'eau, vent)
+- Sons aquatiques sous l'eau (bulles, courant)
+- Musique de boss
+
+### 9.7 Mini-map ⭐⭐
+**Impact : NAVIGATION**
+
+- Petite carte dans un coin montrant :
+  - Terrain environnant
+  - Position du joueur
+  - Position de l'autre joueur
+  - Structures découvertes
+
+### 9.8 Système d'XP & Niveaux ⭐⭐
+**Impact : PROGRESSION**
+
+- Gagner de l'XP en minant et tuant des mobs
+- Monter de niveau débloque :
+  - Plus de PV max
+  - Vitesse de minage améliorée
+  - Nouveaux emplacements d'inventaire
+- Barre d'XP dans le HUD
+
+### 9.9 Effets de statut ⭐⭐
+**Impact : GAMEPLAY**
+
+| Effet | Source | Durée | Description |
+|---|---|---|---|
+| Poison | Araignée, Méduse | 5s | -1 PV/2s |
+| Brûlure | Lave, Démon | 3s | -1 PV/s |
+| Lenteur | Toile d'araignée, Glace, Eau | 3s | Vitesse /2 |
+| Noyade | Sous l'eau sans air | Continu | -1 PV/s |
+| Régénération | Nourriture, potion | 10s | +1 PV/3s |
+| Force | Potion | 15s | Dégâts ×1.5 |
+
+### 9.10 Potions ⭐
+**Impact : GAMEPLAY AVANCÉ**
+
+- Craftées avec des ingrédients rares (Gel de slime, Yeux d'araignée, Gel lumineux, etc.)
+- Nécessite un **Alambic** (craft : Pierre ×4 + Vitre ×2)
+- Types : Soin, Régénération, Force, Vitesse, Vision nocturne, **Respiration aquatique**
+
+### 9.11 Animaux domesticables ⭐
+**Impact : IMMERSION**
+
+- Loup apprivoisable avec de la viande → compagnon de combat
+- Poule apprivoisable → pond des œufs (nourriture passive)
+
+### 9.12 Système de farming ⭐
+**Impact : SURVIE**
+
+- Planter des graines sur de la terre
+- Cultiver : Blé, Carottes, Citrouilles
+- Nécessite de l'eau à proximité
+- Récolte pour nourriture ou craft
+
+---
+
+## 10. Améliorations techniques proposées 💡
+
+| Amélioration | Description | Priorité |
+|---|---|---|
+| **Particules** | Effet visuel lors du minage, combat, mort de mob, torche | ⭐⭐⭐ |
+| **Animations des mobs** | Sprites animés au lieu de rectangles colorés | ⭐⭐ |
+| **Sprites du joueur** | Animation de marche, minage, attaque | ⭐⭐ |
+| **Écran de mort** | Écran "Game Over" avec stats et option respawn | ⭐⭐ |
+| **Menu principal** | Titre, Nouvelle partie, Charger, Options | ⭐⭐ |
+| **Keybinding configurable** | Permettre de remapper les touches | ⭐ |
+| **Optimisation rendu** | Frustum culling amélioré, chunk loading async | ⭐ |
+| **Tutoriel intégré** | Premiers pas guidés pour les nouveaux joueurs | ⭐⭐ |
+
+---
+
+## 11. Priorités recommandées
+
+### Priorité haute ⭐⭐⭐ — Impact immédiat sur l'immersion et le gameplay
+
+| # | Feature | Type | Complexité |
+|---|---|---|---|
+| 1 | **Eau & monde aquatique** (physique fluide, nage, oxygène, mobs aquatiques) | Monde/Survie | Élevée |
+| 2 | **Torches & éclairage** | Immersion | Moyenne |
+| 3 | **Arc & flèches** | Gameplay | Moyenne |
+| 4 | **Lave** (+ interaction Eau→Obsidienne) | Monde/Danger | Faible |
+| 5 | **Mob Mimic** (coffre piégé) | Fun/Surprise | Faible |
+| 6 | **Particules** (minage, combat) | Polish | Faible |
+| 7 | **Biomes variés** | Exploration | Élevée |
+
+### Priorité moyenne ⭐⭐ — Enrichit le jeu significativement
+
+| # | Feature | Type | Complexité |
+|---|---|---|---|
+| 8 | Système de faim/nourriture | Survie | Moyenne |
+| 9 | Effets de statut (poison, noyade, brûlure...) | Combat | Moyenne |
+| 10 | Mini-map | Navigation | Moyenne |
+| 11 | Durabilité des outils | Progression | Faible |
+| 12 | Boss Liche | Combat | Élevée |
+| 13 | Boss Kraken (aquatique) | Combat/Eau | Élevée |
+| 14 | Loups (meute + domestication) | Immersion | Moyenne |
+| 15 | Sons & musique | Immersion | Moyenne |
+
+### Priorité basse ⭐ — Nice to have, quand le reste est solide
+
+| # | Feature | Type | Complexité |
+|---|---|---|---|
+| 16 | Potions & alambic (dont Respiration aquatique) | Gameplay | Élevée |
+| 17 | Farming (nécessite eau) | Survie | Moyenne |
+| 18 | Villages PNJ | Monde | Très élevée |
+| 19 | Portails/dimensions | Monde | Très élevée |
+| 20 | Enchantements | Progression | Élevée |
+| 21 | Animaux domesticables | Immersion | Moyenne |
+
+---
+
+## 12. Résumé : Ce qui existe vs ce qui reste à faire
+
+### ✅ Implémenté (complet)
+- **Système de biomes** : 3 biomes (Forêt, Désert, Glace) avec bruit lent, sols/ciel/mobs/structures différents
+- Minage avec tiers de pioche
+- Craft avec table à 4 niveaux (Bois → Fer → Or → Diamant)
+- 20 mobs (5 passifs, 14 agressifs, 1 boss) dont 4 mobs de biome (Pingouin, Ours polaire, Scorpion, Vautour)
+- Combat au corps-à-corps avec épée (4 tiers)
+- Armure complète (4 tiers × 3 pièces)
+- Minerais (Fer, Or, Diamant) avec génération par profondeur
+- 5 structures (Cabane, Château, Bateau, Pyramide, Donjon)
+- Loot de coffres contextualisé par profondeur
+- Cycle jour/nuit avec zombies nocturnes
+- Trading P2P (2 joueurs)
+- Boss Vrille (souterrain, unique)
+- Placement de blocs
+- Système de drapeau/respawn
+- Sauvegarde monde/inventaire
+
+### ❌ Pas encore implémenté (du design original)
+- Boss Liche
+- Durabilité des outils
+- Lave, Glace, Mousse (nouveaux blocs)
+- Items spéciaux de craft (Fil d'araignée, Os, Gel de slime — en tant que ressource utilisable)
+- Drop de mob en tant que ressources de craft (les mobs drop des minerais mais pas d'items uniques craftables)
+
+### 💡 Nouvelles idées (pas dans le design original)
+- **Eau & monde aquatique** — physique de fluide (coule 1 bloc/2s), nage, jauge d'oxygène, mobs aquatiques (Poisson, Méduse, Piranha, Serpent de mer, boss Kraken), équipement de plongée, interaction Eau+Lave=Obsidienne
+- Torches & éclairage dynamique
+- Arc & combat à distance
+- ~~Biomes variés~~ ✅ Implémenté (Forêt, Désert, Glace)
+- Effets de statut (poison, brûlure, noyade, etc.)
+- Potions (dont Respiration aquatique)
+- Farming (nécessite eau à proximité)
+- PNJ marchands
+- Animaux domesticables
+- Particules visuelles
+- Sons & musique

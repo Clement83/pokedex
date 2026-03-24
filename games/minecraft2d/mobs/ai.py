@@ -8,6 +8,7 @@ from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
+    MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     _PASSIVE_MOBS, _FLYING_MOBS, _DEEP_MOBS, _mw, _mh,
 )
 from mobs.physics import _solid, _move_mob_x, _move_mob_y
@@ -283,6 +284,84 @@ def update_mob(mob, dt, players, world):  # noqa: C901
         if _solid(world, check_col, int(mob.center_row())):
             mob._wander_dir *= -1
             mob._wander_cd   = 0.0
+    # ── Pingouin (passif, biome glace) ──────────────────────────────────────
+    elif mob.mob_type == MOB_PENGUIN:
+        if dist <= 4.0:
+            mob.vx = -dir_to * 3.0
+            if mob.on_ground and mob._jump_cd <= 0:
+                mob.vy       = JUMP_VEL * 0.45
+                mob._jump_cd = 0.7
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 2.0 + mob._rng.random() * 3.0
+            mob.vx = 1.5 * mob._wander_dir
+            check_col = int(mob.x + mob._wander_dir * (_mw(MOB_PENGUIN) + 0.1))
+            if _solid(world, check_col, int(cy)):
+                mob._wander_dir *= -1
+                mob._wander_cd   = 0.0
+
+    # ── Ours polaire (agressif, biome glace) ─────────────────────────────────
+    elif mob.mob_type == MOB_POLAR_BEAR:
+        if dist <= 8.0:
+            mob.state     = "chase"
+            mob._state_cd = 3.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 2.8 * dir_to
+            nc = int(mob.x + dir_to * (_mw(MOB_POLAR_BEAR) + 0.1))
+            if mob.on_ground and mob._jump_cd <= 0 and _solid(world, nc, int(cy)):
+                mob.vy = JUMP_VEL * 0.85; mob._jump_cd = 0.6
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 3.0 + mob._rng.random() * 4.0
+            mob.vx = 1.0 * mob._wander_dir
+
+    # ── Scorpion (agressif, biome désert) ────────────────────────────────────
+    elif mob.mob_type == MOB_SCORPION:
+        if dist <= 6.0:
+            mob.state     = "chase"
+            mob._state_cd = 2.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 3.5 * dir_to
+            nc = int(mob.x + dir_to * (_mw(MOB_SCORPION) + 0.1))
+            if mob.on_ground and mob._jump_cd <= 0 and _solid(world, nc, int(cy)):
+                mob.vy = JUMP_VEL * 0.7; mob._jump_cd = 0.4
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 1.5 + mob._rng.random() * 2.5
+            mob.vx = 2.0 * mob._wander_dir
+            check_col = int(mob.x + mob._wander_dir * (_mw(MOB_SCORPION) + 0.1))
+            if _solid(world, check_col, int(cy)):
+                mob._wander_dir *= -1
+
+    # ── Vautour (semi-agressif, biome désert, volant) ────────────────────────
+    elif mob.mob_type == MOB_VULTURE:
+        mob._fly_phase += dt * 1.8
+        if dist <= 8.0:
+            mob.state     = "chase"
+            mob._state_cd = 3.0
+        elif mob._state_cd <= 0:
+            mob.state = "idle"
+        if mob.state == "chase":
+            mob.vx = 3.0 * dir_to
+            mob.vy = (pcy - cy) * 1.8 + math.sin(mob._fly_phase) * 0.5
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd  = 2.5 + mob._rng.random() * 3.5
+            mob.vx = 3.0 * mob._wander_dir
+            mob.vy = math.sin(mob._fly_phase) * 0.6
+
     elif mob.mob_type in _DEEP_MOBS: return _update_deep_mob(mob, dt, players, world)
     # ── Gravité + déplacement ─────────────────────────────────────────────────
     if mob.mob_type in _FLYING_MOBS:

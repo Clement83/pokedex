@@ -5,6 +5,7 @@ Extrait de world.py pour garder les fichiers sous 300 lignes.
 from config import (
     TILE_AIR, TILE_STONE, TILE_WOOD, TILE_COAL,
     TILE_BRICK, TILE_CHEST, TILE_OBSIDIAN, TILE_GLASS,
+    TILE_SAND, TILE_SNOW, TILE_ICE, TILE_GOLD_ORE,
 )
 
 
@@ -111,10 +112,75 @@ def _build_pyramid(col, seed):
     return blocks
 
 
+def _build_great_pyramid(col, seed):
+    """Grande pyramide du désert ~21×12, salle intérieure avec trésor."""
+    blocks = {}
+    W = 21
+    # Forme pyramidale extérieure (11 niveaux)
+    for level in range(11):
+        width = W - level * 2
+        offset = level
+        for dc in range(offset, offset + width):
+            blocks[(dc, -level)] = TILE_SAND
+    # Sommet en or
+    blocks[(10, -11)] = TILE_GOLD_ORE
+    # Salle intérieure creuse (7×4)
+    for dc in range(7, 14):
+        for dr in range(-5, -1):
+            blocks[(dc, dr)] = TILE_AIR
+    # Sol de la salle en obsidienne
+    for dc in range(7, 14):
+        blocks[(dc, -1)] = TILE_OBSIDIAN
+    # Entrée latérale
+    for dr in range(-2, 0):
+        blocks[(6, dr)] = TILE_AIR
+    # Coffres (2 dans la salle)
+    blocks[(9, -2)] = TILE_CHEST
+    blocks[(12, -2)] = TILE_CHEST
+    # Piliers décoratifs
+    for dr in range(-5, -1):
+        blocks[(8, dr)] = TILE_SAND
+        blocks[(13, dr)] = TILE_SAND
+    return blocks
+
+
+def _build_igloo(col, seed):
+    """Igloo en neige/glace ~7×5, petit abri avec coffre."""
+    blocks = {}
+    # Dôme en neige
+    #     XXX       dr=-3
+    #    XXXXX      dr=-2
+    #   XXXXXXX     dr=-1
+    #   X     X     dr=0 (murs)
+    #   XXXXXXX     dr=1 (sol)
+    for dc in range(2, 5):
+        blocks[(dc, -3)] = TILE_SNOW
+    for dc in range(1, 6):
+        blocks[(dc, -2)] = TILE_SNOW
+    for dc in range(0, 7):
+        blocks[(dc, -1)] = TILE_SNOW
+    # Murs
+    blocks[(0, 0)] = TILE_ICE
+    blocks[(6, 0)] = TILE_ICE
+    # Sol en glace
+    for dc in range(0, 7):
+        blocks[(dc, 1)] = TILE_ICE
+    # Intérieur creux
+    for dc in range(1, 6):
+        blocks[(dc, 0)] = TILE_AIR
+    # Entrée
+    blocks[(0, 0)] = TILE_AIR
+    # Coffre
+    blocks[(4, 0)] = TILE_CHEST
+    return blocks
+
+
 # ── Catalogue des structures de surface ──────────────────────────────────────
 
 _STRUCTURES = [
-    ("castle",   0.003, 120, _build_castle),
-    ("ship",     0.004, 100, _build_pirate_ship),
-    ("pyramid",  0.003, 110, _build_pyramid),
+    ("castle",        0.003, 120, _build_castle),
+    ("ship",          0.004, 100, _build_pirate_ship),
+    ("pyramid",       0.003, 110, _build_pyramid),
+    ("great_pyramid", 0.005,  80, _build_great_pyramid),
+    ("igloo",         0.008,  40, _build_igloo),
 ]

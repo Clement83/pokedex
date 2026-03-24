@@ -28,6 +28,10 @@ TILE_GLASS = 10             # vitre (fenêtres et hublots)
 TILE_IRON_ORE    = 11       # minerai de fer
 TILE_GOLD_ORE    = 12       # minerai d'or
 TILE_DIAMOND_ORE = 13       # minerai de diamant
+TILE_SNOW        = 14       # neige (surface biome glace)
+TILE_ICE         = 15       # glace (sous-sol biome glace)
+TILE_LAVA        = 16       # lave (non-solide, dégâts au contact)
+TILE_WATER       = 17       # eau (non-solide, ralentit le joueur)
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -45,6 +49,10 @@ TILE_NAMES = {
     TILE_IRON_ORE:    "Minerai de Fer",
     TILE_GOLD_ORE:    "Minerai d'Or",
     TILE_DIAMOND_ORE: "Minerai de Diamant",
+    TILE_SNOW:        "Neige",
+    TILE_ICE:         "Glace",
+    TILE_LAVA:        "Lave",
+    TILE_WATER:       "Eau",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -68,6 +76,21 @@ EQUIP_SWORD   = 3   # épée (main)
 EQUIP_PICKAXE = 4   # pioche (main)
 
 # Matériaux
+# ── Biomes ───────────────────────────────────────────────────────────────────
+BIOME_FOREST = 0
+BIOME_DESERT = 1
+BIOME_ICE    = 2
+BIOME_FREQ   = 0.008   # biomes ~120 cols de large (4 écrans), autre biome à ~2 écrans
+
+BIOME_NAMES = {BIOME_FOREST: "Forêt", BIOME_DESERT: "Désert", BIOME_ICE: "Glace"}
+
+# Couleur du ciel (tuiles AIR) par biome
+BIOME_SKY_COLORS = {
+    BIOME_FOREST: (100, 160, 220),   # bleu classique
+    BIOME_DESERT: (170, 155, 120),   # ciel chaud sableux
+    BIOME_ICE:    (155, 190, 225),   # ciel froid bleuté
+}
+
 MAT_WOOD    = 0
 MAT_IRON    = 1
 MAT_GOLD    = 2
@@ -134,6 +157,10 @@ TILE_COLORS = {
     TILE_IRON_ORE:    (135, 108,  92),   # brun-rouille
     TILE_GOLD_ORE:    (180, 155,  55),   # jaune-pierre
     TILE_DIAMOND_ORE: ( 70, 200, 215),   # bleu glacier
+    TILE_SNOW:        (230, 240, 255),   # blanc bleuté
+    TILE_ICE:         (150, 200, 240),   # bleu glace
+    TILE_LAVA:        (220,  80,   0),   # orange lave
+    TILE_WATER:       ( 40,  90, 200),   # bleu eau
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -151,6 +178,8 @@ TILE_BREAK_TIME = {
     TILE_IRON_ORE:    1.2,
     TILE_GOLD_ORE:    1.8,
     TILE_DIAMOND_ORE: 2.5,
+    TILE_SNOW:        0.3,
+    TILE_ICE:         0.5,
 }
 
 # Tier de pioche minimum requis pour miner un bloc
@@ -168,6 +197,8 @@ TILE_PICKAXE_TIER = {
     TILE_GOLD_ORE:    2,
     TILE_OBSIDIAN:    3,
     TILE_DIAMOND_ORE: 3,
+    TILE_SNOW:        0,
+    TILE_ICE:         1,
 }
 
 # ── Génération du terrain ─────────────────────────────────────────────────────

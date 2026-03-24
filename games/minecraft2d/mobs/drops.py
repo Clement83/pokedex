@@ -26,6 +26,10 @@ MOB_TROLL   = 12
 MOB_WORM    = 13
 MOB_WRAITH  = 14
 MOB_TENDRIL = 15
+MOB_PENGUIN    = 16
+MOB_POLAR_BEAR = 17
+MOB_SCORPION   = 18
+MOB_VULTURE    = 19
 
 # Format : liste de (item, count_min, count_max, probabilité)
 # item = TILE_xxx (ressource bloc) ou (EQUIP_xxx, MAT_xxx) (équipement)
@@ -71,10 +75,19 @@ _MOB_DROPS = {
         (TILE_DIAMOND_ORE, 1, 2, 0.45),
     ],
     MOB_TENDRIL:  [
-        # Boss v\u00e9g\u00e9tal : drops garantis importants
+        # Boss végétal : drops garantis importants
         (TILE_DIAMOND_ORE, 2, 4, 1.00),
         (TILE_GOLD_ORE,    3, 6, 1.00),
     ],
+    MOB_PENGUIN:    [],
+    MOB_POLAR_BEAR: [
+        (TILE_STONE,    2, 4, 0.90),
+        (TILE_IRON_ORE, 1, 2, 0.35),
+    ],
+    MOB_SCORPION:   [
+        (TILE_STONE,    1, 2, 0.60),
+    ],
+    MOB_VULTURE:    [],
 }
 
 

@@ -17,10 +17,10 @@ import sounds as _sounds
 import music_player as _music
 import mobs as _mobs
 
-from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks
+from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks, on_ice, in_lava, in_water
 from scenes.game.camera      import Camera, ChunkCache
 from scenes.game.controls    import joy_btn, get_dir_p1, get_dir_p2, get_cursor
-from scenes.game.sky         import sky_color, night_alpha, is_night, draw_night_overlay, draw_sky_hud, DAY_CYCLE_DURATION
+from scenes.game.sky         import sky_color, night_alpha, is_night, draw_night_overlay, draw_sky_hud, DAY_CYCLE_DURATION, biome_sky_tint
 from scenes.game.renderer_world  import draw_world, draw_cursor, draw_flag_in_world
 from scenes.game.renderer_player import draw_player, draw_hearts, draw_compass, _HEART_W, _HEART_GAP
 from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H as _HOTBAR_SLOT_H
@@ -104,7 +104,10 @@ def run(screen, joysticks, world_id, seed):
     ]
     p_dirs=[( 0,0),(0,0)]; break_infos=[None,None]; prev_mine=[False,False]
     prev_dx=[0,0]; prev_dy=[0,0]; mine_tick_cd=[0.0,0.0]
+    prev_mod=[False,False]; mod_used=[False,False]  # détection tap sur modifier
     loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]; trade_menu=TradeMenu()
+    lava_dmg_cd = [0.0, 0.0]   # cooldown dégâts lave par joueur (1 PV/s)
+    _liquid_cd = [0.0]         # tick physique liquides (lave/eau future)
 
     # Dirty flags caméra pour éviter preload_around si la cam n'a pas bougé
     _preload_last = {}   # {cam_id: (x, y)}
@@ -118,7 +121,9 @@ def run(screen, joysticks, world_id, seed):
             _preload_last[key] = cur
 
     def _draw_view(surf, cam, view_w, k, bi):
-        surf.fill(_sky_c)
+        center_col = int((cam.x + view_w // 2) / TILE_SIZE)
+        _biome = world.biome_at(center_col)
+        surf.fill(biome_sky_tint(_sky_c, _biome))
         _preload_if_moved(cam, view_w)
         draw_world(surf, chunks, cam, bi)
         for j, pl in enumerate(players):
@@ -178,7 +183,7 @@ def run(screen, joysticks, world_id, seed):
                 player.on_ground = False
                 move_y(player, world, player.vy * dt)
                 if player._action_cd > 0: player._action_cd -= dt
-                prev_mine[i] = cur_mine; prev_dy[i] = dy; prev_dx[i] = dx
+                prev_mine[i] = cur_mine; prev_mod[i] = cur_mod; prev_dy[i] = dy; prev_dx[i] = dx
                 continue
 
             # ── Ouverture troc : outil Main + action + joueurs adjacents ──────────
@@ -192,7 +197,7 @@ def run(screen, joysticks, world_id, seed):
                         for k, cam in enumerate(split_cams):
                             cam.x = max(0, players[k].px() - HALF_W // 2)
                             cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
-                    prev_mine[i] = cur_mine; prev_dy[i] = dy; prev_dx[i] = dx
+                    prev_mine[i] = cur_mine; prev_mod[i] = cur_mod; prev_dy[i] = dy; prev_dx[i] = dx
                     continue
 
             # ── Ouverture menu craft (outil actif = Table de Craft + action) ────────
@@ -216,16 +221,33 @@ def run(screen, joysticks, world_id, seed):
                     loot_notifs.append([msg, 2.5 if name else 1.0, col2])
                     if name: _sounds.chest_open()
                 if cur_mod: craft_menus[i].close()
-                prev_mine[i] = cur_mine; prev_dy[i] = dy; prev_dx[i] = dx; continue
+                prev_mine[i] = cur_mine; prev_mod[i] = cur_mod; prev_dy[i] = dy; prev_dx[i] = dx; continue
 
+            _on_ice = on_ice(player, world)
             if cur_mod:
-                if dx ==  1 and prev_dx[i] !=  1: player.inventory.slot_next();  _sounds.inv_change()
-                elif dx == -1 and prev_dx[i] != -1: player.inventory.slot_prev(); _sounds.inv_change()
-                if dy == -1 and prev_dy[i] != -1: player.inventory.item_prev();  _sounds.inv_change()
-                elif dy == 1 and prev_dy[i] != 1: player.inventory.item_next();  _sounds.inv_change()
+                if dx ==  1 and prev_dx[i] !=  1: player.inventory.slot_next();  _sounds.inv_change(); mod_used[i] = True
+                elif dx == -1 and prev_dx[i] != -1: player.inventory.slot_prev(); _sounds.inv_change(); mod_used[i] = True
+                if dy == -1 and prev_dy[i] != -1: player.inventory.item_prev();  _sounds.inv_change(); mod_used[i] = True
+                elif dy == 1 and prev_dy[i] != 1: player.inventory.item_next();  _sounds.inv_change(); mod_used[i] = True
+                if cur_mine: mod_used[i] = True   # action pendant modifier = pas un tap
                 player.vx = 0.0
             else:
-                player.vx = dx * WALK_SPEED
+                # Tap modifier (relâché sans avoir utilisé de direction) → défiler outil
+                if prev_mod[i] and not mod_used[i]:
+                    saved = player.inventory.active_slot
+                    player.inventory.active_slot = 0
+                    player.inventory.item_next()
+                    player.inventory.active_slot = saved
+                    _sounds.inv_change()
+                mod_used[i] = False
+                if _on_ice:
+                    # Glace : inertie — accélération lente, friction faible
+                    target = dx * WALK_SPEED
+                    player.vx += (target - player.vx) * 2.5 * dt
+                    if abs(dx) < 0.1:
+                        player.vx *= (1.0 - 0.8 * dt)  # friction douce quand aucune touche
+                else:
+                    player.vx = dx * WALK_SPEED
             if dx or dy: p_dirs[i] = (dx, dy)
             prev_dx[i] = dx; prev_dy[i] = dy
 
@@ -249,10 +271,25 @@ def run(screen, joysticks, world_id, seed):
                     break_infos, mine_tick_cd, loot_notifs,
                     cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, dt, _queue)
             elif not cur_mine: break_infos[i] = None; player._break_time = 0.0
-            prev_mine[i] = cur_mine
+            prev_mine[i] = cur_mine; prev_mod[i] = cur_mod
 
         for player in players:
             player._dmg_flash = max(0.0, player._dmg_flash - dt)
+        # ── Dégâts de lave (1 PV par seconde) ────────────────────────────
+        for i, player in enumerate(players):
+            if in_lava(player, world):
+                player.vy = min(player.vy, MAX_FALL_SPEED * 0.3)  # ralentit dans la lave
+                lava_dmg_cd[i] -= dt
+                if lava_dmg_cd[i] <= 0:
+                    player.hp -= 1
+                    player._dmg_flash = 0.4
+                    lava_dmg_cd[i] = 1.0
+            else:
+                lava_dmg_cd[i] = 0.0  # reset : premiers dégâts immédiats
+            # Eau : ralentit la chute et le déplacement
+            if in_water(player, world):
+                player.vy = min(player.vy, MAX_FALL_SPEED * 0.25)
+                player.vx *= 0.85
         for i, player in enumerate(players):
             if player.hp <= 0 or player.y * TILE_SIZE > ROWS * TILE_SIZE + 64:
                 player.hp = player.max_hp
@@ -266,6 +303,43 @@ def run(screen, joysticks, world_id, seed):
             mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 6.0
         mob_mgr.update(dt, players, world)
         mob_mgr.tick_day_night(_is_nite, world, players)
+
+        # ── Tick liquides (lave + eau) : itère seulement world.mods ──────
+        _liquid_cd[0] -= dt
+        if _liquid_cd[0] <= 0:
+            _liquid_cd[0] = 1.0
+            _LIQUIDS = (TILE_LAVA, TILE_WATER)
+            _liq = sorted(
+                ((c, r, t) for (c, r), t in world.mods.items() if t in _LIQUIDS),
+                key=lambda x: -x[1],  # bottom-to-top pour cascade
+            )
+            for _col, _row, _lt in _liq:
+                if world.get(_col, _row) != _lt:
+                    continue  # déjà déplacé ce tick
+                for _dc in (0, 1, -1) if (_col + _row) % 2 else (0, -1, 1):
+                    _nc, _nr = _col + (0 if _dc == 0 else _dc), _row + 1
+                    _below = world.get(_nc, _nr)
+                    if _below == TILE_AIR:
+                        world.set(_col, _row, TILE_AIR)
+                        world.set(_nc, _nr, _lt)
+                        chunks.update_tile(_col, _row, TILE_AIR)
+                        chunks.update_tile(_nc, _nr, _lt)
+                        _queue(_col, _row, TILE_AIR)
+                        _queue(_nc, _nr, _lt)
+                        # Activer les voisins procéduraux au-dessus
+                        for _ac, _ar in ((_col, _row - 1), (_col - 1, _row), (_col + 1, _row)):
+                            if (_ac, _ar) not in world.mods and world.get(_ac, _ar) in _LIQUIDS:
+                                world.mods[(_ac, _ar)] = world.get(_ac, _ar)
+                        break
+                    # Eau + Lave → obsidienne
+                    if {_lt, _below} == {TILE_WATER, TILE_LAVA}:
+                        world.set(_col, _row, TILE_AIR)
+                        world.set(_nc, _nr, TILE_OBSIDIAN)
+                        chunks.update_tile(_col, _row, TILE_AIR)
+                        chunks.update_tile(_nc, _nr, TILE_OBSIDIAN)
+                        _queue(_col, _row, TILE_AIR)
+                        _queue(_nc, _nr, TILE_OBSIDIAN)
+                        break
 
         dx_d = abs(players[0].px() - players[1].px()); dy_d = abs(players[0].py() - players[1].py())
         pdist = max(dx_d, dy_d)

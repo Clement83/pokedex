@@ -4,7 +4,9 @@ Gestionnaire de mobs : spawn, update et dessin.
 import math
 import random
 from world import _hash1
-from config import TILE_SIZE, PLAYER_W, PLAYER_H, TILE_AIR, ROWS, MAT_TIER, TILE_SAND, TILE_GRASS, TILE_DIRT
+from config import (TILE_SIZE, PLAYER_W, PLAYER_H, TILE_AIR, ROWS, MAT_TIER,
+                    TILE_SAND, TILE_GRASS, TILE_DIRT,
+                    BIOME_FOREST, BIOME_DESERT, BIOME_ICE)
 
 from mobs.base import (
     Mob,
@@ -12,6 +14,7 @@ from mobs.base import (
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
     MOB_TENDRIL,
+    MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
     _MOB_PW, _MOB_PH,
 )
@@ -59,6 +62,10 @@ class MobManager:
                     self._try_spawn_seagull(col, surf, world, seed)
                     self._try_spawn_crab(col, surf, world, seed)
                     self._try_spawn_boar(col, surf, world, seed)
+                    self._try_spawn_penguin(col, surf, world, seed)
+                    self._try_spawn_polar_bear(col, surf, world, seed)
+                    self._try_spawn_scorpion(col, surf, world, seed)
+                    self._try_spawn_vulture(col, surf, world, seed)
 
         self._mobs = [
             m for m in self._mobs
@@ -76,6 +83,8 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
+        if world.biome_at(col) == BIOME_DESERT:
+            return
         origin = world._cabin_origin(col)
         if origin is None or col != origin:
             return
@@ -125,6 +134,8 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
+        if world.biome_at(col) == BIOME_DESERT:
+            return
         if _hash1(col * 113 + 41, seed ^ 0x5B1D) >= 0.035: # 0.07 -> 0.035
             return
         for row in range(surf + 3, min(surf + 25, ROWS - 2)):
@@ -227,6 +238,8 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
+        if world.biome_at(col) != BIOME_FOREST:
+            return
         if _hash1(col * 89 + 17, seed ^ 0xF09B) >= 0.012:  # 0.025 -> 0.012
             return
         top = surf - math.ceil(_mh(MOB_FROG))
@@ -240,11 +253,77 @@ class MobManager:
         if key in self._spawned:
             return
         self._spawned.add(key)
+        if world.biome_at(col) == BIOME_ICE:
+            return
         if _hash1(col * 61 + 23, seed ^ 0xBEEF) >= 0.009:  # 0.018 -> 0.009
             return
         fly_row = surf - 7
         if fly_row >= 1:
             m = Mob(col, float(fly_row), MOB_SEAGULL, seed)
+            m._wander_dir = 1 if m._rng.random() > 0.5 else -1
+            self._mobs.append(m)
+
+    # ── Mobs de biome : Glace ──────────────────────────────────────────────────
+
+    def _try_spawn_penguin(self, col, surf, world, seed):
+        key = (col, MOB_PENGUIN)
+        if key in self._spawned:
+            return
+        self._spawned.add(key)
+        if world.biome_at(col) != BIOME_ICE:
+            return
+        if _hash1(col * 71 + 19, seed ^ 0xB1CE) >= 0.025:
+            return
+        top = surf - math.ceil(_mh(MOB_PENGUIN))
+        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_PENGUIN)))):
+            m = Mob(col, top, MOB_PENGUIN, seed)
+            _eject_mob(m, world)
+            self._mobs.append(m)
+
+    def _try_spawn_polar_bear(self, col, surf, world, seed):
+        key = (col, MOB_POLAR_BEAR)
+        if key in self._spawned:
+            return
+        self._spawned.add(key)
+        if world.biome_at(col) != BIOME_ICE:
+            return
+        if _hash1(col * 127 + 43, seed ^ 0xBEA1) >= 0.012:
+            return
+        top = surf - math.ceil(_mh(MOB_POLAR_BEAR))
+        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_POLAR_BEAR)))):
+            m = Mob(col, top, MOB_POLAR_BEAR, seed)
+            _eject_mob(m, world)
+            self._mobs.append(m)
+
+    # ── Mobs de biome : Désert ───────────────────────────────────────────────
+
+    def _try_spawn_scorpion(self, col, surf, world, seed):
+        key = (col, MOB_SCORPION)
+        if key in self._spawned:
+            return
+        self._spawned.add(key)
+        if world.biome_at(col) != BIOME_DESERT:
+            return
+        if _hash1(col * 109 + 37, seed ^ 0x5C01) >= 0.025:
+            return
+        top = surf - math.ceil(_mh(MOB_SCORPION))
+        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_SCORPION)))):
+            m = Mob(col, top, MOB_SCORPION, seed)
+            _eject_mob(m, world)
+            self._mobs.append(m)
+
+    def _try_spawn_vulture(self, col, surf, world, seed):
+        key = (col, MOB_VULTURE)
+        if key in self._spawned:
+            return
+        self._spawned.add(key)
+        if world.biome_at(col) != BIOME_DESERT:
+            return
+        if _hash1(col * 83 + 29, seed ^ 0xAF01) >= 0.015:
+            return
+        fly_row = surf - 8
+        if fly_row >= 1:
+            m = Mob(col, float(fly_row), MOB_VULTURE, seed)
             m._wander_dir = 1 if m._rng.random() > 0.5 else -1
             self._mobs.append(m)
 

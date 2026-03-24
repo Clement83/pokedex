@@ -9,6 +9,7 @@ from mobs.base import (
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
     MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL,
+    MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     _MOB_PW, _MOB_PH, _MOB_COLOR,
 )
 
@@ -262,7 +263,99 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         pygame.draw.rect(screen, (160, 20, 20), (sx, sy + mh + 2, mw, 3))
         pygame.draw.rect(screen, ( 40, 200, 60), (sx, sy + mh + 2, bar_w, 3))
 
-    # ── Effet br\u00fblure (zombie de surface au lever du soleil) ─────────────────
+    elif mob.mob_type == MOB_PENGUIN:
+        dr = pygame.draw.rect
+        bk = ( 20,  20,  30)   # noir
+        wh = (230, 235, 240)   # ventre blanc
+        yl = (230, 180,  30)   # bec/pattes orange
+        # Corps noir
+        dr(screen, bk, (sx + 1, sy + 1, 6, 7))
+        # Ventre blanc
+        dr(screen, wh, (sx + 2, sy + 3, 4, 4))
+        # Tête
+        dr(screen, bk, (sx + 2, sy,     4, 3))
+        # Yeux
+        dr(screen, wh, (sx + 3, sy + 1, 1, 1))
+        dr(screen, wh, (sx + 5, sy + 1, 1, 1))
+        # Bec
+        dr(screen, yl, (sx + 6, sy + 2, 2, 1))
+        # Pattes
+        dr(screen, yl, (sx + 2, sy + 8, 2, 2))
+        dr(screen, yl, (sx + 5, sy + 8, 2, 2))
+        # Aileron
+        dr(screen, bk, (sx,     sy + 3, 2, 4))
+        dr(screen, bk, (sx + 6, sy + 3, 2, 4))
+
+    elif mob.mob_type == MOB_POLAR_BEAR:
+        dr = pygame.draw.rect
+        wh = (240, 240, 245)   # blanc polaire
+        dk = (200, 200, 210)   # ombre
+        ns = ( 40,  30,  30)   # nez/yeux
+        # Corps massif
+        dr(screen, wh, (sx + 1, sy + 3, 14, 8))
+        dr(screen, dk, (sx + 2, sy + 5, 12, 4))
+        # Tête
+        dr(screen, wh, (sx + 10, sy,     6, 5))
+        # Oreilles
+        dr(screen, wh, (sx + 10, sy - 1, 2, 2))
+        dr(screen, wh, (sx + 14, sy - 1, 2, 2))
+        # Yeux
+        dr(screen, ns, (sx + 11, sy + 1, 1, 1))
+        dr(screen, ns, (sx + 14, sy + 1, 1, 1))
+        # Museau
+        dr(screen, dk, (sx + 12, sy + 3, 3, 2))
+        dr(screen, ns, (sx + 13, sy + 3, 1, 1))
+        # Pattes
+        dr(screen, wh, (sx + 2,  sy + 10, 3, 4))
+        dr(screen, wh, (sx + 6,  sy + 10, 3, 4))
+        dr(screen, wh, (sx + 9,  sy + 10, 3, 4))
+        dr(screen, wh, (sx + 12, sy + 10, 3, 4))
+        # Griffes
+        dr(screen, ns, (sx + 2,  sy + 13, 3, 1))
+        dr(screen, ns, (sx + 12, sy + 13, 3, 1))
+
+    elif mob.mob_type == MOB_SCORPION:
+        dr = pygame.draw.rect
+        sc = (140, 100,  40)   # corps brun
+        dk = (100,  70,  25)   # ombre
+        st = (180,  50,  30)   # dard rouge
+        # Corps
+        dr(screen, sc, (sx + 2, sy + 3, 8, 4))
+        dr(screen, dk, (sx + 3, sy + 4, 6, 2))
+        # Queue recourbée (3 segments vers le haut)
+        dr(screen, sc, (sx,     sy + 3, 3, 2))
+        dr(screen, sc, (sx - 1, sy + 1, 2, 3))
+        dr(screen, sc, (sx,     sy,     2, 2))
+        dr(screen, st, (sx + 1, sy - 1, 1, 2))   # dard
+        # Pinces
+        dr(screen, sc, (sx + 9, sy + 2, 3, 2))
+        dr(screen, sc, (sx + 9, sy + 4, 3, 2))
+        # Yeux
+        dr(screen, (0, 0, 0), (sx + 8, sy + 3, 1, 1))
+        # Pattes
+        dr(screen, dk, (sx + 3, sy + 6, 2, 2))
+        dr(screen, dk, (sx + 5, sy + 6, 2, 2))
+        dr(screen, dk, (sx + 7, sy + 6, 2, 2))
+
+    elif mob.mob_type == MOB_VULTURE:
+        dr = pygame.draw.rect
+        vc = ( 60,  45,  35)   # brun foncé
+        vl = ( 90,  70,  50)   # brun clair
+        wo = int(math.sin(mob._fly_phase) * 1.5)
+        # Ailes
+        dr(screen, vc, (sx,     sy + 1 + wo, 3, 2))
+        dr(screen, vc, (sx + 7, sy + 1 + wo, 3, 2))
+        # Corps
+        dr(screen, vc, (sx + 2, sy + 2, 6, 3))
+        dr(screen, vl, (sx + 3, sy + 3, 4, 1))
+        # Tête (cou nu)
+        dr(screen, (180, 100, 80), (sx + 4, sy,     3, 2))
+        # Bec
+        dr(screen, (180, 150, 50), (sx + 7, sy + 1, 2, 1))
+        # Oeil
+        dr(screen, (0, 0, 0),      (sx + 5, sy,     1, 1))
+
+    # ── Effet brûlure (zombie de surface au lever du soleil) ─────────────────
     if getattr(mob, 'burning', False):
         alpha = int(abs(math.sin(mob._fly_phase * 6)) * 180 + 50)
         burn  = pygame.Surface((mw, mh), pygame.SRCALPHA)

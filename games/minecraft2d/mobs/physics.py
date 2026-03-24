@@ -1,14 +1,16 @@
 """
 Physique des mobs : collision et déplacement.
 """
-from config import ROWS, TILE_AIR
+from config import ROWS, TILE_AIR, TILE_LAVA, TILE_WATER
 from mobs.base import _mw, _mh
+
+_NON_SOLID = (TILE_AIR, TILE_LAVA, TILE_WATER)
 
 
 def _solid(world, col, row):
     if row < 0 or row >= ROWS:
         return True
-    return world.get(col, row) != TILE_AIR
+    return world.get(col, row) not in _NON_SOLID
 
 
 def _mob_cols(mob):

@@ -27,9 +27,13 @@ MOB_TROLL    = 12  # troll des cavernes (surf+20..+45), lent, robuste
 MOB_WORM     = 13  # ver fouisseur   (surf+45..+65), traverse le terrain
 MOB_WRAITH   = 14  # spectre abyssal (surf+65+),     volant, très puissant
 MOB_TENDRIL  = 15  # boss végétal    (surf+70+), stationnaire, très rare
+MOB_PENGUIN    = 16  # pingouin (passif, biome glace)
+MOB_POLAR_BEAR = 17  # ours polaire (agressif, biome glace)
+MOB_SCORPION   = 18  # scorpion (agressif, biome désert)
+MOB_VULTURE    = 19  # vautour (semi-agressif, biome désert, volant)
 
-_PASSIVE_MOBS       = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL, MOB_BAT}
-_FLYING_MOBS        = {MOB_SEAGULL, MOB_BAT, MOB_DEMON}
+_PASSIVE_MOBS       = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL, MOB_BAT, MOB_PENGUIN}
+_FLYING_MOBS        = {MOB_SEAGULL, MOB_BAT, MOB_DEMON, MOB_VULTURE}
 _GOLD_NEUTRAL_MOBS  = {MOB_BOAR}   # n'attaquent pas un joueur portant de l'or
 _DEEP_MOBS          = {MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL}  # gèrent leur propre déplacement
 
@@ -51,6 +55,10 @@ _MOB_HP = {
     MOB_WORM:     9,
     MOB_WRAITH:   12,
     MOB_TENDRIL:  25,
+    MOB_PENGUIN:    2,
+    MOB_POLAR_BEAR: 8,
+    MOB_SCORPION:   3,
+    MOB_VULTURE:    3,
 }
 
 # Dégâts de l'épée par matériau (MAT_WOOD=0, MAT_IRON=1, MAT_GOLD=2, MAT_DIAMOND=3)
@@ -65,6 +73,7 @@ _MOB_ATTACK_DMG = {
     MOB_CRAB:     1, MOB_DEMON:    6, MOB_BOAR:     1,
     MOB_TROLL:    2, MOB_WORM:     3, MOB_WRAITH:   4,
     MOB_TENDRIL:  3,
+    MOB_PENGUIN:  0, MOB_POLAR_BEAR: 3, MOB_SCORPION: 2, MOB_VULTURE: 1,
 }
 
 # Tier d'épée minimum pour infliger des dégâts
@@ -86,6 +95,10 @@ _MOB_MIN_SWORD_TIER = {
     MOB_WORM:     2,   # épée Fer min
     MOB_WRAITH:   3,   # épée Or min
     MOB_TENDRIL:  3,   # épée Or min, immunisé projectiles
+    MOB_PENGUIN:    0,
+    MOB_POLAR_BEAR: 2,   # épée Fer min
+    MOB_SCORPION:   1,   # épée Bois min
+    MOB_VULTURE:    0,
 }
 
 # ── Dimensions pixels ─────────────────────────────────────────────────────────
@@ -96,6 +109,7 @@ _MOB_PW = {
     MOB_CRAB:     12, MOB_DEMON:    14, MOB_BOAR:    12,
     MOB_TROLL:    14, MOB_WORM:     16, MOB_WRAITH:  12,
     MOB_TENDRIL:  14,
+    MOB_PENGUIN:  8,  MOB_POLAR_BEAR: 16, MOB_SCORPION: 12, MOB_VULTURE: 10,
 }
 _MOB_PH = {
     MOB_SLIME:    10, MOB_ZOMBIE:   16, MOB_GOLEM:   18,
@@ -104,6 +118,7 @@ _MOB_PH = {
     MOB_CRAB:     8,  MOB_DEMON:    18, MOB_BOAR:    10,
     MOB_TROLL:    18, MOB_WORM:     8,  MOB_WRAITH:  14,
     MOB_TENDRIL:  20,
+    MOB_PENGUIN:  10, MOB_POLAR_BEAR: 14, MOB_SCORPION: 8, MOB_VULTURE: 6,
 }
 
 def _mw(t): return _MOB_PW[t] / TILE_SIZE
@@ -127,6 +142,10 @@ _MOB_COLOR = {
     MOB_WORM:     (100,  60,  30),
     MOB_WRAITH:   (160, 180, 255),
     MOB_TENDRIL:  ( 20,  90,  15),  # vert profond végétal
+    MOB_PENGUIN:    ( 20,  20,  30),  # noir (ventre blanc dessiné)
+    MOB_POLAR_BEAR: (240, 240, 245),  # blanc polaire
+    MOB_SCORPION:   (140, 100,  40),  # brun sable
+    MOB_VULTURE:    ( 60,  45,  35),  # brun foncé
 }
 
 # ── Rayon de spawn / despawn ──────────────────────────────────────────────────
