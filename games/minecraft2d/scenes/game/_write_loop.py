@@ -133,6 +133,8 @@ NEW_CONTENT = textwrap.dedent('''\
             mine_tick_cd[1] = max(0.0, mine_tick_cd[1] - dt)
 
             events = pygame.event.get(); keys = pygame.key.get_pressed()
+            _music.tick(events)
+            _sounds.tick(events)
             for e in events:
                 if e.type == pygame.QUIT: _flush(); return None
                 if e.type == pygame.KEYDOWN:

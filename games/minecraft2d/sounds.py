@@ -175,9 +175,56 @@ def _get(name: str) -> pygame.mixer.Sound | None:
     return snd
 
 
-# ── Mute global ──────────────────────────────────────────────────────────────
+# ── Volume et mute global ────────────────────────────────────────────────────
 
-_muted: bool = False
+_muted:      bool  = False
+_sfx_master: float = 1.0   # multiplicateur runtime [0.0 – 1.0]
+
+# Boutons joystick (mêmes que music_player)
+_BTN_VOL_UP:   int = 15
+_BTN_VOL_DOWN: int = 14
+
+
+def _apply_master() -> None:
+    """Applique _sfx_master à tous les sons déjà en cache."""
+    for snd in _cache.values():
+        if snd is not None:
+            snd.set_volume(_sfx_master)
+
+
+def set_sfx_volume(v: float) -> None:
+    """Définit le volume global des SFX (0.0 – 1.0)."""
+    global _sfx_master
+    _sfx_master = max(0.0, min(1.0, v))
+    _apply_master()
+
+
+def get_sfx_volume() -> float:
+    return _sfx_master
+
+
+def volume_up(step: float = 0.1) -> None:
+    set_sfx_volume(_sfx_master + step)
+
+
+def volume_down(step: float = 0.1) -> None:
+    set_sfx_volume(_sfx_master - step)
+
+
+def tick(events) -> None:
+    """Appeler chaque frame : gère PageUp/PageDown et boutons joystick 15/14."""
+    import pygame
+    for e in events:
+        if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_PAGEUP:
+                volume_up()
+            elif e.key == pygame.K_PAGEDOWN:
+                volume_down()
+        elif e.type == pygame.JOYBUTTONDOWN:
+            if e.button == _BTN_VOL_UP:
+                volume_up()
+            elif e.button == _BTN_VOL_DOWN:
+                volume_down()
 
 
 def toggle_mute() -> bool:

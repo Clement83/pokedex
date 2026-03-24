@@ -1322,6 +1322,8 @@ def run(screen, joysticks, world_id, seed):
 
         events = pygame.event.get()
         keys   = pygame.key.get_pressed()
+        _music.tick(events)
+        _sounds.tick(events)
 
         for e in events:
             if e.type == pygame.QUIT:
