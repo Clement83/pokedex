@@ -8,7 +8,7 @@ from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
-    MOB_TROLL, MOB_WORM, MOB_WRAITH,
+    MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL,
     _MOB_PW, _MOB_PH, _MOB_COLOR,
 )
 
@@ -223,3 +223,48 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         dr(screen, gh, (sx + 9, sy + 10 + wo,  2,  4))        # effiloche droite
         dr(screen, (10, 10, 60), (sx + 3, sy + 1 + wo, 2, 2)) # œil gauche
         dr(screen, (10, 10, 60), (sx + 7, sy + 1 + wo, 2, 2)) # œil droit
+
+    elif mob.mob_type == MOB_TENDRIL:
+        dr  = pygame.draw.rect
+        vc  = ( 20,  90,  15)   # vert profond
+        vl  = ( 40, 140,  25)   # vert clair lianes
+        vg  = (  0, 200,  80)   # vert lumineux (actif)
+        tk  = ( 60,  35,  10)   # brun tronc
+        # Corps central (racines tassées)
+        dr(screen, tk,  (sx + 2, sy + 10, 10,  8))
+        dr(screen, vc,  (sx + 3, sy +  6,  8,  6))
+        dr(screen, vl,  (sx + 4, sy +  4,  6,  4))
+        dr(screen, vc,  (sx + 5, sy +  2,  4,  4))
+        # Yeux végétaux (bioluminescents)
+        ey = (  0, 230, 120) if mob.state == "active" else ( 30, 120, 50)
+        dr(screen, ey,  (sx + 4, sy +  4,  2,  2))
+        dr(screen, ey,  (sx + 8, sy +  4,  2,  2))
+        # Tentacules (selon phase d'animation)
+        ph = mob._fly_phase
+        off1 = int(math.sin(ph * 2.0) * 3)
+        off2 = int(math.sin(ph * 2.0 + 2) * 3)
+        # Tentacule gauche
+        dr(screen, vl,  (sx - 4 + off1,      sy +  5,  5, 2))
+        dr(screen, vg,  (sx - 7 + off1,      sy +  4,  4, 1))
+        # Tentacule droit
+        dr(screen, vl,  (sx + 13 + off2,     sy +  5,  5, 2))
+        dr(screen, vg,  (sx + 17 + off2,     sy +  4,  4, 1))
+        # Tentacule haut (vers le joueur si actif)
+        if mob.state == "active":
+            dr(screen, vg, (sx + 6, sy - 4 + off1, 2, 5))
+        # Racines au sol
+        dr(screen, tk,  (sx + 1, sy + 17,  3,  3))
+        dr(screen, tk,  (sx + 6, sy + 17,  2,  3))
+        dr(screen, tk,  (sx + 10,sy + 17,  3,  3))
+        # Barre de vie en dessous (boss)
+        hp_frac = max(0.0, mob.hp / 25.0)
+        bar_w = int(mw * hp_frac)
+        pygame.draw.rect(screen, (160, 20, 20), (sx, sy + mh + 2, mw, 3))
+        pygame.draw.rect(screen, ( 40, 200, 60), (sx, sy + mh + 2, bar_w, 3))
+
+    # ── Effet br\u00fblure (zombie de surface au lever du soleil) ─────────────────
+    if getattr(mob, 'burning', False):
+        alpha = int(abs(math.sin(mob._fly_phase * 6)) * 180 + 50)
+        burn  = pygame.Surface((mw, mh), pygame.SRCALPHA)
+        burn.fill((255, 80, 0, min(230, alpha)))
+        screen.blit(burn, (sx, sy))

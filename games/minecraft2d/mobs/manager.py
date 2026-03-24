@@ -2,6 +2,7 @@
 Gestionnaire de mobs : spawn, update et dessin.
 """
 import math
+import random
 from world import _hash1
 from config import TILE_SIZE, PLAYER_W, PLAYER_H, TILE_AIR, ROWS, MAT_TIER, TILE_SAND, TILE_GRASS, TILE_DIRT
 
@@ -10,6 +11,7 @@ from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
+    MOB_TENDRIL,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
     _MOB_PW, _MOB_PH,
 )
@@ -26,6 +28,7 @@ class MobManager:
         self._seed    = world.seed
         self._mobs    = []
         self._spawned = set()   # (col, mob_type) déjà tentés
+        self._was_night = False  # suivi de la transition jour/nuit
 
     # ── Spawn déterministe ────────────────────────────────────────────────────
 
@@ -259,7 +262,44 @@ class MobManager:
     def update(self, dt, players, world):
         for mob in self._mobs:
             update_mob(mob, dt, players, world)
+            # Zombies qui brûlent au lever du soleil
+            if mob.burning:
+                mob.burn_timer -= dt
+                if mob.burn_timer <= 0:
+                    mob.vanish = True
         self._mobs = [m for m in self._mobs if not m.vanish]
+
+    def tick_day_night(self, is_night, world, players):
+        """Gère les transitions jour/nuit : spawn zombies la nuit, brûlure à l'aube."""
+        just_became_night = is_night and not self._was_night
+        just_became_day   = (not is_night) and self._was_night
+
+        if just_became_night:
+            # Spawn 1–2 zombies par joueur à la surface
+            for p in players:
+                count = random.randint(1, 2)
+                for _ in range(count):
+                    col  = int(p.x) + random.randint(-8, 8)
+                    surf = world.surface_at(col)
+                    top  = surf - math.ceil(_mh(MOB_ZOMBIE))
+                    if all(world.get(col, top + k) == TILE_AIR
+                           for k in range(math.ceil(_mh(MOB_ZOMBIE)))):
+                        m = Mob(col, float(top), MOB_ZOMBIE)
+                        m._surface_zombie = True
+                        from mobs.physics import _eject_mob
+                        _eject_mob(m, world)
+                        self._mobs.append(m)
+
+        if just_became_day:
+            # Les zombies de surface s'enflamment
+            for mob in self._mobs:
+                if (mob.mob_type == MOB_ZOMBIE
+                        and getattr(mob, '_surface_zombie', False)
+                        and not mob.burning):
+                    mob.burning    = True
+                    mob.burn_timer = 3.0
+
+        self._was_night = is_night
 
     # ── Attaque épée avec tier + drops ────────────────────────────────────────
 

@@ -197,8 +197,8 @@ class World:
             if cabin != TILE_AIR:
                 return cabin
             is_sand = _hash1(col * 37, self.seed ^ 0x5A4D) < 0.07
-            # Coffre rare à la surface (hors sable, hors cabane) ~1/100 colonnes
-            if not is_sand and _hash1(col * 137 + 19, self.seed ^ 0xF00D) < 0.010:
+            # Coffre très rare à la surface (hors sable, hors cabane) ~4/1000 colonnes
+            if not is_sand and _hash1(col * 137 + 19, self.seed ^ 0xF00D) < 0.004:
                 return TILE_CHEST
             return TILE_SAND if is_sand else TILE_GRASS
         if row < s + STONE_DEPTH:
@@ -206,9 +206,9 @@ class World:
         # Cave via bruit 2D
         cave = _smooth2(col, row, 0.18, self.seed ^ 0xCAFE) > 0.67 and row > s + 3
         if cave:
-            # Coffre rare sur le sol d'une grotte (tuile du dessous = solide)
+            # Coffre sur le sol d'une grotte (rareté réduite)
             floor_solid = _smooth2(col, row + 1, 0.18, self.seed ^ 0xCAFE) <= 0.67
-            if floor_solid and _hash2(col, row, self.seed ^ 0x5E17) < 0.018:
+            if floor_solid and _hash2(col, row, self.seed ^ 0x5E17) < 0.010:
                 return TILE_CHEST
             return TILE_AIR
         # Veines de charbon
@@ -241,33 +241,61 @@ class World:
 
     def chest_loot(self, depth=0):
         """
-        Tire un item d'équipement aléatoire à l'ouverture d'un coffre.
+        Retourne une liste [(item, count), ...] à l'ouverture d'un coffre.
+        item = TILE_xxx (ressource) ou (EQUIP_xxx, MAT_xxx) (équipement).
+        Philosophie : matériaux bruts en majorité, équipement rare réservé aux profondeurs.
         depth : profondeur en tuiles sous la surface (0 = surface).
-        Retourne (equip_slot, material).
         """
         from config import (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD,
-                            EQUIP_PICKAXE, MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND)
+                            EQUIP_PICKAXE, MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND,
+                            TILE_WOOD, TILE_STONE, TILE_COAL,
+                            TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE)
+        r = random.random
+        results = []
 
-        equip_slot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
-                                    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
-        r2 = random.random()
-        # Plus profond = meilleur loot
-        if depth >= 50:
-            # Donjon profond : or 50%, diamant 20%, fer le reste
-            if r2 < 0.30:   material = MAT_IRON
-            elif r2 < 0.80: material = MAT_GOLD
-            else:           material = MAT_DIAMOND
-        elif depth >= 20:
-            # Grotte : bois 20%, fer 55%, or 25%
-            if r2 < 0.20:   material = MAT_WOOD
-            elif r2 < 0.75: material = MAT_IRON
-            else:           material = MAT_GOLD
+        if depth < 20:
+            # ── Surface : bois, pierre, charbon – équipement quasi absent ──────
+            results.append((TILE_WOOD,  random.randint(2, 4)))
+            if r() < 0.25: results.append((TILE_COAL,  random.randint(1, 2)))
+            if r() < 0.20: results.append((TILE_STONE, random.randint(1, 2)))
+            # Équipement bois très rare (5 %)
+            if r() < 0.05:
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                                       EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
+                results.append(((eslot, MAT_WOOD), 1))
+
+        elif depth < 50:
+            # ── Grotte : minerai de fer surtout ──────────────────────────────
+            if r() < 0.70: results.append((TILE_IRON_ORE, random.randint(1, 2)))
+            if r() < 0.40: results.append((TILE_COAL,     random.randint(1, 3)))
+            if r() < 0.25: results.append((TILE_STONE,    random.randint(2, 3)))
+            # Équipement (Bois 12 %, Fer 5 %)
+            if r() < 0.17:
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                                       EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
+                mat   = MAT_WOOD if r() < 0.70 else MAT_IRON
+                results.append(((eslot, mat), 1))
+
         else:
-            # Surface : bois 65%, fer 28%, or 7%
-            if r2 < 0.65:   material = MAT_WOOD
-            elif r2 < 0.93: material = MAT_IRON
-            else:           material = MAT_GOLD
-        return (equip_slot, material)
+            # ── Donjon profond : or + diamant, équipement de qualité ─────────
+            if r() < 0.80: results.append((TILE_GOLD_ORE,    random.randint(2, 4)))
+            if r() < 0.25: results.append((TILE_DIAMOND_ORE, random.randint(1, 2)))
+            # Équipement (Fer 20 %, Or 30 %, Diamant 8 %)
+            eq_roll = r()
+            if eq_roll < 0.08:
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                                       EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
+                results.append(((eslot, MAT_DIAMOND), 1))
+            elif eq_roll < 0.38:
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                                       EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
+                results.append(((eslot, MAT_GOLD), 1))
+            elif eq_roll < 0.58:
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                                       EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
+                results.append(((eslot, MAT_IRON), 1))
+
+        return results if results else [(TILE_WOOD, 1)]
 
 
 def generate(seed=None):

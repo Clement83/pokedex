@@ -138,9 +138,8 @@ def handle_block_actions(
             if player._break_time >= 0.6:
                 # Profondeur pour le loot contextuel
                 depth = cur_row - world.surface_at(cur_col)
-                item  = world.chest_loot(depth=max(0, depth))
-                player.inventory.add_equip(item)
-                loot_notifs.append([EQUIP_NAMES.get(item, "?"), 2.5, player.color])
+                items = world.chest_loot(depth=max(0, depth))
+                _collect_drops(player, items, loot_notifs)
                 world.set(cur_col, cur_row, TILE_AIR)
                 chunks.update_tile(cur_col, cur_row, TILE_AIR)
                 break_infos[i]     = None

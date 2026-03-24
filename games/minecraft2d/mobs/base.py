@@ -26,11 +26,12 @@ MOB_BOAR     = 11  # sanglier : neutre si joueur porte de l'or
 MOB_TROLL    = 12  # troll des cavernes (surf+20..+45), lent, robuste
 MOB_WORM     = 13  # ver fouisseur   (surf+45..+65), traverse le terrain
 MOB_WRAITH   = 14  # spectre abyssal (surf+65+),     volant, très puissant
+MOB_TENDRIL  = 15  # boss végétal    (surf+70+), stationnaire, très rare
 
 _PASSIVE_MOBS       = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL, MOB_BAT}
 _FLYING_MOBS        = {MOB_SEAGULL, MOB_BAT, MOB_DEMON}
 _GOLD_NEUTRAL_MOBS  = {MOB_BOAR}   # n'attaquent pas un joueur portant de l'or
-_DEEP_MOBS          = {MOB_TROLL, MOB_WORM, MOB_WRAITH}  # gèrent leur propre déplacement
+_DEEP_MOBS          = {MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL}  # gèrent leur propre déplacement
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 _MOB_HP = {
@@ -49,6 +50,7 @@ _MOB_HP = {
     MOB_TROLL:    6,
     MOB_WORM:     9,
     MOB_WRAITH:   12,
+    MOB_TENDRIL:  25,
 }
 
 # Dégâts de l'épée par matériau (MAT_WOOD=0, MAT_IRON=1, MAT_GOLD=2, MAT_DIAMOND=3)
@@ -62,6 +64,7 @@ _MOB_ATTACK_DMG = {
     MOB_SPIDER:   1, MOB_SKELETON: 1, MOB_BAT:      1,
     MOB_CRAB:     1, MOB_DEMON:    6, MOB_BOAR:     1,
     MOB_TROLL:    2, MOB_WORM:     3, MOB_WRAITH:   4,
+    MOB_TENDRIL:  3,
 }
 
 # Tier d'épée minimum pour infliger des dégâts
@@ -82,6 +85,7 @@ _MOB_MIN_SWORD_TIER = {
     MOB_TROLL:    1,   # épée Bois min
     MOB_WORM:     2,   # épée Fer min
     MOB_WRAITH:   3,   # épée Or min
+    MOB_TENDRIL:  3,   # épée Or min, immunisé projectiles
 }
 
 # ── Dimensions pixels ─────────────────────────────────────────────────────────
@@ -91,6 +95,7 @@ _MOB_PW = {
     MOB_SPIDER:   12, MOB_SKELETON: 8,  MOB_BAT:     10,
     MOB_CRAB:     12, MOB_DEMON:    14, MOB_BOAR:    12,
     MOB_TROLL:    14, MOB_WORM:     16, MOB_WRAITH:  12,
+    MOB_TENDRIL:  14,
 }
 _MOB_PH = {
     MOB_SLIME:    10, MOB_ZOMBIE:   16, MOB_GOLEM:   18,
@@ -98,6 +103,7 @@ _MOB_PH = {
     MOB_SPIDER:   10, MOB_SKELETON: 16, MOB_BAT:     6,
     MOB_CRAB:     8,  MOB_DEMON:    18, MOB_BOAR:    10,
     MOB_TROLL:    18, MOB_WORM:     8,  MOB_WRAITH:  14,
+    MOB_TENDRIL:  20,
 }
 
 def _mw(t): return _MOB_PW[t] / TILE_SIZE
@@ -120,6 +126,7 @@ _MOB_COLOR = {
     MOB_TROLL:    ( 60,  90,  50),
     MOB_WORM:     (100,  60,  30),
     MOB_WRAITH:   (160, 180, 255),
+    MOB_TENDRIL:  ( 20,  90,  15),  # vert profond végétal
 }
 
 # ── Rayon de spawn / despawn ──────────────────────────────────────────────────
@@ -148,6 +155,10 @@ class Mob:
         self._fly_phase  = 0.0    # oscillation verticale mouette
         self.hp          = _MOB_HP[mob_type]
         self.vanish      = False   # True → supprimé au prochain tick
+        self.burning     = False   # True → brûle (zombie à l'aube)
+        self.burn_timer  = 0.0     # secondes avant mort par brûlure
+        self._surface_zombie = False   # zombie spawné en surface la nuit
+        self._tendril_cd = 0.0    # cooldown attaque Vrille
         self._rng = random.Random(int(col) * 1000 + int(row) + mob_type + seed)
 
     # ── Helpers géométriques ──────────────────────────────────────────────────

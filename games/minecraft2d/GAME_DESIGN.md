@@ -5,9 +5,9 @@
 | Domaine | Ce qui existe |
 |---|---|
 | **Outils** | Main / Pioche / Canon / Épée / Drapeau |
-| **Matériaux** | Bois (0) · Fer (1) · Or (2) |
+| **Matériaux** | Bois (0) · Fer (1) · Or (2) · **Diamant (3)** |
 | **Blocs** | Air, Terre, Pierre, Herbe, Sable, Bois, Charbon, Brique, Coffre, Obsidienne, Vitre |
-| **Mobs agressifs** | Slime (2 PV) · Zombie (3 PV) · Golem (5 PV) |
+| **Mobs agressifs** | Slime (2 PV) · Zombie (3 PV) · Golem (5 PV) · **Vrille (25 PV, boss souterrain)** |
 | **Mobs passifs** | Poule · Grenouille · Mouette |
 | **Loot coffre** | Épée/Pioche/Casque/Plastron/Bottes — Bois 65 % · Fer 28 % · Or 7 % |
 | **Dégâts épée** | Bois = 1 · Fer = 2 · Or = 3 |
@@ -289,7 +289,7 @@ Craft Épée Fer → tuer Golems, Squelettes
 Craft Pioche Or → miner Obsidienne, Minerai de Diamant
   ↓ Drop Démon ou minage profond → Gemme Diamant
 Craft Épée Or → tuer Démons, Liche
-Craft Pioche/Épée Diamant → end game
+Craft Pioche/Épée Diamant → tuer Vrille (boss final souterrain) → end game
 ```
 
 ---
@@ -301,12 +301,264 @@ Craft Pioche/Épée Diamant → end game
 | ⭐⭐⭐ | Tier pioche requis par bloc | Faible | Très fort |
 | ⭐⭐⭐ | Drop de ressource par mob | Faible | Fort |
 | ⭐⭐⭐ | Mob immunisé (tier épée) | Faible | Très fort |
+| ⭐⭐⭐ | **Armure Diamant + outils Diamant** | Faible | Fort |
+| ⭐⭐⭐ | **Système de troc P1 ↔ P2** | Moyen | Fort |
+| ⭐⭐⭐ | **Fix : fantômes / mobs à travers murs** | Faible | Fort |
+| ⭐⭐⭐ | **Zombies nocturnes (surface)** | Faible | Fort |
 | ⭐⭐ | Minerais (Fer, Or, Diamant) dans world.py | Moyen | Fort |
 | ⭐⭐ | Nouveau mob : Araignée | Moyen | Moyen |
 | ⭐⭐ | Nouveau mob : Squelette (projectile) | Moyen | Moyen |
 | ⭐⭐ | Craft minimal (menu simple) | Moyen | Très fort |
 | ⭐⭐ | Matériau Diamant + MAT_DIAMOND | Moyen | Fort |
+| ⭐⭐ | **Boss Vrille (végétal souterrain)** | Élevé | Très fort |
+| ⭐⭐ | **Loot coffres amélioré (plus de matériaux)** | Faible | Fort |
 | ⭐ | Loot coffre contextualisé par structure | Faible | Moyen |
 | ⭐ | Nouveau mob : Démon (boss léger) | Élevé | Fort |
 | ⭐ | Boss Liche | Très élevé | Très fort |
 | ⭐ | Durabilité des outils | Moyen | Moyen |
+
+---
+
+## 10. Armure et outils Diamant (tier 4)
+
+### Nouveaux équipements
+| Item | Tier | Craft | Stats |
+|---|---|---|---|
+| Pioche Diamant | 4 | Gemme Diamant × 3 | Mine **tout** sans exception, rapidité max |
+| Épée Diamant | 4 | Gemme Diamant × 2 | Dégâts = 5, tue tout mob |
+| Casque Diamant | 4 | Gemme Diamant × 2 | Défense = 3 |
+| Plastron Diamant | 4 | Gemme Diamant × 4 | Défense = 5 |
+| Bottes Diamant | 4 | Gemme Diamant × 2 | Défense = 2 |
+
+### Mise à jour `config.py`
+```python
+MAT_DIAMOND = 3           # nouveau tier le plus haut
+
+# Dégâts épée mis à jour
+_SWORD_DMG = {
+    MAT_WOOD:    1,
+    MAT_IRON:    2,
+    MAT_GOLD:    3,
+    MAT_DIAMOND: 5,        # ← nouveau
+}
+
+# Défense armure
+_ARMOR_DEF = {
+    MAT_WOOD:    1,
+    MAT_IRON:    3,
+    MAT_GOLD:    4,
+    MAT_DIAMOND: 10,       # set complet
+}
+```
+
+### Densité de coffres par zone
+
+**Règle générale : moins de coffres en surface, toujours plus intéressants en profondeur.**
+
+| Zone | Fréquence de spawn |
+|---|---|
+| Surface / Cabane | Très rare — 1 coffre max par structure |
+| Cave (tier 1) | Rare — 1 coffre par 3–4 salles |
+| Cave profonde (tier 2) | Modéré — 1 coffre par 2 salles |
+| Donjon | Garanti — 2–3 coffres par donjon |
+
+### Loot coffres — répartition matériaux vs équipement
+
+> **Philosophie** : les coffres donnent principalement des **matériaux bruts** pour alimenter le craft.  
+> L'équipement tout fait est **rare** et réservé aux profondeurs. En surface, on ne trouve presque rien d'utile — ce qui pousse à descendre.
+
+| Niveau coffre | Matériaux bruts | Équipement tout fait |
+|---|---|---|
+| Surface | Bois ×2–4 (70 %), Charbon ×1–2 (25 %), Pierre ×2–3 (20 %) | Outil Bois (5 %) — très rare |
+| Cave tier 1 | Lingot Fer ×1–2 (60 %), Charbon ×2 (40 %), Pierre ×3 (30 %) | Outil/Armure Bois (15 %), Fer (5 %) |
+| Cave tier 2 | Lingot Fer ×2–3 (70 %), Lingot Or ×1 (30 %), Charbon ×3 (30 %) | Outil/Armure Fer (20 %), Or (5 %) |
+| Donjon | Lingot Or ×2–4 (80 %), Gemme Diamant ×1–2 (25 %) | Outil/Armure Or (30 %), Diamant (8 %) |
+
+**Résumé des changements vs l'ancien système :**
+- Coffres de surface : **fréquence divisée par ~3**, contenu quasi exclusivement en bois/pierre
+- Équipement Bois/Fer en coffre surface : quasi supprimé (5 % max)
+- Matériaux bruts augmentés à tous les niveaux (lingots, gemmes)
+- Équipement Diamant : uniquement dans les donjons, probabilité faible (8 %)
+
+Règle : **plus le coffre est profond, plus son contenu est intéressant** (système existant conservé et renforcé).
+
+---
+
+## 11. Système de troc entre joueurs
+
+### Déclenchement
+- **Outil actif : Main** · Joueur 1 appuie sur **Action** en étant adjacent à Joueur 2  
+- Un menu de troc s'ouvre au centre de l'écran  
+- Les deux joueurs sont figés (mouvements désactivés) pendant la transaction
+
+### Interface
+```
+┌─────────────────────────────────────────┐
+│           ── TROC ──                    │
+│  [J1]               [J2]               │
+│  ┌──────┐           ┌──────┐           │
+│  │  [X] │◄──────   │  [ ] │           │
+│  │  [ ] │           │  [X] │           │
+│  │  [ ] │   ─────►  │  [ ] │           │
+│  │  [ ] │           │  [ ] │           │
+│  │  [ ] │           │  [ ] │           │
+│  └──────┘           └──────┘           │
+│   ↑↓ : sélectionner  Action : donner   │
+│   Alt : annuler et quitter             │
+└─────────────────────────────────────────┘
+```
+
+### Règles
+- Chaque joueur voit **sa propre colonne** d'inventaire (5 slots visibles, scroll ↑↓)
+- **Flèches haut/bas** : déplacer le curseur sur un item de son propre inventaire
+- **Action** : transférer l'item sélectionné vers l'inventaire de l'autre joueur
+  - Si l'inventaire destinataire est plein → refus avec feedback « INVENTAIRE PLEIN »
+- **Touche Alternative** (Alt / bouton B) : l'un ou l'autre peut quitter → fermeture immédiate, aucun échange forcé
+- Chaque joueur ne peut donner que **depuis son propre inventaire** (pas de vol)
+
+### Implémentation (résumé technique)
+
+```python
+# Nouvel état de jeu
+STATE_TRADE = "trade"
+
+# Ouverture du troc (dans scenes/game/controls.py ou actions.py)
+def try_open_trade(player_src, player_dst):
+    if player_src.tool == TOOL_HAND and is_adjacent(player_src, player_dst):
+        game_state.mode = STATE_TRADE
+        trade_state.p1 = player_src
+        trade_state.p2 = player_dst
+        trade_state.cursor_p1 = 0
+        trade_state.cursor_p2 = 0
+
+# Loop de troc (nouvelle fonction dans loop.py)
+def update_trade(inputs_p1, inputs_p2):
+    for player, inputs, cursor_attr in [(p1, inputs_p1, 'cursor_p1'), ...]:
+        if inputs.up:   trade_state[cursor_attr] = max(0, cursor - 1)
+        if inputs.down: trade_state[cursor_attr] = min(len(inv)-1, cursor + 1)
+        if inputs.action:
+            item = player.inventory[cursor]
+            transfer_item(item, player, other_player)
+        if inputs.alt:
+            game_state.mode = STATE_GAME   # fermeture propre
+
+# Rendu (dans renderer_hud.py)
+def draw_trade_menu(surface, trade_state):
+    # Panneau centré semi-transparent
+    # Colonne gauche : inventaire J1 avec curseur ▶
+    # Colonne droite : inventaire J2 avec curseur ▶
+    # Flèches centrales indiquant le sens du transfert possible
+    ...
+```
+
+> L'interface suit le même modèle que le craft : `MODIFIER + Alt` pour quitter, touches directionnelles pour naviguer.
+
+---
+
+## 12. Nouveau boss : La Vrille (`MOB_TENDRIL`)
+
+### Direction artistique
+Inspirée des créatures végétales de Half-Life 1 — une masse de racines, lianes et filaments lumineux vert-noir qui pousse dans les profondeurs.  
+Elle ne se déplace **jamais** : elle est **ancrée au sol/plafond** et attaque à portée.  
+Elle détecte les joueurs à la **vibration** (mouvement dans un rayon, pas le son).
+
+### Caractéristiques
+| Attribut | Valeur |
+|---|---|
+| PV | 25 |
+| Dégâts (tentacule) | 3 par touche |
+| Portée d'attaque | 6 blocs |
+| Portée de détection | 10 blocs |
+| Tier épée min | 3 (Or) — résiste à tout le reste |
+| Spawn | `surface + 70+`, max **1 par monde** (boss unique) |
+| Spawn rate | Très rare (~0.5 % à la génération de monde) |
+| Immunité | Projectiles (flèches, boules de feu) — seule l'épée directe blesse |
+
+### Comportement
+1. **Dormante** : visible sous forme de racines entrelacées au plafond/sol, inerte
+2. **Activée** (joueur à < 10 blocs dans son axe vertical) : tentacules qui s'étendent lentement
+3. **Attaque** : 3 tentacules ciblent le joueur, dégâts si contact
+4. **Rage** (< 10 PV) : portée +2, vitesse d'extension ×1.5, tentacules supplémentaires
+5. **Mort** : animation de décomposition lente (3 secondes), drop garanti
+
+### Drop
+- **Cœur de Vrille** (item unique) × 1 — ressource de craft future (ex : armure végétale)
+- Gemme de Diamant × 2–4
+- Lingot d'Or × 3–6
+
+### Génération
+```python
+# world.py — à la fin de la génération
+if random.random() < 0.005:   # ~0.5 % de chance par monde
+    col = random.randint(COLS // 4, 3 * COLS // 4)
+    row = random.randint(surface[col] + 70, ROWS - 10)
+    spawn_tendril(world, col, row)
+```
+
+### Implémentation mob
+```python
+# mobs/base.py
+MOB_TENDRIL = "tendril"
+
+_MOB_MIN_SWORD_TIER[MOB_TENDRIL] = 3      # Or minimum
+_MOB_DROPS[MOB_TENDRIL] = [
+    (ITEM_TENDRIL_HEART, 1, 1.0),          # toujours
+    (ITEM_DIAMOND_GEM,  3, 1.0),           # 2–4 gemmes
+    (ITEM_GOLD_INGOT,   5, 1.0),           # 3–6 lingots
+]
+
+# Pas de déplacement → pas de physique gravitationnelle
+# Logique dans mobs/ai.py : TendrilAI — gestion des tentacules comme sous-entités
+```
+
+---
+
+## 13. Corrections & améliorations comportement mobs
+
+### 13.1 Mobs traversant les murs — Fix
+
+**Problème** : certains mobs (notamment les types "fantôme" ou les slimes à haute vitesse) traversent les blocs solides.
+
+**Solution proposée** :
+- **Supprimer le type fantôme** (`MOB_GHOST` / mob immatériel) s'il existe — trop problématique et peu cohérent avec la DA
+- Pour tous les mobs terrestres : forcer la résolution de collision **tile par tile** (pas de saut de position entre deux frames)
+- Limiter la vitesse max des mobs à `MAX_MOB_SPEED = 0.4 * TILE_SIZE / frame` pour éviter le tunnel effect
+- Ajouter un flag `solid_collision = True` sur tous les mobs non-volants
+
+```python
+# mobs/physics.py — à ajouter
+MAX_MOB_SPEED = 0.4   # fraction de TILE_SIZE par frame
+
+def clamp_mob_velocity(mob):
+    """Évite le tunnel effect à haute vitesse."""
+    speed = math.hypot(mob.vx, mob.vy)
+    if speed > MAX_MOB_SPEED:
+        factor = MAX_MOB_SPEED / speed
+        mob.vx *= factor
+        mob.vy *= factor
+```
+
+### 13.2 Zombies nocturnes — Cycle jour/nuit
+
+**Comportement** :
+- **Nuit** (cycle `sky.is_night == True`) : spawn de 1–3 zombies à la surface, dans des zones sombres
+- **Aube** (transition nuit → jour) : les zombies de surface **prennent feu** et meurent (`hp → 0` en 3 secondes)
+- Les zombies dans les caves ne sont pas affectés par la lumière du jour
+
+```python
+# scenes/game/loop.py (ou sky.py)
+def update_zombie_cycle(world, mobs, sky):
+    if sky.just_became_night():
+        for _ in range(random.randint(1, 3)):
+            col = random.randint(0, COLS - 1)
+            row = world.surface_at(col)
+            spawn_mob(mobs, MOB_ZOMBIE, col, row - 1)
+
+    if sky.just_became_day():
+        for mob in mobs:
+            if mob.mob_type == MOB_ZOMBIE and mob.y < world.surface_avg:
+                mob.burning = True   # animation feu + dégâts continus
+                mob.burn_timer = 3.0  # secondes avant mort
+```
+
+**Feedback visuel** : animation de brûlure (clignotement orange/rouge) quand `burning == True`.

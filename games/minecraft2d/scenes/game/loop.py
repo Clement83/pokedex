@@ -26,6 +26,7 @@ from scenes.game.renderer_player import draw_player, draw_hearts, draw_compass, 
 from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H as _HOTBAR_SLOT_H
 from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions
 from scenes.game.craft       import CraftMenu
+from scenes.game.trade       import TradeMenu
 
 
 def run(screen, joysticks, world_id, seed):
@@ -102,7 +103,7 @@ def run(screen, joysticks, world_id, seed):
     ]
     p_dirs=[( 0,0),(0,0)]; break_infos=[None,None]; prev_mine=[False,False]
     prev_dx=[0,0]; prev_dy=[0,0]; mine_tick_cd=[0.0,0.0]
-    loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]
+    loot_notifs=[]; craft_menus=[CraftMenu(),CraftMenu()]; trade_menu=TradeMenu()
 
     # Dirty flags caméra pour éviter preload_around si la cam n'a pas bougé
     _preload_last = {}   # {cam_id: (x, y)}
@@ -163,11 +164,46 @@ def run(screen, joysticks, world_id, seed):
             cur_mine = joy_btn(joy, btn_mine) or joy_btn(joy, btn_mine2) or bool(keys[kb_mine])
             cur_mod  = joy_btn(joy, btn_mod)  or bool(keys[kb_mod])
 
+            # ── Menu troc actif : immobilise le joueur, passe les contrôles troc ────
+            if trade_menu.visible:
+                if dy == -1 and prev_dy[i] != -1: trade_menu.navigate(i, -1)
+                elif dy == 1 and prev_dy[i] != 1: trade_menu.navigate(i, 1)
+                if cur_mine and not prev_mine[i]:
+                    msg = trade_menu.give(i, players)
+                    if msg: loot_notifs.append([msg, 2.5, player.color])
+                if cur_mod: trade_menu.close()
+                player.vx = 0.0
+                player.vy = min(player.vy + GRAVITY * dt, MAX_FALL_SPEED)
+                player.on_ground = False
+                move_y(player, world, player.vy * dt)
+                if player._action_cd > 0: player._action_cd -= dt
+                prev_mine[i] = cur_mine; prev_dy[i] = dy; prev_dx[i] = dx
+                continue
+
+            # ── Ouverture troc : outil Main + action + joueurs adjacents ──────────
+            if (player.inventory.tool == TOOL_HAND and cur_mine and not prev_mine[i]
+                    and not craft_menus[i].visible):
+                other = players[1 - i]
+                if abs(player.x - other.x) < 2.5 and abs(player.y - other.y) < 2.5:
+                    trade_menu.open()
+                    if not is_split:
+                        is_split = True
+                        for k, cam in enumerate(split_cams):
+                            cam.x = max(0, players[k].px() - HALF_W // 2)
+                            cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
+                    prev_mine[i] = cur_mine; prev_dy[i] = dy; prev_dx[i] = dx
+                    continue
+
             # ── Ouverture menu craft (outil actif = Table de Craft + action) ────────
             just_opened = False
             if player.inventory.tool == TOOL_CRAFT and cur_mine and not prev_mine[i]:
                 if not craft_menus[i].visible:
                     craft_menus[i].toggle(); just_opened = True
+                    if not is_split:
+                        is_split = True
+                        for k, cam in enumerate(split_cams):
+                            cam.x = max(0, players[k].px() - HALF_W // 2)
+                            cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
 
             if craft_menus[i].visible:
                 if dy == -1 and prev_dy[i] != -1: craft_menus[i].navigate(-1)
@@ -228,6 +264,7 @@ def run(screen, joysticks, world_id, seed):
         if _mob_cd[0] <= 0:
             mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 6.0
         mob_mgr.update(dt, players, world)
+        mob_mgr.tick_day_night(_is_nite, world, players)
 
         dx_d = abs(players[0].px() - players[1].px()); dy_d = abs(players[0].py() - players[1].py())
         pdist = max(dx_d, dy_d)
@@ -270,6 +307,7 @@ def run(screen, joysticks, world_id, seed):
 
         if night_alpha(_day_time[0]) > 0: draw_night_overlay(screen, _day_time[0])
         draw_sky_hud(screen, _day_time[0], font_sm)
+        if trade_menu.visible: trade_menu.draw(screen, players, font_sm)
         if quit_combo.update_and_draw(screen): _flush(); return True
         if _sounds.is_muted():
             screen.blit(_mute_label, (SCREEN_WIDTH // 2 - _mute_label.get_width() // 2,
