@@ -9,7 +9,7 @@ from config import (
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_TORCH,
     TOOL_BOW, TOOL_ROD,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
-    MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_COLORS,
+    MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND, MAT_COLORS,
 )
 
 # ── Couleurs du bonhomme ──────────────────────────────────────────────────────
@@ -219,8 +219,8 @@ def _draw_tool_in_hand(screen, inv, player_color, px, py):
     tool = inv.tool
 
     if tool == TOOL_PICKAXE:
-        _ph_steel = {MAT_WOOD: (155, 100, 42), MAT_IRON: (195, 198, 215), MAT_GOLD: (255, 200, 0)}
-        _ph_dstl  = {MAT_WOOD: (100,  62, 20), MAT_IRON: ( 95,  98, 120), MAT_GOLD: (190, 145, 0)}
+        _ph_steel = {MAT_WOOD: (155, 100, 42), MAT_IRON: (195, 198, 215), MAT_GOLD: (255, 200, 0), MAT_DIAMOND: ( 80, 220, 235)}
+        _ph_dstl  = {MAT_WOOD: (100,  62, 20), MAT_IRON: ( 95,  98, 120), MAT_GOLD: (190, 145, 0), MAT_DIAMOND: ( 30, 140, 155)}
         pm    = inv.pickaxe_mat
         HNDL  = (155, 100, 42)
         STEEL = _ph_steel.get(pm, (195, 198, 215))
@@ -267,6 +267,39 @@ def _draw_tool_in_hand(screen, inv, player_color, px, py):
         R(screen, fc,   (tx + 3, ty + 2, 5, 2))
         R(screen, fc,   (tx + 3, ty + 4, 3, 1))
         R(screen, (220, 200, 120), (tx + 1, ty + 0, 2, 2))
+
+    elif tool == TOOL_BOW:
+        # Arc tenu en main : poignée + corde + flèche encochée
+        _bow_wood  = {MAT_WOOD: (140, 95, 35), MAT_IRON: (170, 170, 190)}
+        _bow_dark  = {MAT_WOOD: ( 90, 55, 15), MAT_IRON: (100, 100, 130)}
+        bm   = getattr(inv, 'bow_mat', MAT_WOOD)
+        WD   = _bow_wood.get(bm, (140, 95, 35))
+        DK   = _bow_dark.get(bm, ( 90, 55, 15))
+        STR  = (210, 210, 200)   # corde
+        ARR  = (160, 120, 50)    # flèche
+        ARRT = (140,  60,  60)   # pointe flèche
+        # branche haute de l'arc
+        R(screen, WD, (tx + 2, ty + 0, 2, 1))
+        R(screen, WD, (tx + 3, ty + 1, 2, 1))
+        R(screen, DK, (tx + 4, ty + 1, 1, 1))
+        # branche basse
+        R(screen, WD, (tx + 3, ty + 6, 2, 1))
+        R(screen, WD, (tx + 2, ty + 7, 2, 1))
+        R(screen, DK, (tx + 4, ty + 6, 1, 1))
+        # poignée centrale
+        R(screen, WD, (tx + 4, ty + 2, 2, 4))
+        R(screen, DK, (tx + 5, ty + 3, 1, 2))
+        # corde
+        R(screen, STR, (tx + 1, ty + 1, 1, 1))
+        R(screen, STR, (tx + 0, ty + 2, 1, 2))
+        R(screen, STR, (tx + 0, ty + 4, 1, 2))
+        R(screen, STR, (tx + 1, ty + 6, 1, 1))
+        # flèche encochée (diagonale)
+        R(screen, ARRT, (tx + 0, ty + 0, 1, 1))
+        R(screen, ARR,  (tx + 1, ty + 1, 1, 1))
+        R(screen, ARR,  (tx + 2, ty + 2, 1, 1))
+        R(screen, ARR,  (tx + 3, ty + 3, 1, 1))
+        R(screen, ARR,  (tx + 4, ty + 4, 1, 1))
 
     elif tool == TOOL_TORCH:
         # Bâton en bois tenu verticalement, flamme au sommet

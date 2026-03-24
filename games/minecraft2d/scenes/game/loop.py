@@ -138,6 +138,7 @@ def run(screen, joysticks, world_id, seed):
         for fi, fp in enumerate(flag_positions):
             if fp: draw_flag_in_world(surf, fp[0], fp[1], players[fi].color, cam)
         mob_mgr.draw(surf, cam)
+        proj_mgr.draw(surf, cam)
         for pl in players: draw_player(surf, pl, cam, font_sm)
         pi = players[k]
         if pi._dmg_flash > 0:

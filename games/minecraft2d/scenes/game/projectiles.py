@@ -12,10 +12,10 @@ from config import (
     TILE_ARROW, PLAYER_W, PLAYER_H,
 )
 
-_ARROW_SPEED   = 20.0   # tuiles/seconde
+_ARROW_SPEED   = 7.0    # tuiles/seconde (lent, traversée de monde)
 _ARROW_DMG     = 2      # dégâts de base
-_ARROW_GRAVITY = 5.0    # tuiles/s² (arc de cercle réaliste)
-_ARROW_MAX_AGE = 4.0    # secondes avant disparition automatique
+_ARROW_GRAVITY = 0.8    # tuiles/s² (légère courbe)
+_ARROW_MAX_AGE = 35.0   # secondes — couvre les ~250 tuiles chargées
 
 # Décalage du centre joueur (utilisé pour centrer le tir sur le joueur)
 _HALF_PW = PLAYER_W / TILE_SIZE / 2
