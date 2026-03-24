@@ -36,17 +36,40 @@ class MobManager:
     # ── Spawn déterministe ────────────────────────────────────────────────────
 
     def spawn_around(self, centers, is_night=False):
-        """Scanne les colonnes proches et génère les mobs."""
+        """Génère des mobs avec un budget indépendant par joueur.
+
+        Règles :
+        - Chaque joueur a droit à 10 mobs dans son _SPAWN_RANGE.
+          Les mobs déjà présents comptent pour le joueur le plus proche.
+          → Ensemble : ~10 partagés. Séparés : 10 chacun, jamais vides.
+        - Zone cap : max 5 mobs dans ±20 tuiles (évite les attroupements).
+        - Despawn : un mob survit s'il est à ≤ _DESPAWN_RANGE de N'IMPORTE QUEL joueur.
+          → Un mob ne disparaît pas parce qu'UN joueur s'éloigne.
+        """
         if isinstance(centers, int):
             centers = [centers]
         world = self._world
         seed  = self._seed
 
-        _MAX_MOBS = 20   # cap global pour garder les perfs
+        _MOB_PER_PLAYER = 10
+        _ZONE_HALF      = 20   # ±20 tuiles = zone de 40 tuiles
+        _ZONE_MAX       = 5
+
+        def _zone_count(col):
+            return sum(1 for m in self._mobs if abs(m.center_col() - col) <= _ZONE_HALF)
+
         for center_col in centers:
+            # Budget propre à CE joueur : mobs déjà dans son rayon
+            local = sum(
+                1 for m in self._mobs
+                if abs(m.center_col() - center_col) <= _SPAWN_RANGE
+            )
             for col in range(center_col - _SPAWN_RANGE, center_col + _SPAWN_RANGE):
-                if len(self._mobs) >= _MAX_MOBS:
+                if local >= _MOB_PER_PLAYER:
                     break
+                if _zone_count(col) >= _ZONE_MAX:
+                    continue
+                n_before = len(self._mobs)
                 surf = world.surface_at(col)
                 self._try_spawn_golem(col, surf, world, seed)
                 self._try_spawn_slime(col, surf, world, seed)
@@ -66,7 +89,9 @@ class MobManager:
                     self._try_spawn_polar_bear(col, surf, world, seed)
                     self._try_spawn_scorpion(col, surf, world, seed)
                     self._try_spawn_vulture(col, surf, world, seed)
+                local += len(self._mobs) - n_before
 
+        # Despawn : garde le mob s'il est proche d'AU MOINS UN joueur
         self._mobs = [
             m for m in self._mobs
             if any(abs(m.center_col() - c) <= _DESPAWN_RANGE for c in centers)

@@ -149,8 +149,8 @@ _MOB_COLOR = {
 }
 
 # ── Rayon de spawn / despawn ──────────────────────────────────────────────────
-_SPAWN_RANGE   = 55
-_DESPAWN_RANGE = 70
+_SPAWN_RANGE   = 35   # tuiles — doit rester < _DESPAWN_RANGE
+_DESPAWN_RANGE = 40   # tuiles
 
 
 # ── Classe Mob ────────────────────────────────────────────────────────────────
