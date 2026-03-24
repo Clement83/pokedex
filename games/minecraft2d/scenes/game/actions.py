@@ -171,7 +171,7 @@ def handle_block_actions(
 
             if break_infos[i] and break_infos[i][:2] == (cur_col, cur_row):
                 player._break_time += dt
-                req_time = TILE_BREAK_TIME.get(tile_at, 0.5)
+                req_time = TILE_BREAK_TIME.get(tile_at, 0.5) / player_t
                 progress = min(player._break_time / req_time, 1.0)
                 break_infos[i] = (cur_col, cur_row, progress)
                 if mine_tick_cd[i] <= 0.0:

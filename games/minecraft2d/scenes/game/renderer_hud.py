@@ -309,5 +309,11 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
     else:
         name = ""
     if name:
-        name_s = font.render(name, True, color)
+        bright = (min(255, color[0] + 80), min(255, color[1] + 80), min(255, color[2] + 80))
+        name_s = font.render(name, True, bright)
+        nw, nh = name_s.get_size()
+        px, py = 3, 1
+        bg = pygame.Surface((nw + px * 2, nh + py * 2), pygame.SRCALPHA)
+        bg.fill((0, 0, 0, 180))
+        screen.blit(bg, (x_offset - px, y + sh + 2 - py))
         screen.blit(name_s, (x_offset, y + sh + 2))

@@ -216,7 +216,7 @@ def run(screen, joysticks, world_id, seed):
                     loot_notifs.append([msg, 2.5 if name else 1.0, col2])
                     if name: _sounds.chest_open()
                 if cur_mod: craft_menus[i].close()
-                prev_mine[i] = cur_mine; continue
+                prev_mine[i] = cur_mine; prev_dy[i] = dy; prev_dx[i] = dx; continue
 
             if cur_mod:
                 if dx ==  1 and prev_dx[i] !=  1: player.inventory.slot_next();  _sounds.inv_change()
@@ -274,7 +274,7 @@ def run(screen, joysticks, world_id, seed):
             for k, cam in enumerate(split_cams):
                 cam.x = max(0, players[k].px() - HALF_W // 2)
                 cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
-        elif is_split and pdist <= UNSPLIT_DIST:
+        elif is_split and pdist <= UNSPLIT_DIST and not any(cm.visible for cm in craft_menus) and not trade_menu.visible:
             is_split = False
             shared_cam.x = max(0, (players[0].px() + players[1].px()) // 2 - SCREEN_WIDTH  // 2)
             shared_cam.y = max(0, min((players[0].py() + players[1].py()) // 2 - SCREEN_HEIGHT // 2, max_cy))

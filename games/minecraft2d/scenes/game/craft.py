@@ -158,14 +158,15 @@ class CraftMenu:
             return EQUIP_NAMES.get(result, "?")
 
     def draw(self, screen, inventory, player_color, font):
-        """Dessine le menu craft centré à l'écran."""
+        """Dessine le menu craft centré dans la surface cible."""
         self._refresh(inventory)
 
         tier       = inventory.craft_tier
         tier_color = CRAFT_TIER_COLORS.get(tier, player_color)
         tier_label = CRAFT_TIER_LABELS.get(tier, "?")
 
-        mx = (SCREEN_WIDTH  - _MENU_W) // 2
+        sw = screen.get_width()
+        mx = (sw - _MENU_W) // 2
         my = (SCREEN_HEIGHT - _MENU_H) // 2
 
         # Fond (surface réutilisée)
