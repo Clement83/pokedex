@@ -38,6 +38,7 @@ BOMB_RANGE    = 2      # portée en cellules
 EXPLOSION_DUR = 0.6    # durée d'affichage de l'explosion
 MOVE_COOLDOWN = 0.14   # secondes entre chaque déplacement d'une case
 BOMB_PLACE_CD = 0.3    # anti-double placement
+SUDDEN_DEATH  = 90.0   # mort subite après N secondes
 
 # ── Boutons manette ───────────────────────────────────────────────────────────
 BTN_A        = 0    # P2 → bas

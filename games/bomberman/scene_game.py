@@ -18,35 +18,124 @@ _PLAYER_COLORS = [P1_COLOR, P2_COLOR, P3_COLOR, P4_COLOR]
 
 # ── Génération de la grille ───────────────────────────────────────────────────
 
-def _make_grid():
+# Cases toujours libres autour des 4 spawns (coins)
+_SPAWN_SAFE = {
+    (1, 1), (2, 1), (1, 2),
+    (COLS - 2, ROWS - 2), (COLS - 3, ROWS - 2), (COLS - 2, ROWS - 3),
+    (COLS - 2, 1), (COLS - 3, 1), (COLS - 2, 2),
+    (1, ROWS - 2), (2, ROWS - 2), (1, ROWS - 3),
+}
+
+
+def _base_grid():
     grid = [[EMPTY] * COLS for _ in range(ROWS)]
-
     for c in range(COLS):
-        grid[0][c] = WALL
-        grid[ROWS - 1][c] = WALL
+        grid[0][c] = grid[ROWS - 1][c] = WALL
     for r in range(ROWS):
-        grid[r][0] = WALL
-        grid[r][COLS - 1] = WALL
+        grid[r][0] = grid[r][COLS - 1] = WALL
+    return grid
 
+
+def _scatter_blocks(grid, density):
+    for r in range(1, ROWS - 1):
+        for c in range(1, COLS - 1):
+            if grid[r][c] == EMPTY and (c, r) not in _SPAWN_SAFE:
+                if random.random() < density:
+                    grid[r][c] = BLOCK
+    return grid
+
+
+def _make_classic():
+    """Classique : piliers fixes aux positions paires + 55 % de blocs."""
+    grid = _base_grid()
     for r in range(2, ROWS - 1, 2):
         for c in range(2, COLS - 1, 2):
             grid[r][c] = WALL
+    return _scatter_blocks(grid, 0.55), 'classic'
 
-    # Zones dégagées autour des 4 spawns (coins)
-    safe = {
-        (1, 1), (2, 1), (1, 2),                                     # P1 haut-gauche
-        (COLS - 2, ROWS - 2), (COLS - 3, ROWS - 2), (COLS - 2, ROWS - 3),  # P2 bas-droite
-        (COLS - 2, 1), (COLS - 3, 1), (COLS - 2, 2),               # P3 haut-droite
-        (1, ROWS - 2), (2, ROWS - 2), (1, ROWS - 3),              # P4 bas-gauche
-    }
 
+def _make_labyrinth():
+    """Labyrinthe : piliers fixes + 75 % de blocs, terrain très serré."""
+    grid = _base_grid()
+    for r in range(2, ROWS - 1, 2):
+        for c in range(2, COLS - 1, 2):
+            grid[r][c] = WALL
+    return _scatter_blocks(grid, 0.75), 'labyrinth'
+
+
+def _make_arena():
+    """Arène : anneau de piliers intérieur style colisée + piliers centraux."""
+    grid = _base_grid()
+    # Anneau haut et bas (r=2 et r=6)
+    for c in range(3, COLS - 2, 2):
+        if (c, 2) not in _SPAWN_SAFE:
+            grid[2][c] = WALL
+        if (c, ROWS - 3) not in _SPAWN_SAFE:
+            grid[ROWS - 3][c] = WALL
+    # Piliers latéraux gauche et droite (c=3 et c=11)
+    for r in range(3, ROWS - 2, 2):
+        if (3, r) not in _SPAWN_SAFE:
+            grid[r][3] = WALL
+        if (COLS - 4, r) not in _SPAWN_SAFE:
+            grid[r][COLS - 4] = WALL
+    # Piliers centraux en îlot
+    for r in (3, 5):
+        for c in (6, 8):
+            grid[r][c] = WALL
+    return _scatter_blocks(grid, 0.28), 'arena'
+
+
+def _make_tunnels():
+    """
+    3 couloirs horizontaux séparés par des murs avec ouvertures décalées.
+    Couloir haut (r=1-2), couloir milieu (r=4), couloir bas (r=6-7).
+    Les ouvertures obligent à zigzaguer d'un couloir à l'autre.
+    """
+    grid = _base_grid()
+    # Mur r=3 : ouvertures près des coins et au centre
+    gaps_r3 = {2, 7, 12}
+    # Mur r=5 : ouvertures décalées pour forcer le zigzag
+    gaps_r5 = {3, 8, 13}
+    for c in range(1, COLS - 1):
+        if c not in gaps_r3:
+            grid[3][c] = WALL
+        if c not in gaps_r5:
+            grid[5][c] = WALL
+    # Quelques piliers dans les couloirs haut et bas
+    for c in range(2, COLS - 1, 2):
+        if (c, 2) not in _SPAWN_SAFE:
+            grid[2][c] = WALL
+        if (c, 6) not in _SPAWN_SAFE:
+            grid[6][c] = WALL
+    return _scatter_blocks(grid, 0.40), 'tunnels'
+
+
+def _make_cross():
+    """
+    Grande croix indestructible divisant la carte en 4 quadrants.
+    Passages d'1 case près des spawns pour maintenir l'accessibilité.
+    """
+    grid = _base_grid()
+    # Barre verticale (c=7) : 1 passage en haut (r=2) et 1 en bas (r=6)
+    gaps_v = {2, 6}
     for r in range(1, ROWS - 1):
-        for c in range(1, COLS - 1):
-            if grid[r][c] == EMPTY and (c, r) not in safe:
-                if random.random() < 0.55:
-                    grid[r][c] = BLOCK
+        if r not in gaps_v:
+            grid[r][7] = WALL
+    # Barre horizontale (r=4) : 1 passage à gauche (c=2) et 1 à droite (c=12)
+    gaps_h = {2, 12}
+    for c in range(1, COLS - 1):
+        if c not in gaps_h and c != 7:
+            grid[4][c] = WALL
+    return _scatter_blocks(grid, 0.45), 'cross'
 
-    return grid
+
+_LAYOUTS = [_make_classic, _make_labyrinth, _make_arena, _make_tunnels, _make_cross]
+
+
+def _make_grid():
+    grid, _ = random.choice(_LAYOUTS)()
+    theme = random.choice(list(_THEME_PALETTE.keys()))
+    return grid, theme
 
 
 # ── Entités ────────────────────────────────────────────────────────────────────
@@ -505,7 +594,45 @@ def _ai_update(pidx, ai_state, players, grid, bombs, explosions, bonuses, dt):
 
 # ── Rendu ──────────────────────────────────────────────────────────────────────
 
-def _draw_grid(surface, grid, explosions):
+# Palette visuelle par thème : (bg, wall_main, wall_hi, block_main, block_hi, floor)
+_THEME_PALETTE = {
+    # Classique : béton gris + caisses en bois marron
+    'classic':   ((15,  15,  25),  (70,  70,  90),  (90,  90, 115),
+                  (120, 75,  45),  (160, 110, 60),   (35,  35,  50)),
+    # Labyrinthe : donjon sombre, murs de pierre noire + pierres mousseuses
+    'labyrinth': ((10,  10,  15),  (45,  45,  55),  (65,  65,  80),
+                  (60,  80,  50),  (85,  110, 65),   (22,  22,  30)),
+    # Arène : sable chaud, murs de grès ocre + tonneaux rouges
+    'arena':     ((30,  22,  10),  (160, 120, 60),  (200, 160, 90),
+                  (180, 60,  40),  (220, 90,  60),   (50,  38,  18)),
+    # Tunnels : acier industriel, murs métalliques + caisses orangées
+    'tunnels':   ((12,  14,  18),  (55,  65,  80),  (80,  95, 115),
+                  (180, 100, 30),  (220, 140, 50),   (20,  24,  30)),
+    # Croix : glace / cristal, murs bleu-blanc + blocs cyan givré
+    'cross':     ((8,   18,  35),  (100, 160, 210), (150, 200, 240),
+                  (50,  160, 180), (90,  200, 220),  (15,  30,  55)),
+    # Girly : fond violet doux, murs rose fuchsia + blocs rose candy
+    'girly':     ((35,  10,  40),  (210, 80,  160), (240, 130, 200),
+                  (255, 140, 190), (255, 190, 220),  (60,  20,  70)),
+    # Neon : fond noir profond, murs vert fluo + blocs magenta électrique
+    'neon':      ((5,   5,   5),   (0,   230, 120), (80,  255, 170),
+                  (220, 0,   200), (255, 60,  240),  (12,  12,  12)),
+    # Forêt : sous-bois sombre, murs bois vert foncé + troncs brun clair
+    'forest':    ((8,   20,  8),   (40,  80,  30),  (65,  120, 45),
+                  (110, 70,  30),  (150, 105, 50),   (15,  35,  12)),
+    # Feu / lave : fond noir brûlé, murs roche volcanique + blocs braise
+    'lava':      ((18,  5,   0),   (90,  30,  10),  (140, 55,  15),
+                  (220, 80,  0),   (255, 130, 20),   (30,  10,  5)),
+    # Pastel 8-bit : fond gris chiné, murs lilas + blocs jaune beurre
+    'pastel':    ((45,  40,  55),  (160, 130, 200), (195, 170, 230),
+                  (240, 220, 100), (255, 240, 150),  (60,  55,  75)),
+}
+
+
+def _draw_grid(surface, grid, explosions, theme='classic'):
+    pal = _THEME_PALETTE.get(theme, _THEME_PALETTE['classic'])
+    bg_col, wall_col, wall_hi, block_col, block_hi, floor_col = pal
+
     explo_cells = set()
     for ex in explosions:
         explo_cells |= ex.cells
@@ -521,15 +648,20 @@ def _draw_grid(surface, grid, explosions):
                 inner = rect.inflate(-8, -8)
                 pygame.draw.rect(surface, EXPLO_CENTER, inner, border_radius=2)
             elif grid[r][c] == WALL:
-                pygame.draw.rect(surface, WALL_COLOR,  rect, border_radius=2)
-                pygame.draw.rect(surface, (90, 90, 115),
+                pygame.draw.rect(surface, wall_col,  rect, border_radius=2)
+                pygame.draw.rect(surface, wall_hi,
                                  (rx + 2, ry + 2, CELL - 5, 4), border_radius=1)
             elif grid[r][c] == BLOCK:
-                pygame.draw.rect(surface, BLOCK_COLOR, rect, border_radius=2)
-                pygame.draw.rect(surface, (140, 90, 55),
+                pygame.draw.rect(surface, block_col, rect, border_radius=2)
+                pygame.draw.rect(surface, block_hi,
                                  (rx + 2, ry + 2, CELL - 5, 4), border_radius=1)
+                # Petite croix décorative sur le bloc (visible sur tous les thèmes)
+                mid = CELL // 2 - 1
+                dark = (max(0, block_col[0]-40), max(0, block_col[1]-40), max(0, block_col[2]-40))
+                pygame.draw.rect(surface, dark, (rx + mid - 1, ry + 4,  3, CELL - 9))
+                pygame.draw.rect(surface, dark, (rx + 4, ry + mid - 1, CELL - 9, 3))
             else:
-                pygame.draw.rect(surface, EMPTY_COLOR, rect, border_radius=2)
+                pygame.draw.rect(surface, floor_col, rect, border_radius=2)
 
 
 def _draw_bombs(surface, bombs, t):
@@ -701,7 +833,7 @@ def run(screen, joysticks):
     joy_p1     = joysticks[0] if len(joysticks) > 0 else None
     has_p2_joy = len(joysticks) > 1
 
-    grid    = _make_grid()
+    grid, theme = _make_grid()
     players = [
         Player(1,          1,          P1_COLOR),   # J1  haut-gauche
         Player(COLS - 2,   ROWS - 2,   P2_COLOR),   # J2  bas-droite
@@ -723,7 +855,8 @@ def run(screen, joysticks):
     bomb_press = [False, False, False, False]
 
     quit_combo = QuitCombo()
-    t = 0.0
+    t          = 0.0
+    rain_timer = 0.0   # compte à rebours avant la prochaine bombe de pluie
 
     while True:
         dt = clock.tick(FPS) / 1000.0
@@ -868,7 +1001,26 @@ def run(screen, joysticks):
             ex.timer -= dt
         explosions = [ex for ex in explosions if ex.timer > 0.0]
 
-        # ── Mort des joueurs ─────────────────────────────────────────────────
+        # ── Mort subite : pluie de bombes ─────────────────────────────────────
+        if t >= SUDDEN_DEATH:
+            rain_timer -= dt
+            if rain_timer <= 0.0:
+                elapsed_sd    = t - SUDDEN_DEATH
+                rain_interval = max(0.2, 2.0 - elapsed_sd * 0.025)
+                rain_timer    = rain_interval
+                candidates = [
+                    (c, r)
+                    for r in range(1, ROWS - 1)
+                    for c in range(1, COLS - 1)
+                    if grid[r][c] != WALL
+                    and not any(b.col == c and b.row == r for b in bombs)
+                ]
+                if candidates:
+                    rc, rr  = random.choice(candidates)
+                    rb      = Bomb(rc, rr, -1, 3)
+                    rb.timer = 1.8   # mèche courte
+                    bombs.append(rb)
+                    sounds.play('bomb_place')
         all_explo = set()
         for ex in explosions:
             all_explo |= ex.cells
@@ -887,7 +1039,7 @@ def run(screen, joysticks):
         if len(alive) <= 1:
             # Rendu final puis pause
             screen.fill(BG_COLOR)
-            _draw_grid(screen, grid, explosions)
+            _draw_grid(screen, grid, explosions, theme)
             _draw_bonuses(screen, bonuses, t, f_sm)
             _draw_bombs(screen, bombs, t)
             _draw_players(screen, players, f_sm)
@@ -905,11 +1057,25 @@ def run(screen, joysticks):
 
         # ── Rendu ────────────────────────────────────────────────────────────
         screen.fill(BG_COLOR)
-        _draw_grid(screen, grid, explosions)
+        _draw_grid(screen, grid, explosions, theme)
         _draw_bonuses(screen, bonuses, t, f_sm)
         _draw_bombs(screen, bombs, t)
         _draw_players(screen, players, f_sm)
         _draw_ui(screen, players, f_ui)
+
+        # ── Compte à rebours / alerte mort subite ───────────────────────────
+        if t >= SUDDEN_DEATH:
+            if int(t * 3) % 2 == 0:
+                sd_surf = f_sm.render('  !! MORT SUBITE !!  ', True, (255, 50, 50))
+                sx = (SCREEN_WIDTH - sd_surf.get_width()) // 2
+                screen.blit(sd_surf, (sx, 4))
+        else:
+            countdown = SUDDEN_DEATH - t
+            if countdown <= 10.0:
+                lbl = f'Mort subite dans {int(countdown) + 1}s'
+                c_surf = f_sm.render(lbl, True, (255, 180, 0))
+                sx = (SCREEN_WIDTH - c_surf.get_width()) // 2
+                screen.blit(c_surf, (sx, 4))
 
         if quit_combo.update_and_draw(screen):
             return None
