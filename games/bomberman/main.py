@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 import math
 import pygame
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BG_COLOR, TEXT_COLOR, P1_COLOR, P2_COLOR
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BG_COLOR, TEXT_COLOR, P1_COLOR, P2_COLOR, P3_COLOR, P4_COLOR
 
 import scene_game
 import scene_result
@@ -24,7 +24,7 @@ def main():
     pygame.event.clear()
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Bomberman – 2 Joueurs")
+    pygame.display.set_caption("Bomberman – 2 Humains + 2 IA")
 
     _show_splash(screen, joysticks)
 
@@ -142,15 +142,17 @@ def _show_splash(screen, joysticks):
         screen.blit(shadow, (tx + 3,    ty + 3))
         screen.blit(title,  (tx,        ty))
 
-        sub = font_md.render("2 Joueurs", True, TEXT_COLOR)
+        sub = font_md.render("2 Humains + 2 IA", True, TEXT_COLOR)
         screen.blit(sub, ((SCREEN_WIDTH - sub.get_width()) // 2,
                            ty + title.get_height() + 2))
 
         cy = ty + title.get_height() + 20
         p1 = font_sm.render("J1 : Z/Q/S/D  |  Bombe : E  / Btn 12", True, P1_COLOR)
         p2 = font_sm.render("J2 : O/K/L/M  |  Bombe : P  / Btn 17", True, P2_COLOR)
+        ia = font_sm.render("IA1 & IA2 : joueurs automatiques", True, P3_COLOR)
         screen.blit(p1, ((SCREEN_WIDTH - p1.get_width()) // 2, cy))
         screen.blit(p2, ((SCREEN_WIDTH - p2.get_width()) // 2, cy + 15))
+        screen.blit(ia, ((SCREEN_WIDTH - ia.get_width()) // 2, cy + 30))
 
         if int(t * 2) % 2 == 0:
             hint = font_sm.render("Appuie sur un bouton pour jouer", True, (160, 160, 210))

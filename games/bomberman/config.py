@@ -9,7 +9,7 @@ COLS   = 15
 ROWS   = 9
 CELL   = 30
 GRID_X = (SCREEN_WIDTH  - COLS * CELL) // 2   # 15 px de marge
-GRID_Y = 30                                     # barre UI en haut
+GRID_Y = 34                                     # barre UI en haut (2 lignes)
 
 # Types de cellules
 EMPTY = 0
@@ -28,6 +28,8 @@ EXPLO_CENTER  = (255, 230,  80)
 EXPLO_BEAM    = (255, 120,  20)
 P1_COLOR      = (255,  80,  80)
 P2_COLOR      = ( 80, 180, 255)
+P3_COLOR      = ( 80, 220, 120)   # IA 1 – vert
+P4_COLOR      = (200, 130, 255)   # IA 2 – violet
 TEXT_COLOR    = (210, 210, 230)
 
 # ── Paramètres de jeu ─────────────────────────────────────────────────────────
