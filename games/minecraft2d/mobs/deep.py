@@ -1,5 +1,5 @@
 """
-Mobs des profondeurs : IA et spawn.
+Mobs des profondeurs : IA uniquement (spawn géré par manager.py).
 
 Hiérarchie de profondeur (tiles sous la surface) :
   surf+20..+45  → MOB_TROLL  : troll des cavernes, 6 HP, dmg=2, épée Bois min
@@ -8,13 +8,12 @@ Hiérarchie de profondeur (tiles sous la surface) :
 """
 import math
 
-from world import _hash1
-from config import GRAVITY, MAX_FALL_SPEED, JUMP_VEL, TILE_AIR, ROWS
+from config import GRAVITY, MAX_FALL_SPEED, JUMP_VEL
 from mobs.base import (
-    Mob, MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL,
-    _mw, _mh,
+    MOB_TROLL, MOB_WORM, MOB_TENDRIL,
+    _mw,
 )
-from mobs.physics import _solid, _move_mob_x, _move_mob_y, _eject_mob
+from mobs.physics import _solid, _move_mob_x, _move_mob_y
 from mobs.armor import _apply_contact_dmg, combat_roll, _CRIT_MULT
 
 TENDRIL_REACH  = 6.0   # rayon d'attaque tentacules (tiles)
@@ -140,72 +139,3 @@ def _update_tendril(mob, dt, players):
             player.hp = max(0, player.hp - dmg)
             player._dmg_flash = 0.6 if crit else 0.4
         mob._tendril_cd = 2.0   # 1 attaque toutes les 2 secondes
-
-
-# ── Spawn ─────────────────────────────────────────────────────────────────────
-
-def spawn_deep_mobs(spawned, mobs, col, surf, world, seed):
-    """Déclenche le spawn des mobs profonds pour une colonne donnée."""
-    _try_spawn_troll(spawned, mobs, col, surf, world, seed)
-    _try_spawn_worm(spawned, mobs, col, surf, world, seed)
-    _try_spawn_wraith(spawned, mobs, col, surf, world, seed)
-    _try_spawn_tendril(spawned, mobs, col, surf, world, seed)
-
-
-def _try_spawn_troll(spawned, mobs, col, surf, world, seed):
-    key = (col, MOB_TROLL)
-    if key in spawned: return
-    spawned.add(key)
-    if _hash1(col * 167 + 71, seed ^ 0x7011) >= 0.06: return
-    deep_min = surf + 20
-    for row in range(deep_min, min(deep_min + 25, ROWS - 2)):
-        if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
-            top = row - math.ceil(_mh(MOB_TROLL)) + 1
-            m = Mob(col, top, MOB_TROLL, seed)
-            _eject_mob(m, world)
-            mobs.append(m)
-            break
-
-
-def _try_spawn_worm(spawned, mobs, col, surf, world, seed):
-    key = (col, MOB_WORM)
-    if key in spawned: return
-    spawned.add(key)
-    if _hash1(col * 181 + 83, seed ^ 0xD0A2) >= 0.04: return
-    deep_min = surf + 45
-    for row in range(deep_min, min(deep_min + 20, ROWS - 2)):
-        if world.get(col, row) == TILE_AIR:
-            mobs.append(Mob(col, float(row), MOB_WORM, seed))
-            break
-
-
-def _try_spawn_wraith(spawned, mobs, col, surf, world, seed):
-    key = (col, MOB_WRAITH)
-    if key in spawned: return
-    spawned.add(key)
-    # Spawn réduit : spéctre plus rare (0.006 au lieu de 0.025)
-    if _hash1(col * 193 + 97, seed ^ 0xFA17) >= 0.006: return
-    deep_min = surf + 65
-    for row in range(deep_min, min(deep_min + 20, ROWS - 2)):
-        if world.get(col, row) == TILE_AIR:
-            mobs.append(Mob(col, float(row), MOB_WRAITH, seed))
-            break
-
-
-def _try_spawn_tendril(spawned, mobs, col, surf, world, seed):
-    """La Vrille : boss souterrain très rare (~0.4 %), unique par zone (espacement 200)."""
-    key = (col, MOB_TENDRIL)
-    if key in spawned: return
-    spawned.add(key)
-    # Très rare + espacement forcé
-    if _hash1(col * 251 + 113, seed ^ 0x7E11) >= 0.004: return
-    for dc2 in range(-200, 0):
-        if _hash1((col + dc2) * 251 + 113, seed ^ 0x7E11) < 0.004:
-            return  # trop proche d'une autre Vrille
-    deep_min = surf + 70
-    for row in range(deep_min, min(deep_min + 30, ROWS - 2)):
-        if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
-            m = Mob(col, float(row), MOB_TENDRIL, seed)
-            _eject_mob(m, world)
-            mobs.append(m)
-            break

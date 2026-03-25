@@ -1,8 +1,15 @@
 """
 Gestionnaire de mobs : spawn, update et dessin.
+
+Améliorations vs legacy :
+- _spawned = dict avec cooldown (respawn après 45 s au lieu de blocage permanent)
+- Table de règles déclarative (_SPAWN_RULES) → 1 seule méthode _try_spawn
+- Densité pré-calculée par bucket (O(n) au lieu de O(n × cols))
+- Colonnes shufflées → plus de biais gauche→droite
 """
 import math
 import random
+from collections import Counter
 from world import _hash1
 from config import (TILE_SIZE, PLAYER_W, PLAYER_H, TILE_AIR, ROWS, MAT_TIER,
                     TILE_SAND, TILE_GRASS, TILE_DIRT,
@@ -13,7 +20,7 @@ from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
-    MOB_TENDRIL,
+    MOB_TENDRIL, MOB_TROLL, MOB_WORM, MOB_WRAITH,
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
     _MOB_PW, _MOB_PH,
@@ -22,92 +29,227 @@ from mobs.physics import _eject_mob
 from mobs.ai import update_mob
 from mobs.renderer import draw_mob
 from mobs.drops import roll_drops
-from mobs.deep import spawn_deep_mobs
+
+# ── Table de règles de spawn ────────────────────────────────────────────────
+# Chaque règle : (mob_type, hash_mul, hash_off, hash_xor, chance,
+#   biome_require, biome_exclude, surface_tiles,
+#   mode, depth_min, depth_max, fly_offset, day_only, wander_init)
+#
+# mode :
+#   "surface"     → pose au sommet de la surface, vérifie l'espace libre
+#   "underground" → scan profondeur pour air + sol solide
+#   "cave_air"    → premier bloc air dans la profondeur (vol/flottant)
+#   "flying"      → hauteur fixe au-dessus de la surface
+
+_SPAWN_RULES = [
+    # ── Toujours (jour et nuit) ─────────────────────────────────────────────
+    # mob_type       mul  off  xor      chance  biome_req    biome_excl     surf_tiles
+    # mode          d_min d_max fly  day_only wander
+    (MOB_SLIME,      97,  13, 0xC1C2,  0.04,  None,        None,          None,
+     "underground",   5,   40,  0,  False, False),
+    (MOB_ZOMBIE,    131,  29, 0xDEAD,  0.03,  None,        None,          None,
+     "underground",  18,   48,  0,  False, False),
+    (MOB_SPIDER,    113,  41, 0x5B1D,  0.035, None,        BIOME_DESERT,  None,
+     "underground",   3,   25,  0,  False, False),
+    (MOB_SKELETON,  143,  37, 0x5CE1,  0.025, None,        None,          None,
+     "underground",  15,   50,  0,  False, False),
+    (MOB_BAT,        79,  53, 0xBA7,   0.03,  None,        None,          None,
+     "cave_air",      8,   58,  0,  False, False),
+    (MOB_DEMON,     157,  61, 0xDE11,  0.006, None,        None,          None,
+     "cave_air",     55,   75,  0,  False, False),
+    # deep mobs
+    (MOB_TROLL,     167,  71, 0x7011,  0.06,  None,        None,          None,
+     "underground",  20,   45,  0,  False, False),
+    (MOB_WORM,      181,  83, 0xD0A2,  0.04,  None,        None,          None,
+     "cave_air",     45,   65,  0,  False, False),
+    (MOB_WRAITH,    193,  97, 0xFA17,  0.006, None,        None,          None,
+     "cave_air",     65,   85,  0,  False, False),
+
+    # ── Jour uniquement ─────────────────────────────────────────────────────
+    (MOB_CHICKEN,    73,  11, 0xC0DE,  0.018, None,        None,          None,
+     "surface",       0,    0,  0,  True,  False),
+    (MOB_FROG,       89,  17, 0xF09B,  0.012, BIOME_FOREST, None,         None,
+     "surface",       0,    0,  0,  True,  False),
+    (MOB_SEAGULL,    61,  23, 0xBEEF,  0.009, None,        BIOME_ICE,     None,
+     "flying",        0,    0, -7,  True,  True),
+    (MOB_CRAB,       67,  31, 0xCBA5,  0.02,  None,        None,          (TILE_SAND,),
+     "surface",       0,    0,  0,  True,  False),
+    (MOB_BOAR,      103,  47, 0xB0A1,  0.025, None,        None,          (TILE_GRASS, TILE_DIRT),
+     "surface",       0,    0,  0,  True,  False),
+
+    # ── Biome Glace ─────────────────────────────────────────────────────────
+    (MOB_PENGUIN,    71,  19, 0xB1CE,  0.025, BIOME_ICE,   None,          None,
+     "surface",       0,    0,  0,  True,  False),
+    (MOB_POLAR_BEAR,127,  43, 0xBEA1,  0.012, BIOME_ICE,   None,          None,
+     "surface",       0,    0,  0,  True,  False),
+
+    # ── Biome Désert ────────────────────────────────────────────────────────
+    (MOB_SCORPION,  109,  37, 0x5C01,  0.025, BIOME_DESERT, None,         None,
+     "surface",       0,    0,  0,  True,  False),
+    (MOB_VULTURE,    83,  29, 0xAF01,  0.015, BIOME_DESERT, None,         None,
+     "flying",        0,    0, -8,  True,  True),
+]
+
+_RESPAWN_COOLDOWN = 45.0   # secondes avant qu'une colonne puisse re-spawner un mob
+_MOB_PER_PLAYER   = 10
+_ZONE_HALF        = 20     # ±20 tuiles = zone de 40 tuiles
+_ZONE_MAX         =  5
 
 
 class MobManager:
     def __init__(self, world):
-        self._world   = world
-        self._seed    = world.seed
-        self._mobs    = []
-        self._spawned = set()   # (col, mob_type) déjà tentés
-        self._was_night = False  # suivi de la transition jour/nuit
+        self._world     = world
+        self._seed      = world.seed
+        self._mobs      = []
+        self._spawned   = {}      # (col, mob_type) → expiry_time (horloge interne)
+        self._was_night = False
+        self._clock     = 0.0     # timer interne pour les cooldowns de respawn
 
-    # ── Spawn déterministe ────────────────────────────────────────────────────
+    # ── Helpers cooldown ────────────────────────────────────────────────────
+
+    def _can_spawn(self, key):
+        """True si la colonne est libre de cooldown."""
+        if key not in self._spawned:
+            return True
+        return self._clock >= self._spawned[key]
+
+    def _mark_spawned(self, key):
+        self._spawned[key] = self._clock + _RESPAWN_COOLDOWN
+
+    # ── Spawn principal ─────────────────────────────────────────────────────
 
     def spawn_around(self, centers, is_night=False):
-        """Génère des mobs avec un budget indépendant par joueur.
-
-        Règles :
-        - Chaque joueur a droit à 10 mobs dans son _SPAWN_RANGE.
-          Les mobs déjà présents comptent pour le joueur le plus proche.
-          → Ensemble : ~10 partagés. Séparés : 10 chacun, jamais vides.
-        - Zone cap : max 5 mobs dans ±20 tuiles (évite les attroupements).
-        - Despawn : un mob survit s'il est à ≤ _DESPAWN_RANGE de N'IMPORTE QUEL joueur.
-          → Un mob ne disparaît pas parce qu'UN joueur s'éloigne.
-        """
+        """Spawn avec budget/joueur, densité par bucket, colonnes shufflées."""
         if isinstance(centers, int):
             centers = [centers]
         world = self._world
         seed  = self._seed
 
-        _MOB_PER_PLAYER = 10
-        _ZONE_HALF      = 20   # ±20 tuiles = zone de 40 tuiles
-        _ZONE_MAX       = 5
-
-        def _zone_count(col):
-            return sum(1 for m in self._mobs if abs(m.center_col() - col) <= _ZONE_HALF)
+        # Densité pré-calculée par bucket (O(n) au lieu de O(n × cols))
+        density = Counter()
+        for m in self._mobs:
+            density[int(m.center_col()) // _ZONE_HALF] += 1
 
         for center_col in centers:
-            # Budget propre à CE joueur : mobs déjà dans son rayon
             local = sum(
                 1 for m in self._mobs
                 if abs(m.center_col() - center_col) <= _SPAWN_RANGE
             )
-            for col in range(center_col - _SPAWN_RANGE, center_col + _SPAWN_RANGE):
+
+            # Colonnes shufflées → plus de biais gauche→droite
+            cols = list(range(center_col - _SPAWN_RANGE,
+                              center_col + _SPAWN_RANGE))
+            random.shuffle(cols)
+
+            for col in cols:
                 if local >= _MOB_PER_PLAYER:
                     break
-                if _zone_count(col) >= _ZONE_MAX:
+                bucket = int(col) // _ZONE_HALF
+                if density[bucket] >= _ZONE_MAX:
                     continue
+
                 n_before = len(self._mobs)
                 surf = world.surface_at(col)
+
+                # Golem (cas spécial : cabane)
                 self._try_spawn_golem(col, surf, world, seed)
-                self._try_spawn_slime(col, surf, world, seed)
-                self._try_spawn_zombie(col, surf, world, seed)
-                self._try_spawn_spider(col, surf, world, seed)
-                self._try_spawn_skeleton(col, surf, world, seed)
-                self._try_spawn_bat(col, surf, world, seed)
-                self._try_spawn_demon(col, surf, world, seed)
-                spawn_deep_mobs(self._spawned, self._mobs, col, surf, world, seed)
-                if not is_night:
-                    self._try_spawn_chicken(col, surf, world, seed)
-                    self._try_spawn_frog(col, surf, world, seed)
-                    self._try_spawn_seagull(col, surf, world, seed)
-                    self._try_spawn_crab(col, surf, world, seed)
-                    self._try_spawn_boar(col, surf, world, seed)
-                    self._try_spawn_penguin(col, surf, world, seed)
-                    self._try_spawn_polar_bear(col, surf, world, seed)
-                    self._try_spawn_scorpion(col, surf, world, seed)
-                    self._try_spawn_vulture(col, surf, world, seed)
-                local += len(self._mobs) - n_before
+
+                # Tendril (cas spécial : espacement 200 cols)
+                self._try_spawn_tendril(col, surf, world, seed)
+
+                # Tous les mobs génériques via la table
+                for rule in _SPAWN_RULES:
+                    if rule[12] and is_night:   # day_only
+                        continue
+                    self._try_spawn(col, surf, world, seed, rule)
+
+                spawned_count = len(self._mobs) - n_before
+                local += spawned_count
+                # Mise à jour incrémentale de la densité
+                for m in self._mobs[-spawned_count:] if spawned_count else ():
+                    density[int(m.center_col()) // _ZONE_HALF] += 1
 
         # Despawn : garde le mob s'il est proche d'AU MOINS UN joueur
         self._mobs = [
             m for m in self._mobs
             if any(abs(m.center_col() - c) <= _DESPAWN_RANGE for c in centers)
         ]
+        # Nettoyage des cooldowns pour les colonnes éloignées
         self._spawned = {
-            k for k in self._spawned
+            k: v for k, v in self._spawned.items()
             if any(abs(k[0] - c) <= _DESPAWN_RANGE for c in centers)
         }
 
-    # ── Spawns individuels ────────────────────────────────────────────────────
+    # ── Spawn générique (table-driven) ──────────────────────────────────────
+
+    def _try_spawn(self, col, surf, world, seed, rule):
+        (mob_type, h_mul, h_off, h_xor, chance,
+         biome_req, biome_excl, surf_tiles,
+         mode, d_min, d_max, fly_off, _day_only, wander) = rule
+
+        key = (col, mob_type)
+        if not self._can_spawn(key):
+            return
+        self._mark_spawned(key)
+
+        # Contraintes biome
+        if biome_req is not None and world.biome_at(col) != biome_req:
+            return
+        if biome_excl is not None and world.biome_at(col) == biome_excl:
+            return
+
+        # Contrainte tuile de surface
+        if surf_tiles is not None and world.get(col, surf) not in surf_tiles:
+            return
+
+        # Porte probabiliste (hash déterministe)
+        if _hash1(col * h_mul + h_off, seed ^ h_xor) >= chance:
+            return
+
+        # Spawn selon le mode
+        if mode == "surface":
+            mh  = _mh(mob_type)
+            top = surf - math.ceil(mh)
+            if not all(world.get(col, top + k) == TILE_AIR
+                       for k in range(math.ceil(mh))):
+                return
+            m = Mob(col, top, mob_type, seed)
+            _eject_mob(m, world)
+            self._mobs.append(m)
+
+        elif mode == "underground":
+            mh = _mh(mob_type)
+            for row in range(surf + d_min, min(surf + d_max, ROWS - 2)):
+                if (world.get(col, row) == TILE_AIR
+                        and world.get(col, row + 1) != TILE_AIR):
+                    top = row - math.ceil(mh) + 1
+                    m = Mob(col, top, mob_type, seed)
+                    _eject_mob(m, world)
+                    self._mobs.append(m)
+                    break
+
+        elif mode == "cave_air":
+            for row in range(surf + d_min, min(surf + d_max, ROWS - 2)):
+                if world.get(col, row) == TILE_AIR:
+                    m = Mob(col, float(row), mob_type, seed)
+                    self._mobs.append(m)
+                    break
+
+        elif mode == "flying":
+            fly_row = surf + fly_off
+            if fly_row >= 1:
+                m = Mob(col, float(fly_row), mob_type, seed)
+                if wander:
+                    m._wander_dir = 1 if m._rng.random() > 0.5 else -1
+                self._mobs.append(m)
+
+    # ── Cas spéciaux ────────────────────────────────────────────────────────
 
     def _try_spawn_golem(self, col, surf, world, seed):
         key = (col, MOB_GOLEM)
-        if key in self._spawned:
+        if not self._can_spawn(key):
             return
-        self._spawned.add(key)
+        self._mark_spawned(key)
         if world.biome_at(col) == BIOME_DESERT:
             return
         origin = world._cabin_origin(col)
@@ -123,236 +265,28 @@ class MobManager:
             _eject_mob(m, world)
             self._mobs.append(m)
 
-    def _try_spawn_slime(self, col, surf, world, seed):
-        key = (col, MOB_SLIME)
-        if key in self._spawned:
+    def _try_spawn_tendril(self, col, surf, world, seed):
+        """La Vrille : boss souterrain très rare (~0.4 %), unique par zone (espacement 200)."""
+        key = (col, MOB_TENDRIL)
+        if not self._can_spawn(key):
             return
-        self._spawned.add(key)
-        if _hash1(col * 97 + 13, seed ^ 0xC1C2) >= 0.04:   # 0.08 -> 0.04
+        self._mark_spawned(key)
+        if _hash1(col * 251 + 113, seed ^ 0x7E11) >= 0.004:
             return
-        for row in range(surf + 5, min(surf + 40, ROWS - 2)):
-            if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
-                top = row - math.ceil(_mh(MOB_SLIME)) + 1
-                m   = Mob(col, top, MOB_SLIME, seed)
-                _eject_mob(m, world)
-                self._mobs.append(m)
-                break
-
-    def _try_spawn_zombie(self, col, surf, world, seed):
-        key = (col, MOB_ZOMBIE)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if _hash1(col * 131 + 29, seed ^ 0xDEAD) >= 0.03:  # 0.06 -> 0.03
-            return
-        deep_min = surf + 18
+        # Espacement forcé : pas d'autre Vrille dans les 200 colonnes précédentes
+        for dc2 in range(-200, 0):
+            if _hash1((col + dc2) * 251 + 113, seed ^ 0x7E11) < 0.004:
+                return
+        deep_min = surf + 70
         for row in range(deep_min, min(deep_min + 30, ROWS - 2)):
-            if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
-                top = row - math.ceil(_mh(MOB_ZOMBIE)) + 1
-                m   = Mob(col, top, MOB_ZOMBIE, seed)
+            if (world.get(col, row) == TILE_AIR
+                    and world.get(col, row + 1) != TILE_AIR):
+                m = Mob(col, float(row), MOB_TENDRIL, seed)
                 _eject_mob(m, world)
                 self._mobs.append(m)
                 break
 
-    def _try_spawn_spider(self, col, surf, world, seed):
-        key = (col, MOB_SPIDER)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) == BIOME_DESERT:
-            return
-        if _hash1(col * 113 + 41, seed ^ 0x5B1D) >= 0.035: # 0.07 -> 0.035
-            return
-        for row in range(surf + 3, min(surf + 25, ROWS - 2)):
-            if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
-                top = row - math.ceil(_mh(MOB_SPIDER)) + 1
-                m   = Mob(col, top, MOB_SPIDER, seed)
-                _eject_mob(m, world)
-                self._mobs.append(m)
-                break
-
-    def _try_spawn_skeleton(self, col, surf, world, seed):
-        key = (col, MOB_SKELETON)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if _hash1(col * 143 + 37, seed ^ 0x5CE1) >= 0.025: # 0.05 -> 0.025
-            return
-        deep_min = surf + 15
-        for row in range(deep_min, min(deep_min + 35, ROWS - 2)):
-            if world.get(col, row) == TILE_AIR and world.get(col, row + 1) != TILE_AIR:
-                top = row - math.ceil(_mh(MOB_SKELETON)) + 1
-                m   = Mob(col, top, MOB_SKELETON, seed)
-                _eject_mob(m, world)
-                self._mobs.append(m)
-                break
-
-    def _try_spawn_bat(self, col, surf, world, seed):
-        key = (col, MOB_BAT)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if _hash1(col * 79 + 53, seed ^ 0xBA7) >= 0.03:    # 0.06 -> 0.03
-            return
-        cave_start = surf + 8
-        for row in range(cave_start, min(cave_start + 50, ROWS - 2)):
-            if world.get(col, row) == TILE_AIR:
-                m = Mob(col, float(row), MOB_BAT, seed)
-                self._mobs.append(m)
-                break
-
-    def _try_spawn_crab(self, col, surf, world, seed):
-        key = (col, MOB_CRAB)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.get(col, surf) != TILE_SAND:
-            return
-        if _hash1(col * 67 + 31, seed ^ 0xCBA5) >= 0.02:   # 0.04 -> 0.02
-            return
-        top = surf - math.ceil(_mh(MOB_CRAB))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_CRAB)))):
-            m = Mob(col, top, MOB_CRAB, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    def _try_spawn_demon(self, col, surf, world, seed):
-        key = (col, MOB_DEMON)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if _hash1(col * 157 + 61, seed ^ 0xDE11) >= 0.006: # 0.012 -> 0.006
-            return
-        deep_min = surf + 55
-        for row in range(deep_min, min(deep_min + 20, ROWS - 2)):
-            if world.get(col, row) == TILE_AIR:
-                m = Mob(col, float(row), MOB_DEMON, seed)
-                self._mobs.append(m)
-                break
-
-    def _try_spawn_boar(self, col, surf, world, seed):
-        key = (col, MOB_BOAR)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.get(col, surf) not in (TILE_GRASS, TILE_DIRT):
-            return
-        if _hash1(col * 103 + 47, seed ^ 0xB0A1) >= 0.025: # 0.05 -> 0.025
-            return
-        top = surf - math.ceil(_mh(MOB_BOAR))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_BOAR)))):
-            m = Mob(col, top, MOB_BOAR, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    def _try_spawn_chicken(self, col, surf, world, seed):
-        key = (col, MOB_CHICKEN)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if _hash1(col * 73 + 11, seed ^ 0xC0DE) >= 0.018:  # 0.035 -> 0.018
-            return
-        top = surf - math.ceil(_mh(MOB_CHICKEN))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_CHICKEN)))):
-            m = Mob(col, top, MOB_CHICKEN, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    def _try_spawn_frog(self, col, surf, world, seed):
-        key = (col, MOB_FROG)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) != BIOME_FOREST:
-            return
-        if _hash1(col * 89 + 17, seed ^ 0xF09B) >= 0.012:  # 0.025 -> 0.012
-            return
-        top = surf - math.ceil(_mh(MOB_FROG))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_FROG)))):
-            m = Mob(col, top, MOB_FROG, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    def _try_spawn_seagull(self, col, surf, world, seed):
-        key = (col, MOB_SEAGULL)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) == BIOME_ICE:
-            return
-        if _hash1(col * 61 + 23, seed ^ 0xBEEF) >= 0.009:  # 0.018 -> 0.009
-            return
-        fly_row = surf - 7
-        if fly_row >= 1:
-            m = Mob(col, float(fly_row), MOB_SEAGULL, seed)
-            m._wander_dir = 1 if m._rng.random() > 0.5 else -1
-            self._mobs.append(m)
-
-    # ── Mobs de biome : Glace ──────────────────────────────────────────────────
-
-    def _try_spawn_penguin(self, col, surf, world, seed):
-        key = (col, MOB_PENGUIN)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) != BIOME_ICE:
-            return
-        if _hash1(col * 71 + 19, seed ^ 0xB1CE) >= 0.025:
-            return
-        top = surf - math.ceil(_mh(MOB_PENGUIN))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_PENGUIN)))):
-            m = Mob(col, top, MOB_PENGUIN, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    def _try_spawn_polar_bear(self, col, surf, world, seed):
-        key = (col, MOB_POLAR_BEAR)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) != BIOME_ICE:
-            return
-        if _hash1(col * 127 + 43, seed ^ 0xBEA1) >= 0.012:
-            return
-        top = surf - math.ceil(_mh(MOB_POLAR_BEAR))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_POLAR_BEAR)))):
-            m = Mob(col, top, MOB_POLAR_BEAR, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    # ── Mobs de biome : Désert ───────────────────────────────────────────────
-
-    def _try_spawn_scorpion(self, col, surf, world, seed):
-        key = (col, MOB_SCORPION)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) != BIOME_DESERT:
-            return
-        if _hash1(col * 109 + 37, seed ^ 0x5C01) >= 0.025:
-            return
-        top = surf - math.ceil(_mh(MOB_SCORPION))
-        if all(world.get(col, top + k) == TILE_AIR for k in range(math.ceil(_mh(MOB_SCORPION)))):
-            m = Mob(col, top, MOB_SCORPION, seed)
-            _eject_mob(m, world)
-            self._mobs.append(m)
-
-    def _try_spawn_vulture(self, col, surf, world, seed):
-        key = (col, MOB_VULTURE)
-        if key in self._spawned:
-            return
-        self._spawned.add(key)
-        if world.biome_at(col) != BIOME_DESERT:
-            return
-        if _hash1(col * 83 + 29, seed ^ 0xAF01) >= 0.015:
-            return
-        fly_row = surf - 8
-        if fly_row >= 1:
-            m = Mob(col, float(fly_row), MOB_VULTURE, seed)
-            m._wander_dir = 1 if m._rng.random() > 0.5 else -1
-            self._mobs.append(m)
-
-    # ── Alerte Golem ──────────────────────────────────────────────────────────
+    # ── Alerte Golem ────────────────────────────────────────────────────────
 
     def trigger_cabin_break(self, col):
         """Active la poursuite de tous les Golems proches d'une cabane brisée."""
@@ -361,12 +295,12 @@ class MobManager:
                 m.state     = "chase"
                 m._state_cd = 10.0
 
-    # ── Mise à jour ───────────────────────────────────────────────────────────
+    # ── Mise à jour ─────────────────────────────────────────────────────────
 
     def update(self, dt, players, world):
+        self._clock += dt
         for mob in self._mobs:
             update_mob(mob, dt, players, world)
-            # Zombies qui brûlent au lever du soleil
             if mob.burning:
                 mob.burn_timer -= dt
                 if mob.burn_timer <= 0:
@@ -379,7 +313,6 @@ class MobManager:
         just_became_day   = (not is_night) and self._was_night
 
         if just_became_night:
-            # Spawn 1–2 zombies par joueur à la surface
             for p in players:
                 count = random.randint(1, 2)
                 for _ in range(count):
@@ -390,12 +323,10 @@ class MobManager:
                            for k in range(math.ceil(_mh(MOB_ZOMBIE)))):
                         m = Mob(col, float(top), MOB_ZOMBIE)
                         m._surface_zombie = True
-                        from mobs.physics import _eject_mob
                         _eject_mob(m, world)
                         self._mobs.append(m)
 
         if just_became_day:
-            # Les zombies de surface s'enflamment
             for mob in self._mobs:
                 if (mob.mob_type == MOB_ZOMBIE
                         and getattr(mob, '_surface_zombie', False)
@@ -405,7 +336,7 @@ class MobManager:
 
         self._was_night = is_night
 
-    # ── Attaque épée avec tier + drops ────────────────────────────────────────
+    # ── Attaque épée avec tier + drops ──────────────────────────────────────
 
     def attack_near(self, px, py, reach, damage, sword_tier=0):
         """Inflige dégâts. Retourne (nb_tués: int, drops: list, nb_immunisés: int)."""
@@ -437,7 +368,7 @@ class MobManager:
 
         return len(dead), all_drops, immune
 
-    # ── Rendu ─────────────────────────────────────────────────────────────────
+    # ── Rendu ───────────────────────────────────────────────────────────────
 
     def draw(self, screen, camera):
         vw = camera.view_w
@@ -447,7 +378,5 @@ class MobManager:
             mw = _MOB_PW[mob.mob_type]
             mh = _MOB_PH[mob.mob_type]
             if sx + mw < 0 or sx > vw or sy + mh < 0 or sy > vh:
-                continue   # hors écran
+                continue
             draw_mob(screen, mob, camera)
-
-
