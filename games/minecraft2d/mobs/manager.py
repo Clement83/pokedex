@@ -20,7 +20,7 @@ from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
-    MOB_TENDRIL, MOB_TROLL, MOB_WORM, MOB_WRAITH,
+    MOB_TENDRIL, MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_GORGON,
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     MOB_WOLF, MOB_CAT,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
@@ -164,6 +164,9 @@ class MobManager:
                 # Tendril (cas spécial : espacement 200 cols)
                 self._try_spawn_tendril(col, surf, world, seed)
 
+                # Gorgone (cas spécial : cavité requise, très rare)
+                self._try_spawn_gorgon(col, surf, world, seed)
+
                 # Tous les mobs génériques via la table
                 for rule in _SPAWN_RULES:
                     if rule[12] and is_night:   # day_only
@@ -292,6 +295,46 @@ class MobManager:
                 _eject_mob(m, world)
                 self._mobs.append(m)
                 break
+
+    def _try_spawn_gorgon(self, col, surf, world, seed):
+        """La Gorgone : boss sonique ultra-rare (~0.2%), grande cavité requise.
+        Spawn sur le sol d'une cavité dégagée sur au moins 22 tuiles vers le haut.
+        Espacement minimum de 150 colonnes entre deux Gorgones."""
+        key = (col, MOB_GORGON)
+        if not self._can_spawn(key):
+            return
+        self._mark_spawned(key)
+        if _hash1(col * 307 + 137, seed ^ 0xAB5C) >= 0.002:
+            return
+        # Espacement forcé : pas d'autre Gorgone dans les 150 colonnes précédentes
+        for dc2 in range(-150, 0):
+            if _hash1((col + dc2) * 307 + 137, seed ^ 0xAB5C) < 0.002:
+                return
+        # Chercher un sol solide assez profond
+        deep_min = surf + 75
+        deep_max = min(ROWS - 4, surf + 100)
+        for floor_row in range(deep_min, deep_max):
+            # Sol solide sous cette tuile ?
+            if world.get(col, floor_row) != TILE_AIR:
+                continue
+            if world.get(col, floor_row + 1) == TILE_AIR:
+                continue
+            # Vérifier cavité : 22 tuiles d'air au-dessus
+            cavity_ok = all(
+                world.get(col, floor_row - k) == TILE_AIR
+                for k in range(22)
+            )
+            if not cavity_ok:
+                continue
+            # Spawn : tête 20 tiles (GORGON_BODY_HEIGHT) au-dessus du sol
+            _body_h  = 20
+            head_row = max(0, floor_row - _body_h)
+            m = Mob(col, float(head_row), MOB_GORGON, seed)
+            m._anchor_x   = col + _mw(MOB_GORGON) / 2
+            m._anchor_row = float(floor_row)
+            # Pas de _eject_mob : la tête est en air libre
+            self._mobs.append(m)
+            break
 
     # ── Alerte Golem ────────────────────────────────────────────────────────
 

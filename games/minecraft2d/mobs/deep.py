@@ -5,19 +5,29 @@ Hiérarchie de profondeur (tiles sous la surface) :
   surf+20..+45  → MOB_TROLL  : troll des cavernes, 6 HP, dmg=2, épée Bois min
   surf+45..+65  → MOB_WORM   : ver fouisseur,      9 HP, dmg=3, épée Fer min
   surf+65+      → MOB_WRAITH : spectre abyssal,   12 HP, dmg=4, épée Or min
+  surf+75+      → MOB_GORGON : La Gorgone,        50 HP, dmg=6, épée Or min (très rare)
 """
 import math
 
-from config import GRAVITY, MAX_FALL_SPEED, JUMP_VEL
+from config import GRAVITY, MAX_FALL_SPEED, JUMP_VEL, TILE_AIR, PLAYER_W, PLAYER_H, TILE_SIZE
 from mobs.base import (
-    MOB_TROLL, MOB_WORM, MOB_TENDRIL,
-    _mw,
+    MOB_TROLL, MOB_WORM, MOB_TENDRIL, MOB_GORGON,
+    _mw, _mh,
 )
 from mobs.physics import _solid, _move_mob_x, _move_mob_y
 from mobs.armor import _apply_contact_dmg, combat_roll, _CRIT_MULT
 
 TENDRIL_REACH  = 6.0   # rayon d'attaque tentacules (tiles)
 TENDRIL_DETECT = 10.0  # rayon de détection (tiles)
+
+# ── Constantes Gorgone ────────────────────────────────────────────────────────
+GORGON_BODY_HEIGHT = 20.0   # longueur du corps (tiles) ≈ 1 écran plein
+GORGON_SWING_MAX   =  9.0   # balancement maxi depuis l'ancre (tiles)
+GORGON_CHASE_SPD   =  4.5   # vitesse de swing en chasse (tiles/s)
+GORGON_IDLE_SPD    =  1.2   # vitesse de balancement idle (tiles/s)
+GORGON_IDLE_AMP    =  3.5   # amplitude oscillation idle (tiles)
+GORGON_IDLE_FREQ   =  0.35  # fréquence oscillation idle (Hz)
+GORGON_DETECT_R    = 20.0   # rayon de détection (tiles)
 
 
 def _nearest(mob, players):
@@ -39,6 +49,11 @@ def _update_deep_mob(mob, dt, players, world):
     # La Vrille gère tout elle-même (stationnaire, pas de _apply_contact_dmg)
     if mob.mob_type == MOB_TENDRIL:
         _update_tendril(mob, dt, players)
+        return
+
+    # La Gorgone gère tout elle-même (stationnaire, détection sonore)
+    if mob.mob_type == MOB_GORGON:
+        _update_gorgon(mob, dt, players, world)
         return
 
     player, dist = _nearest(mob, players)
@@ -139,3 +154,60 @@ def _update_tendril(mob, dt, players):
             player.hp = max(0, player.hp - dmg)
             player._dmg_flash = 0.6 if crit else 0.4
         mob._tendril_cd = 2.0   # 1 attaque toutes les 2 secondes
+
+
+# ── Boss Reptilien : La Gorgone (MOB_GORGON) – serpent ancré, swing G/D ──────
+
+def _update_gorgon(mob, dt, players, world):
+    """La Gorgone est un serpent géant ancré au sol. Sa queue (racines) reste
+    fixe ; sa tête balance gauche/droite pour frapper les joueurs qui approchent."""
+
+    mob._fly_phase  += dt
+    mob._tendril_cd  = max(0.0, mob._tendril_cd - dt)
+
+    # ── Lazy-init de l'ancre (sécurité si créé sans attributs) ───────────────
+    if mob._anchor_x is None:
+        mob._anchor_x   = mob.x + _mw(MOB_GORGON) / 2
+        mob._anchor_row = mob.y + GORGON_BODY_HEIGHT
+
+    anchor_x   = mob._anchor_x           # centre-col d'ancrage (tiles, fixe)
+    anchor_row = mob._anchor_row          # rangée-sol (tiles, fixe)
+
+    # La tête reste toujours à GORGON_BODY_HEIGHT tuiles au-dessus du sol
+    mob.y = anchor_row - GORGON_BODY_HEIGHT
+
+    head_cx = mob.x + _mw(MOB_GORGON) / 2  # centre horizontal de la tête
+
+    # ── Détection joueur le plus proche ──────────────────────────────────────
+    player, dist = _nearest(mob, players)
+
+    if dist <= GORGON_DETECT_R and player:
+        mob.state     = "chase"
+        mob._state_cd = 2.5
+
+        # Cible : ramener la tête vers le joueur, clamped dans ±SWING_MAX
+        p_cx = player.x + PLAYER_W / (2 * TILE_SIZE)
+        clamped = max(-GORGON_SWING_MAX, min(GORGON_SWING_MAX, p_cx - anchor_x))
+        target_cx = anchor_x + clamped
+        diff = target_cx - head_cx
+        step = math.copysign(min(abs(diff), GORGON_CHASE_SPD * dt), diff) if diff else 0.0
+        mob.x += step
+
+    else:
+        mob._state_cd = max(0.0, mob._state_cd - dt)
+        if mob._state_cd <= 0:
+            mob.state = "idle"
+
+        # Idle : oscillation sinusoïdale douce autour de l'ancre
+        target_cx = anchor_x + math.sin(mob._fly_phase * GORGON_IDLE_FREQ * 2 * math.pi) * GORGON_IDLE_AMP
+        diff = target_cx - head_cx
+        step = math.copysign(min(abs(diff), GORGON_IDLE_SPD * dt), diff) if diff else 0.0
+        mob.x += step
+
+    # Clamp absolu (sécurité dépassement)
+    half_w = _mw(MOB_GORGON) / 2
+    mob.x = max(anchor_x - GORGON_SWING_MAX - half_w,
+                min(anchor_x + GORGON_SWING_MAX - half_w, mob.x))
+
+    # Dégâts de contact (tête sur joueur)
+    _apply_contact_dmg(mob, players)

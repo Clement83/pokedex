@@ -177,6 +177,26 @@ def run(screen, joysticks, world_id, seed):
             if e.type == pygame.KEYDOWN:
                 if e.key == pygame.K_ESCAPE: _flush(); return True
                 if e.key == pygame.K_p: _sounds.toggle_mute(); _music.toggle_mute()
+                # ── DEBUG F4 : force spawn Gorgone sous le joueur 1 ──────────
+                if e.key == pygame.K_F4:
+                    from mobs.base import Mob, MOB_GORGON, _mw
+                    _body_h = 20         # GORGON_BODY_HEIGHT tiles
+                    _gc     = int(players[0].x)
+                    _gfloor = int(players[0].y) + _body_h + 4
+                    _gfloor = min(_gfloor, ROWS - 2)
+                    # Creuser une cavité 7 tiles large, body_h+3 tiles de haut
+                    for _gr in range(_gfloor - _body_h - 2, _gfloor + 2):
+                        for _gdc in range(-3, 4):
+                            _tc = _gc + _gdc
+                            if world.get(_tc, _gr) not in (TILE_AIR, TILE_LAVA, TILE_WATER):
+                                world.set(_tc, _gr, TILE_AIR)
+                                chunks.update_tile(_tc, _gr, TILE_AIR)
+                    _gmw = _mw(MOB_GORGON)
+                    _gm  = Mob(float(_gc), float(_gfloor - _body_h), MOB_GORGON, world.seed)
+                    _gm._anchor_x   = _gc + _gmw / 2
+                    _gm._anchor_row = float(_gfloor)
+                    mob_mgr._mobs.append(_gm)
+                    loot_notifs.append(["[DEBUG] Gorgone spawned !", 2.5, (0, 240, 100)])
             quit_combo.handle_event(e)
 
         for i, player in enumerate(players):

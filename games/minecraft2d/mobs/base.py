@@ -33,11 +33,12 @@ MOB_SCORPION   = 18  # scorpion (agressif, biome désert)
 MOB_VULTURE    = 19  # vautour (semi-agressif, biome désert, volant)
 MOB_WOLF       = 20  # loup (neutre, forêt, apprivoisable → familier combat)
 MOB_CAT        = 21  # chat sauvage (passif, apprivoisable → familier déco)
+MOB_GORGON     = 22  # La Gorgone – boss végétal, détection sonore, langue perceuse (surf+75+)
 
 _PASSIVE_MOBS       = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL, MOB_BAT, MOB_PENGUIN, MOB_CAT}
 _FLYING_MOBS        = {MOB_SEAGULL, MOB_BAT, MOB_DEMON, MOB_VULTURE}
 _GOLD_NEUTRAL_MOBS  = {MOB_BOAR}   # n'attaquent pas un joueur portant de l'or
-_DEEP_MOBS          = {MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL}  # gèrent leur propre déplacement
+_DEEP_MOBS          = {MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL, MOB_GORGON}  # gèrent leur propre déplacement
 _TAMEABLE_MOBS      = {MOB_CHICKEN, MOB_WOLF, MOB_CAT}  # domesticables
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ _MOB_HP = {
     MOB_WORM:     9,
     MOB_WRAITH:   12,
     MOB_TENDRIL:  25,
+    MOB_GORGON:   50,  # boss élite
     MOB_PENGUIN:    2,
     MOB_POLAR_BEAR: 8,
     MOB_SCORPION:   3,
@@ -78,6 +80,7 @@ _MOB_ATTACK_DMG = {
     MOB_CRAB:     1, MOB_DEMON:    6, MOB_BOAR:     1,
     MOB_TROLL:    2, MOB_WORM:     3, MOB_WRAITH:   4,
     MOB_TENDRIL:  3,
+    MOB_GORGON:   6,  # langue qui déchire
     MOB_PENGUIN:  0, MOB_POLAR_BEAR: 3, MOB_SCORPION: 2, MOB_VULTURE: 1,
     MOB_WOLF:     1, MOB_CAT: 0,
 }
@@ -101,6 +104,7 @@ _MOB_MIN_SWORD_TIER = {
     MOB_WORM:     2,   # épée Fer min
     MOB_WRAITH:   3,   # épée Or min
     MOB_TENDRIL:  3,   # épée Or min, immunisé projectiles
+    MOB_GORGON:   3,   # épée Or min (boss profond)
     MOB_PENGUIN:    0,
     MOB_POLAR_BEAR: 2,   # épée Fer min
     MOB_SCORPION:   1,   # épée Bois min
@@ -117,6 +121,7 @@ _MOB_PW = {
     MOB_CRAB:     12, MOB_DEMON:    14, MOB_BOAR:    12,
     MOB_TROLL:    14, MOB_WORM:     16, MOB_WRAITH:  12,
     MOB_TENDRIL:  14,
+    MOB_GORGON:   32,  # hitbox tête du serpent (corps visuel beaucoup plus grand)
     MOB_PENGUIN:  8,  MOB_POLAR_BEAR: 16, MOB_SCORPION: 12, MOB_VULTURE: 10,
     MOB_WOLF:    12,  MOB_CAT: 8,
 }
@@ -127,6 +132,7 @@ _MOB_PH = {
     MOB_CRAB:     8,  MOB_DEMON:    18, MOB_BOAR:    10,
     MOB_TROLL:    18, MOB_WORM:     8,  MOB_WRAITH:  14,
     MOB_TENDRIL:  20,
+    MOB_GORGON:   24,  # hitbox tête uniquement (le corps visuel descend sur 20 tuiles)
     MOB_PENGUIN:  10, MOB_POLAR_BEAR: 14, MOB_SCORPION: 8, MOB_VULTURE: 6,
     MOB_WOLF:    10,  MOB_CAT: 6,
 }
@@ -158,6 +164,7 @@ _MOB_COLOR = {
     MOB_VULTURE:    ( 60,  45,  35),  # brun foncé
     MOB_WOLF:       (140, 135, 125),  # gris loup
     MOB_CAT:        (210, 155,  60),  # orange tabby
+    MOB_GORGON:     ( 10,  60,   5),  # vert sombre abysse
 }
 
 # ── Rayon de spawn / despawn ──────────────────────────────────────────────────
@@ -189,7 +196,9 @@ class Mob:
         self.burning     = False   # True → brûle (zombie à l'aube)
         self.burn_timer  = 0.0     # secondes avant mort par brûlure
         self._surface_zombie = False   # zombie spawné en surface la nuit
-        self._tendril_cd = 0.0    # cooldown attaque Vrille
+        self._tendril_cd = 0.0    # cooldown attaque Vrille / Gorgone
+        self._anchor_x   = None   # Gorgone : centre-col d'ancrage (tiles, None = non init)
+        self._anchor_row = None   # Gorgone : rangée du sol d'ancrage (tiles)
         self._rng = random.Random(int(col) * 1000 + int(row) + mob_type + seed)
 
     # ── Helpers géométriques ──────────────────────────────────────────────────

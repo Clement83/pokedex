@@ -8,7 +8,7 @@ from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
-    MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL,
+    MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL, MOB_GORGON,
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     MOB_WOLF, MOB_CAT,
     _MOB_PW, _MOB_PH, _MOB_COLOR,
@@ -410,6 +410,114 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         # Rayures
         dr(screen, cd, (sx + 2, sy + 2, 1, 1))
         dr(screen, cd, (sx + 4, sy + 2, 1, 1))
+
+    elif mob.mob_type == MOB_GORGON:
+        if mob._anchor_x is None:
+            return   # pas encore initialisé
+
+        dr     = pygame.draw.rect
+        active = (mob.state == "chase")
+        ph     = mob._fly_phase
+
+        # Couleurs
+        gc  = ( 12,  42,   8)   # corps sombre
+        gs  = ( 28,  75,  18)   # écailles
+        gsl = ( 48, 115,  28)   # reflet écailles
+        gf  = (155, 210, 120)   # ventre/face
+        ey  = (  0, 245, 100) if active else ( 15, 140,  55)
+        rk  = ( 28,  16,   4)   # racines
+
+        # ── Positions clés en pixels-écran ────────────────────────────────────
+        # La tête (mob.x, mob.y) → (sx, sy) via camera
+        head_cx = sx + mw // 2
+        head_cy = sy + mh // 2
+
+        # Ancre : décalage horizontal par rapport à la tête courante
+        anchor_dx_px = int((mob._anchor_x - mob.center_col()) * 16)
+        anchor_cx    = head_cx + anchor_dx_px
+        # Ancre 20 tiles (320px) sous la tête
+        _BODY_PX = 320
+        anchor_cy = sy + _BODY_PX
+
+        # ── Corps sinueux (queue → tête, queue dessinée en premier) ──────────
+        SEGS = 24
+        for i in range(SEGS, 0, -1):
+            t   = i / SEGS        # 1 = queue, 0 = tête
+            t_h = 1.0 - t         # 0 = queue, 1 = tête
+
+            # Position interpolée (anchor → head)
+            bx = int(anchor_cx * t + head_cx * t_h)
+            by = int(anchor_cy * t + head_cy * t_h)
+
+            # Ondulation : forte à la tête, quasi-nulle à la queue (ancrée)
+            wave = math.sin(ph * 2.8 - t * math.pi * 2.5) * (15 * t_h * t_h)
+            bx  += int(wave)
+
+            # Épaisseur : 24px queue → 14px tête
+            bw = max(14, int(24 - 10 * t_h))
+            bh = max(10, bw - 4)
+
+            # Couleur : gradient sombre queue → légèrement plus clair tête
+            r = min(255, 12 + int(18 * t_h))
+            g = min(255, 42 + int(45 * t_h))
+            b = 8
+            dr(screen, (r, g, b), (bx - bw // 2, by - bh // 2, bw, bh))
+
+            # Écailles alternées (bande claire au centre)
+            if i % 2 == 1:
+                sr = min(255, r + 22)
+                sg = min(255, g + 50)
+                dr(screen, (sr, sg, b + 10),
+                   (bx - bw // 2 + 3, by - bh // 2 + 2, max(5, bw - 6), max(3, bh // 2)))
+
+        # ── Racines / queue ancrée au sol ─────────────────────────────────────
+        dr(screen, rk, (anchor_cx - 18, anchor_cy - 7,  36,  9))
+        dr(screen, rk, (anchor_cx - 26, anchor_cy - 2,  16,  5))
+        dr(screen, rk, (anchor_cx +  10, anchor_cy - 2, 16,  5))
+        dr(screen, rk, (anchor_cx -  8, anchor_cy +  2, 18,  4))
+
+        # ── Tête (dessinée en dernier = au-dessus du corps) ───────────────────
+        # Corps de tête
+        dr(screen, gc,  (sx,      sy,      mw,      mh))
+        dr(screen, gs,  (sx + 4,  sy + 3,  mw - 8,  mh - 4))
+        # Joues
+        dr(screen, (8, 32, 5), (sx + 1,      sy + 2, 4, mh - 2))
+        dr(screen, (8, 32, 5), (sx + mw - 5, sy + 2, 4, mh - 2))
+        # Face/gueule (haut de la tête, orientée vers le joueur au-dessus)
+        dr(screen, gf,  (sx + 5, sy,      mw - 10, 5))
+        # Yeux bioluminescents
+        dr(screen, ey,  (sx + 2,       sy + 5, 6, 6))
+        dr(screen, ey,  (sx + mw - 8,  sy + 5, 6, 6))
+        # Pupilles verticales (reptile)
+        dr(screen, (0, 0, 0), (sx + 4,       sy + 7, 2, 4))
+        dr(screen, (0, 0, 0), (sx + mw - 6,  sy + 7, 2, 4))
+        # Crocs (dépassent en haut)
+        fang = (215, 225, 190)
+        dr(screen, fang, (sx + 7,       sy - 5, 4, 6))
+        dr(screen, fang, (sx + mw - 11, sy - 5, 4, 6))
+        dr(screen, (170, 180, 150), (sx + 8,       sy - 4, 2, 4))
+        dr(screen, (170, 180, 150), (sx + mw - 10, sy - 4, 2, 4))
+        # Motif d'écailles sur la tête
+        dr(screen, gsl, (sx + 6,       sy + 11, 5, 3))
+        dr(screen, gsl, (sx + mw - 11, sy + 11, 5, 3))
+        dr(screen, gsl, (sx + 10,      sy + 17, 6, 3))
+        # Langue fourchue (clignote en chasse)
+        if active:
+            tk_c = (200, 25, 25)
+            tx   = sx + mw // 2
+            dr(screen, tk_c, (tx - 1,             sy - 7, 2, 6))   # tige
+            off  = int(math.sin(ph * 10) * 1)
+            dr(screen, tk_c, (tx - 4 + off, sy - 10, 2, 4))        # fourche G
+            dr(screen, tk_c, (tx + 2 + off, sy - 10, 2, 4))        # fourche D
+
+        # ── Barre de vie (boss) ───────────────────────────────────────────────
+        hp_frac = max(0.0, mob.hp / 50.0)
+        bar_full = mw + 8
+        bar_w    = int(bar_full * hp_frac)
+        pygame.draw.rect(screen, (140, 15,  15), (sx - 4, sy - 12, bar_full, 3))
+        pygame.draw.rect(screen, ( 30, 200, 80), (sx - 4, sy - 12, bar_w,    3))
+        if active:
+            pygame.draw.rect(screen, (0, 240, 120), (sx - 4, sy - 12, bar_full, 1))
 
     # ── Effet brûlure (zombie de surface au lever du soleil) ─────────────────
     if getattr(mob, 'burning', False):

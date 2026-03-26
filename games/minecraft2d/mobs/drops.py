@@ -6,6 +6,7 @@ import random
 from config import (
     TILE_STONE, TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE,
     TILE_SILK,
+    TILE_GORGON_HEART,
     EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
     MAT_WOOD, MAT_IRON, MAT_GOLD,
 )
@@ -33,6 +34,7 @@ MOB_SCORPION   = 18
 MOB_VULTURE    = 19
 MOB_WOLF       = 20
 MOB_CAT        = 21
+MOB_GORGON     = 22
 
 # Format : liste de (item, count_min, count_max, probabilité)
 # item = TILE_xxx (ressource bloc) ou (EQUIP_xxx, MAT_xxx) (équipement)
@@ -97,6 +99,12 @@ _MOB_DROPS = {
         (TILE_STONE, 1, 2, 0.60),
     ],
     MOB_CAT:        [],
+    MOB_GORGON:     [
+        # Boss sonique des abysses : loot unique garanti + opulence
+        (TILE_GORGON_HEART, 1, 1, 1.00),   # Loot signature, toujours drôppé
+        (TILE_DIAMOND_ORE,  2, 4, 1.00),
+        (TILE_GOLD_ORE,     4, 8, 1.00),
+    ],
 }
 
 

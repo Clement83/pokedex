@@ -64,9 +64,10 @@ TILE_FEET_WOOD       = 44
 TILE_FEET_IRON       = 45
 TILE_FEET_GOLD       = 46
 TILE_FEET_DIAMOND    = 47
+TILE_GORGON_HEART    = 48  # cœur unique du boss Gorgone
 
 # Tiles qui sont des items (non générés naturellement)
-TILE_ITEMS = frozenset(range(19, 48))
+TILE_ITEMS = frozenset(range(19, 49))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -118,6 +119,7 @@ TILE_NAMES = {
     TILE_FEET_IRON:       "Bottes Fer",
     TILE_FEET_GOLD:       "Bottes Or",
     TILE_FEET_DIAMOND:    "Bottes Diamant",
+    TILE_GORGON_HEART:    "Cœur de Gorgone",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -300,6 +302,7 @@ TILE_COLORS = {
     TILE_FEET_IRON:       (170, 170, 185),
     TILE_FEET_GOLD:       (255, 200,   0),
     TILE_FEET_DIAMOND:    ( 80, 220, 235),
+    TILE_GORGON_HEART:    (170,  10,  80),   # rouge-violet sombre, loot boss
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
