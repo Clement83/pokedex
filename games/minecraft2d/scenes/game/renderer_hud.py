@@ -12,7 +12,8 @@ from config import (
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_BOW,
     EQUIP_NAMES,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_COLORS, MAT_NAMES,
-    TILE_AIR,
+    TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD,
+    TILE_TOOL_MAP,
 )
 from scenes.game.inventory import Inventory
 
@@ -311,10 +312,10 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
                 inventory.craft_tier  if inventory.tool == TOOL_CRAFT   else None
             )
             draw_tool_icon(screen, inventory.tool, sx, y, sw, sh, mat=_tool_mat)
-            # Torche en main : afficher le stock restant
-            if inventory.tool == TOOL_TORCH:
-                tc = inventory.torch_count
-                cnt_s = font.render(str(tc), True, (255, 210, 80))
+            # Afficher la quantité pour les outils comptables
+            _tc = inventory.active_tool_count
+            if _tc > 0:
+                cnt_s = font.render(str(_tc), True, (255, 210, 80))
                 screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
                                     y + sh - cnt_s.get_height()))
             items = inventory._tool_items()
@@ -326,8 +327,21 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
         elif slot_id == Inventory.SLOT_RES:
             if inventory.resources:
                 tile, count = inventory.resources[inventory.resource_idx]
-                pygame.draw.rect(screen, TILE_COLORS[tile],
-                                 (sx + 3, y + 3, sh - 6, sh - 6))
+                # Icône outil si c'est un item-outil, sinon carré de couleur
+                _tm = TILE_TOOL_MAP.get(tile)
+                if _tm:
+                    draw_tool_icon(screen, _tm[0], sx, y, sw, sh, mat=_tm[1])
+                elif tile == TILE_FLAG:
+                    draw_tool_icon(screen, TOOL_FLAG, sx, y, sw, sh, mat=color)
+                elif tile == TILE_CRAFT:
+                    draw_tool_icon(screen, TOOL_CRAFT, sx, y, sw, sh, mat=inventory.craft_tier)
+                elif tile == TILE_ROD:
+                    draw_tool_icon(screen, TOOL_ROD, sx, y, sw, sh)
+                elif tile == TILE_TORCH:
+                    draw_tool_icon(screen, TOOL_TORCH, sx, y, sw, sh)
+                else:
+                    pygame.draw.rect(screen, TILE_COLORS.get(tile, (80, 80, 80)),
+                                     (sx + 3, y + 3, sh - 6, sh - 6))
                 cnt_s = font.render(str(count), True, (255, 255, 255))
                 screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
                                     y + sh - cnt_s.get_height()))
@@ -356,7 +370,10 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
     # ── Nom de l'item actif sous la hotbar ────────────────────────────────────
     s = inventory.active_slot
     if s == Inventory.SLOT_TOOL:
-        if inventory.tool == TOOL_SWORD:
+        if inventory.tool == TOOL_PICKAXE:
+            mat_name = MAT_NAMES.get(inventory.pickaxe_mat, "") if inventory.pickaxe_mat is not None else ""
+            name = ("Pioche " + mat_name).strip()
+        elif inventory.tool == TOOL_SWORD:
             mat_name = MAT_NAMES.get(inventory.sword_mat, "") if inventory.sword_mat is not None else ""
             name = ("Épée " + mat_name).strip()
         elif inventory.tool == TOOL_BOW:

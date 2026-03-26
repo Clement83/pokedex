@@ -4,8 +4,10 @@ Inventaire d'un joueur : outils, ressources et équipements.
 from config import (
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
     TOOL_BOW, TOOL_ROD, TOOL_TORCH,
-    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
-    TILE_AIR, TILE_TORCH, TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
+    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
+    TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD,
+    TILE_TOOL_MAP, TOOL_MAT_TO_TILE, EQUIP_TO_TILE,
+    TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
 )
 
 
@@ -13,7 +15,7 @@ class Inventory:
     """
     Inventaire à 5 slots :
       SLOT_TOOL (0)  – outil actif (main, pioche, canon, épée, drapeau)
-      SLOT_RES  (1)  – blocs récoltés
+      SLOT_RES  (1)  – blocs récoltés + items-outils
       SLOT_HEAD (2)  – casques
       SLOT_BODY (3)  – plastrons
       SLOT_FEET (4)  – bottes
@@ -34,15 +36,13 @@ class Inventory:
     def __init__(self):
         self.active_slot  = 0
         self.tool         = TOOL_HAND
-        self.resources    = []          # [(tile, count), ...]
+        self._tool_mat    = None        # matériau de l'outil actif (pioche/épée/arc)
+        # Items de départ : drapeau, table de craft
+        self.resources    = [
+            (TILE_FLAG, 1),
+            (TILE_CRAFT, 1),
+        ]
         self.resource_idx = 0
-        self.swords       = []          # matériaux d'épées trouvées
-        self.sword_idx    = 0
-        self.pickaxes     = []          # matériaux de pioches trouvées
-        self.pickaxe_idx  = 0
-        self.bows         = []          # matériaux d'arcs craftés
-        self.bow_idx      = 0
-        self.has_rod      = False       # canne à pêche débloquée
         self.craft_tier   = 1           # niveau table de craft (1=Bois … 4=Diamant)
         self.equip = {
             EQUIP_HEAD: [],
@@ -55,15 +55,15 @@ class Inventory:
 
     @property
     def sword_mat(self):
-        return self.swords[self.sword_idx] if self.swords else None
+        return self._tool_mat if self.tool == TOOL_SWORD else None
 
     @property
     def pickaxe_mat(self):
-        return self.pickaxes[self.pickaxe_idx] if self.pickaxes else None
+        return self._tool_mat if self.tool == TOOL_PICKAXE else None
 
     @property
     def bow_mat(self):
-        return self.bows[self.bow_idx] if self.bows else None
+        return self._tool_mat if self.tool == TOOL_BOW else None
 
     @property
     def torch_count(self):
@@ -72,6 +72,39 @@ class Inventory:
             if t == TILE_TORCH:
                 return c
         return 0
+
+    @property
+    def active_tool_count(self):
+        """Quantité de l'outil actif sélectionné (pour affichage)."""
+        if self.tool in (TOOL_PICKAXE, TOOL_SWORD, TOOL_BOW) and self._tool_mat is not None:
+            tile = TOOL_MAT_TO_TILE.get((self.tool, self._tool_mat))
+            if tile:
+                for t, c in self.resources:
+                    if t == tile:
+                        return c
+            return 0
+        if self.tool == TOOL_TORCH:
+            return self.torch_count
+        return 0
+
+    def _has_res(self, tile):
+        """Vérifie si le joueur possède au moins 1 exemplaire de cette ressource."""
+        for t, c in self.resources:
+            if t == tile and c > 0:
+                return True
+        return False
+
+    def _remove_res(self, tile):
+        """Retire 1 exemplaire d'une ressource. Retourne True si succès."""
+        for i, (t, c) in enumerate(self.resources):
+            if t == tile:
+                if c == 1:
+                    self.resources.pop(i)
+                else:
+                    self.resources[i] = (t, c - 1)
+                self.resource_idx = max(0, min(self.resource_idx, len(self.resources) - 1))
+                return True
+        return False
 
     # ── Équipement porté ──────────────────────────────────────────────────────
 
@@ -83,23 +116,35 @@ class Inventory:
 
     def add_equip(self, item):
         eslot, mat = item
-        if eslot == EQUIP_SWORD:
-            if mat not in self.swords:
-                self.swords.append(mat)
-        elif eslot == EQUIP_PICKAXE:
-            if mat not in self.pickaxes:
-                self.pickaxes.append(mat)
-        elif eslot == EQUIP_BOW:
-            if mat not in self.bows:
-                self.bows.append(mat)
+        tile = EQUIP_TO_TILE.get(item)
+        if tile:
+            self.add(tile)
         else:
             if item not in self.equip[eslot]:
                 self.equip[eslot].append(item)
 
+    def remove_equip(self, item):
+        """Retire 1 exemplaire d'un équipement. Retourne True si succès."""
+        eslot, mat = item
+        tile = EQUIP_TO_TILE.get(item)
+        if tile:
+            return self._remove_res(tile)
+        lst = self.equip.get(eslot, [])
+        if item in lst:
+            lst.remove(item)
+            self.equip_idx[eslot] = max(0, min(self.equip_idx.get(eslot, 0), len(lst) - 1))
+            return True
+        return False
+
     def unlock_tool(self, tool_id):
-        """Débloque un outil spécial (canne à pêche, etc.)."""
-        if tool_id == TOOL_ROD:
-            self.has_rod = True
+        """Débloque un outil en ajoutant son item dans l'inventaire."""
+        _TOOL_TILES = {
+            TOOL_ROD: TILE_ROD,
+            TOOL_FLAG: TILE_FLAG, TOOL_CRAFT: TILE_CRAFT,
+        }
+        tile = _TOOL_TILES.get(tool_id)
+        if tile and not self._has_res(tile):
+            self.add(tile)
 
     def drop_equip(self, equip_slot):
         lst = self.equip[equip_slot]
@@ -148,30 +193,50 @@ class Inventory:
     # ── Navigation dans le slot actif (↑ / ↓) ────────────────────────────────
 
     def _tool_items(self):
-        if self.pickaxes:
-            items = [TOOL_HAND] + [(TOOL_PICKAXE, m) for m in self.pickaxes] + [TOOL_PLACER]
-        else:
-            items = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER]
-        for mat in self.swords:
-            items.append((TOOL_SWORD, mat))
-        for mat in self.bows:
-            items.append((TOOL_BOW, mat))
-        items.append(TOOL_FLAG)
-        items.append(TOOL_CRAFT)
-        if self.has_rod:
+        """Liste dynamique des outils disponibles (seuls ceux possédés)."""
+        items = [TOOL_HAND]
+        # Pioches (par matériau, dans l'ordre des resources)
+        for tile, _c in self.resources:
+            tm = TILE_TOOL_MAP.get(tile)
+            if tm and tm[0] == TOOL_PICKAXE:
+                items.append(tm)
+        items.append(TOOL_PLACER)
+        # Épées
+        for tile, _c in self.resources:
+            tm = TILE_TOOL_MAP.get(tile)
+            if tm and tm[0] == TOOL_SWORD:
+                items.append(tm)
+        # Arcs
+        for tile, _c in self.resources:
+            tm = TILE_TOOL_MAP.get(tile)
+            if tm and tm[0] == TOOL_BOW:
+                items.append(tm)
+        if self._has_res(TILE_FLAG):
+            items.append(TOOL_FLAG)
+        if self._has_res(TILE_CRAFT):
+            items.append(TOOL_CRAFT)
+        if self._has_res(TILE_ROD):
             items.append(TOOL_ROD)
         if self.torch_count > 0:
             items.append(TOOL_TORCH)
         return items
 
+    def ensure_valid_tool(self):
+        """Si l'outil actif n'est plus disponible, revient à la Main."""
+        items = self._tool_items()
+        for item in items:
+            if isinstance(item, tuple):
+                if item[0] == self.tool and item[1] == self._tool_mat:
+                    return
+            elif item == self.tool:
+                return
+        self.tool = TOOL_HAND
+        self._tool_mat = None
+
     def _active_tool_idx(self):
         items = self._tool_items()
-        if self.tool == TOOL_SWORD and self.swords:
-            target = (TOOL_SWORD, self.swords[self.sword_idx])
-        elif self.tool == TOOL_PICKAXE and self.pickaxes:
-            target = (TOOL_PICKAXE, self.pickaxes[self.pickaxe_idx])
-        elif self.tool == TOOL_BOW and self.bows:
-            target = (TOOL_BOW, self.bows[self.bow_idx])
+        if self.tool in (TOOL_SWORD, TOOL_PICKAXE, TOOL_BOW) and self._tool_mat is not None:
+            target = (self.tool, self._tool_mat)
         else:
             target = self.tool
         try:
@@ -181,17 +246,11 @@ class Inventory:
 
     def _apply_tool_item(self, item):
         if isinstance(item, tuple):
-            if item[0] == TOOL_SWORD:
-                self.tool = TOOL_SWORD
-                self.sword_idx = self.swords.index(item[1])
-            elif item[0] == TOOL_PICKAXE:
-                self.tool = TOOL_PICKAXE
-                self.pickaxe_idx = self.pickaxes.index(item[1])
-            elif item[0] == TOOL_BOW:
-                self.tool = TOOL_BOW
-                self.bow_idx = self.bows.index(item[1])
+            self.tool = item[0]
+            self._tool_mat = item[1]
         else:
             self.tool = item
+            self._tool_mat = None
 
     def item_next(self):
         s = self.active_slot

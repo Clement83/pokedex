@@ -37,9 +37,23 @@ TILE_ARROW       = 19       # flèches  (munitions arc, item uniquement)
 TILE_SILK        = 20       # fil d'araignée (composant de craft, item uniquement)
 TILE_FISH        = 21       # poisson (pêche, nourriture future)
 TILE_EGG         = 22       # œuf (pondu par poule familière, nourriture)
+TILE_FLAG        = 23       # drapeau de respawn (item outil)
+TILE_CRAFT       = 24       # table de craft (item outil)
+TILE_ROD         = 25       # canne à pêche (item outil)
+# Outils à variante matériau (items non plaçables)
+TILE_PICKAXE_WOOD    = 26
+TILE_PICKAXE_IRON    = 27
+TILE_PICKAXE_GOLD    = 28
+TILE_PICKAXE_DIAMOND = 29
+TILE_SWORD_WOOD      = 30
+TILE_SWORD_IRON      = 31
+TILE_SWORD_GOLD      = 32
+TILE_SWORD_DIAMOND   = 33
+TILE_BOW_WOOD        = 34
+TILE_BOW_IRON        = 35
 
 # Tiles qui sont des items purs (non plaçables dans le monde)
-TILE_ITEMS = frozenset({19, 20, 21, 22})   # TILE_ARROW, TILE_SILK, TILE_FISH, TILE_EGG
+TILE_ITEMS = frozenset(range(19, 36))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -66,6 +80,19 @@ TILE_NAMES = {
     TILE_SILK:        "Fil d'araignée",
     TILE_FISH:        "Poisson",
     TILE_EGG:         "Œuf",
+    TILE_FLAG:        "Drapeau",
+    TILE_CRAFT:       "Table de Craft",
+    TILE_ROD:         "Canne à pêche",
+    TILE_PICKAXE_WOOD:    "Pioche Bois",
+    TILE_PICKAXE_IRON:    "Pioche Fer",
+    TILE_PICKAXE_GOLD:    "Pioche Or",
+    TILE_PICKAXE_DIAMOND: "Pioche Diamant",
+    TILE_SWORD_WOOD:      "Épée Bois",
+    TILE_SWORD_IRON:      "Épée Fer",
+    TILE_SWORD_GOLD:      "Épée Or",
+    TILE_SWORD_DIAMOND:   "Épée Diamant",
+    TILE_BOW_WOOD:        "Arc Bois",
+    TILE_BOW_IRON:        "Arc Fer",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -163,6 +190,23 @@ EQUIP_NAMES = {
     (EQUIP_BOW, MAT_IRON):  "Arc Fer",
 }
 
+# ── Mapping tiles-outils ↔ (tool, mat) ──────────────────────────────────────
+TILE_TOOL_MAP = {
+    TILE_PICKAXE_WOOD:    (TOOL_PICKAXE, MAT_WOOD),
+    TILE_PICKAXE_IRON:    (TOOL_PICKAXE, MAT_IRON),
+    TILE_PICKAXE_GOLD:    (TOOL_PICKAXE, MAT_GOLD),
+    TILE_PICKAXE_DIAMOND: (TOOL_PICKAXE, MAT_DIAMOND),
+    TILE_SWORD_WOOD:      (TOOL_SWORD, MAT_WOOD),
+    TILE_SWORD_IRON:      (TOOL_SWORD, MAT_IRON),
+    TILE_SWORD_GOLD:      (TOOL_SWORD, MAT_GOLD),
+    TILE_SWORD_DIAMOND:   (TOOL_SWORD, MAT_DIAMOND),
+    TILE_BOW_WOOD:        (TOOL_BOW, MAT_WOOD),
+    TILE_BOW_IRON:        (TOOL_BOW, MAT_IRON),
+}
+TOOL_MAT_TO_TILE = {v: k for k, v in TILE_TOOL_MAP.items()}
+_TOOL_TO_EQUIP = {TOOL_PICKAXE: EQUIP_PICKAXE, TOOL_SWORD: EQUIP_SWORD, TOOL_BOW: EQUIP_BOW}
+EQUIP_TO_TILE = {(_TOOL_TO_EQUIP[t], m): tile for tile, (t, m) in TILE_TOOL_MAP.items()}
+
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
     TILE_AIR:         (100, 160, 220),   # ciel
@@ -188,6 +232,19 @@ TILE_COLORS = {
     TILE_SILK:        (210, 215, 225),   # gris blanc
     TILE_FISH:        ( 60, 180, 180),   # cyan aquatique
     TILE_EGG:         (245, 235, 210),   # crème coquille
+    TILE_FLAG:        (255,  80,  80),   # rouge drapeau
+    TILE_CRAFT:       (180, 120,  60),   # brun bois (table)
+    TILE_ROD:         (155, 100,  42),   # brun canne
+    TILE_PICKAXE_WOOD:    (139,  90,  43),
+    TILE_PICKAXE_IRON:    (170, 170, 185),
+    TILE_PICKAXE_GOLD:    (255, 200,   0),
+    TILE_PICKAXE_DIAMOND: ( 80, 220, 235),
+    TILE_SWORD_WOOD:      (139,  90,  43),
+    TILE_SWORD_IRON:      (170, 170, 185),
+    TILE_SWORD_GOLD:      (255, 200,   0),
+    TILE_SWORD_DIAMOND:   ( 80, 220, 235),
+    TILE_BOW_WOOD:        (139,  90,  43),
+    TILE_BOW_IRON:        (170, 170, 185),
 }
 
 # Temps en secondes pour casser un bloc (appui continu)

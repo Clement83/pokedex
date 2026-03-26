@@ -246,13 +246,13 @@ def handle_block_actions(
             break_infos[i]     = (cur_col, cur_row, 0.0)
         return
 
-    # ── Minage (pioche) ────────────────────────────────────────────────────
+    # ── Minage (pioche ou mains) ─────────────────────────────────────────
     _UNMINABLE = (TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER)
-    if tile_at not in _UNMINABLE and tool == TOOL_PICKAXE:
+    if tile_at not in _UNMINABLE and tool in (TOOL_PICKAXE, TOOL_HAND):
         if cur_mine and not cur_mod:
-            # Vérification du tier
+            # Vérification du tier (mains = tier 0)
             req_tier  = TILE_PICKAXE_TIER.get(tile_at, 0)
-            player_t  = _pickaxe_tier(player)
+            player_t  = _pickaxe_tier(player) if tool == TOOL_PICKAXE else 0
             if player_t < req_tier:
                 # Pioche insuffisante : reset et feedback
                 if not (break_infos[i] and break_infos[i][:2] == (cur_col, cur_row)):
@@ -266,7 +266,8 @@ def handle_block_actions(
 
             if break_infos[i] and break_infos[i][:2] == (cur_col, cur_row):
                 player._break_time += dt
-                req_time = TILE_BREAK_TIME.get(tile_at, 0.5) / max(1, player_t)
+                base = TILE_BREAK_TIME.get(tile_at, 0.5)
+                req_time = base * 2.0 if tool == TOOL_HAND else base / max(1, player_t)
                 progress = min(player._break_time / req_time, 1.0)
                 break_infos[i] = (cur_col, cur_row, progress)
                 if mine_tick_cd[i] <= 0.0:

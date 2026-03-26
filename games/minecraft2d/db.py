@@ -175,11 +175,8 @@ def save_player(world_id, player_idx, x, y, inventory, flag=None, familiar=None)
     # "sm" = sword_mat (None si pas d'épée)
     equip_raw = {str(k): [[item[0], item[1]] for item in v]
                  for k, v in inventory.equip.items()}
-    equip_raw["sm"]  = {"mats": inventory.swords,   "idx": inventory.sword_idx}
-    equip_raw["pm"]  = {"mats": inventory.pickaxes, "idx": inventory.pickaxe_idx}
-    equip_raw["bm"]  = {"mats": inventory.bows,     "idx": inventory.bow_idx}
-    equip_raw["rod"] = inventory.has_rod
     equip_raw["ct"]  = inventory.craft_tier          # niveau table de craft
+    equip_raw["tm"]  = inventory._tool_mat           # matériau outil actif
     equip_raw["fam"] = familiar                      # familier (dict ou None)
     equip_json = json.dumps(equip_raw)
     flag_x = flag[0] if flag else None
@@ -210,41 +207,56 @@ def load_players(world_id):
     for player_idx, x, y, tool, res_json, eq_json, flag_x, flag_y in rows:
         resources = json.loads(res_json)   # [[tile, count], ...]
         eq_raw    = json.loads(eq_json)    # {"0": [[s, m], ...], "sm": ..., "pm": ...}
+        # ── Migration des anciennes sauvegardes ─────────────────────────
+        _has_sm = "sm" in eq_raw
+        def _load_equip_list(raw):
+            if isinstance(raw, dict):
+                if "items" in raw:
+                    return [tuple(x) for x in raw["items"]], raw.get("idx", 0)
+                return [(m, 1) for m in raw.get("mats", [])], raw.get("idx", 0)
+            if raw is not None:
+                return [(raw, 1)], 0
+            return [], 0
         sm_raw = eq_raw.pop("sm", None)
-        if isinstance(sm_raw, dict):
-            swords    = sm_raw.get("mats", [])
-            sword_idx = sm_raw.get("idx", 0)
-        elif sm_raw is not None:
-            swords, sword_idx = [sm_raw], 0   # ancien format : int seul
-        else:
-            swords, sword_idx = [], 0
         pm_raw = eq_raw.pop("pm", None)
-        if isinstance(pm_raw, dict):
-            pickaxes    = pm_raw.get("mats", [])
-            pickaxe_idx = pm_raw.get("idx", 0)
-        else:
-            pickaxes, pickaxe_idx = [], 0
         bm_raw = eq_raw.pop("bm", None)
-        if isinstance(bm_raw, dict):
-            bows    = bm_raw.get("mats", [])
-            bow_idx = bm_raw.get("idx", 0)
-        else:
-            bows, bow_idx = [], 0
-        has_rod    = bool(eq_raw.pop("rod", False))
-        craft_tier = eq_raw.pop("ct", 1)             # niveau table de craft
-        familiar   = eq_raw.pop("fam", None)          # familier sauvegardé
+        _old_rod = "rod" in eq_raw
+        has_rod  = bool(eq_raw.pop("rod", False))
+        craft_tier = eq_raw.pop("ct", 1)
+        tool_mat   = eq_raw.pop("tm", None)
+        familiar   = eq_raw.pop("fam", None)
         equip = {int(k): [tuple(item) for item in v] for k, v in eq_raw.items()}
+        # Migration : convertir épées/pioches/arcs en tiles-ressources
+        if _has_sm:
+            from config import EQUIP_TO_TILE, EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW
+            from config import TILE_FLAG, TILE_CRAFT, TILE_ROD
+            swords, sword_idx     = _load_equip_list(sm_raw)
+            pickaxes, pickaxe_idx = _load_equip_list(pm_raw)
+            bows, bow_idx         = _load_equip_list(bm_raw)
+            for lst, eslot in ((swords, EQUIP_SWORD), (pickaxes, EQUIP_PICKAXE), (bows, EQUIP_BOW)):
+                for mat, count in lst:
+                    tile = EQUIP_TO_TILE.get((eslot, mat))
+                    if tile and not any(t == tile for t, _ in resources):
+                        resources.append([tile, count])
+            # Déduire tool_mat depuis l'ancien index
+            if tool == 1 and pickaxes:  # TOOL_PICKAXE
+                tool_mat = pickaxes[min(pickaxe_idx, len(pickaxes) - 1)][0]
+            elif tool == 3 and swords:  # TOOL_SWORD
+                tool_mat = swords[min(sword_idx, len(swords) - 1)][0]
+            elif tool == 6 and bows:    # TOOL_BOW
+                tool_mat = bows[min(bow_idx, len(bows) - 1)][0]
+        if _old_rod:
+            from config import TILE_FLAG, TILE_CRAFT, TILE_ROD
+            if has_rod and not any(t == TILE_ROD for t, _ in resources):
+                resources.append([TILE_ROD, 1])
+            for _tile in (TILE_FLAG, TILE_CRAFT):
+                if not any(t == _tile for t, _ in resources):
+                    resources.append([_tile, 1])
         result[player_idx] = {
             "x": x, "y": y, "tool": tool,
+            "tool_mat": tool_mat,
             "resources": resources,
             "equip": equip,
-            "swords": swords,
-            "sword_idx": sword_idx,
-            "pickaxes": pickaxes,
-            "pickaxe_idx": pickaxe_idx,
-            "bows": bows,
-            "bow_idx": bow_idx,
-            "has_rod": has_rod,
             "craft_tier": craft_tier,
             "flag": (flag_x, flag_y) if flag_x is not None and flag_y is not None else None,
             "familiar": familiar,

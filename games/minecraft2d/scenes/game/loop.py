@@ -79,11 +79,8 @@ def run(screen, joysticks, world_id, seed):
         if not sv: continue
         p.x, p.y = sv["x"], sv["y"]
         p.inventory.tool      = sv["tool"]
+        p.inventory._tool_mat = sv.get("tool_mat")
         p.inventory.resources = [tuple(r) for r in sv["resources"]]
-        p.inventory.swords      = sv.get("swords", []);    p.inventory.sword_idx   = sv.get("sword_idx", 0)
-        p.inventory.pickaxes    = sv.get("pickaxes", []);  p.inventory.pickaxe_idx = sv.get("pickaxe_idx", 0)
-        p.inventory.bows        = sv.get("bows", []);      p.inventory.bow_idx     = sv.get("bow_idx", 0)
-        p.inventory.has_rod     = sv.get("has_rod", False)
         p.inventory.craft_tier  = sv.get("craft_tier", 1)
         p.inventory.equip = {k: [tuple(e) for e in v] for k, v in sv["equip"].items()}
         for sl, lst in p.inventory.equip.items():
@@ -178,6 +175,7 @@ def run(screen, joysticks, world_id, seed):
             quit_combo.handle_event(e)
 
         for i, player in enumerate(players):
+            player.inventory.ensure_valid_tool()
             joy, btn_mine, btn_mine2, btn_mod, get_dir, kb_mine, kb_mod = p_ctrl[i]
             dx, dy   = get_dir(keys, joy)
             cur_mine = joy_btn(joy, btn_mine) or joy_btn(joy, btn_mine2) or bool(keys[kb_mine])

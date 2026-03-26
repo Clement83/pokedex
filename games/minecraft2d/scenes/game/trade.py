@@ -10,8 +10,8 @@ import pygame
 
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
-    EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
-    EQUIP_NAMES, TILE_NAMES, MAT_NAMES,
+    EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
+    EQUIP_NAMES, TILE_NAMES,
 )
 
 _MENU_W  = 300
@@ -33,12 +33,6 @@ def _tradable(inv):
     for tile, count in inv.resources:
         label = TILE_NAMES.get(tile, "?")
         items.append({'label': f"{label} \u00d7{count}", 'kind': 'res', 'item': tile})
-    for mat in inv.swords:
-        items.append({'label': f"\u00c9p\u00e9e {MAT_NAMES.get(mat,'?')}",
-                      'kind': 'equip', 'item': (EQUIP_SWORD, mat)})
-    for mat in inv.pickaxes:
-        items.append({'label': f"Pioche {MAT_NAMES.get(mat,'?')}",
-                      'kind': 'equip', 'item': (EQUIP_PICKAXE, mat)})
     for slot in (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET):
         for piece in inv.equip.get(slot, []):
             items.append({'label': EQUIP_NAMES.get(piece, '?'),
@@ -66,29 +60,9 @@ def _do_give(src, dst, entry):
         return False
 
     else:  # 'equip'
-        eslot, mat = item
-        if eslot == EQUIP_SWORD:
-            if mat in src.swords:
-                src.swords.remove(mat)
-                src.sword_idx = max(0, min(src.sword_idx,
-                                           len(src.swords) - 1))
-                dst.add_equip(item)
-                return True
-        elif eslot == EQUIP_PICKAXE:
-            if mat in src.pickaxes:
-                src.pickaxes.remove(mat)
-                src.pickaxe_idx = max(0, min(src.pickaxe_idx,
-                                             len(src.pickaxes) - 1))
-                dst.add_equip(item)
-                return True
-        else:
-            lst = src.equip.get(eslot, [])
-            if item in lst:
-                lst.remove(item)
-                src.equip_idx[eslot] = max(0, min(src.equip_idx.get(eslot, 0),
-                                                   len(lst) - 1))
-                dst.add_equip(item)
-                return True
+        if src.remove_equip(item):
+            dst.add_equip(item)
+            return True
         return False
 
 
