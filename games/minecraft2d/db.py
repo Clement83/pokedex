@@ -164,7 +164,7 @@ def save_blocks_batch(world_id, changes):
 def save_player(world_id, player_idx, x, y, inventory, flag=None):
     """
     Enregistre la position et l'inventaire d'un joueur.
-    inventory : instance de scene_game.Inventory
+    inventory : instance de scenes.game.inventory.Inventory
     flag      : (flag_x, flag_y) en tuiles ou None
     """
     init()
