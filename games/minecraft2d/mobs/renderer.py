@@ -10,6 +10,7 @@ from mobs.base import (
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
     MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL,
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
+    MOB_WOLF, MOB_CAT,
     _MOB_PW, _MOB_PH, _MOB_COLOR,
 )
 
@@ -354,6 +355,61 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         dr(screen, (180, 150, 50), (sx + 7, sy + 1, 2, 1))
         # Oeil
         dr(screen, (0, 0, 0),      (sx + 5, sy,     1, 1))
+
+    elif mob.mob_type == MOB_WOLF:
+        dr = pygame.draw.rect
+        wc = (140, 135, 125)   # gris loup
+        wl = (170, 165, 155)   # ventre clair
+        wd = (100, 95,  85)    # ombre
+        # Corps
+        dr(screen, wc, (sx + 1, sy + 3, 10, 5))
+        dr(screen, wl, (sx + 3, sy + 5,  6, 2))
+        # Tête
+        dr(screen, wc, (sx + 8, sy,      4, 5))
+        # Oreilles pointues
+        dr(screen, wd, (sx + 8,  sy - 2, 2, 3))
+        dr(screen, wd, (sx + 11, sy - 2, 2, 3))
+        # Yeux
+        dr(screen, (200, 180, 40), (sx + 9, sy + 1, 1, 1))
+        dr(screen, (200, 180, 40), (sx + 11, sy + 1, 1, 1))
+        # Museau
+        dr(screen, wd, (sx + 10, sy + 3, 2, 1))
+        dr(screen, (30, 20, 20), (sx + 11, sy + 3, 1, 1))
+        # Queue
+        dr(screen, wc, (sx - 1, sy + 3, 3, 2))
+        dr(screen, wd, (sx - 2, sy + 2, 2, 2))
+        # Pattes
+        dr(screen, wc, (sx + 2, sy + 7, 2, 3))
+        dr(screen, wc, (sx + 5, sy + 7, 2, 3))
+        dr(screen, wc, (sx + 8, sy + 7, 2, 3))
+
+    elif mob.mob_type == MOB_CAT:
+        dr = pygame.draw.rect
+        cc = (210, 155, 60)    # orange tabby
+        cl = (235, 195, 110)   # ventre clair
+        cd = (160, 110, 35)    # ombre/rayures
+        # Corps
+        dr(screen, cc, (sx + 1, sy + 2, 6, 3))
+        dr(screen, cl, (sx + 2, sy + 3, 4, 1))
+        # Tête
+        dr(screen, cc, (sx + 5, sy,     3, 3))
+        # Oreilles pointues
+        dr(screen, cd, (sx + 5, sy - 1, 1, 2))
+        dr(screen, cd, (sx + 7, sy - 1, 1, 2))
+        # Yeux
+        dr(screen, (100, 200, 80), (sx + 5, sy + 1, 1, 1))
+        dr(screen, (100, 200, 80), (sx + 7, sy + 1, 1, 1))
+        # Museau
+        dr(screen, (220, 170, 170), (sx + 6, sy + 2, 1, 1))
+        # Queue relevée
+        dr(screen, cc, (sx - 1, sy + 2, 2, 1))
+        dr(screen, cc, (sx - 2, sy + 1, 1, 2))
+        # Pattes
+        dr(screen, cc, (sx + 1, sy + 4, 2, 2))
+        dr(screen, cc, (sx + 5, sy + 4, 2, 2))
+        # Rayures
+        dr(screen, cd, (sx + 2, sy + 2, 1, 1))
+        dr(screen, cd, (sx + 4, sy + 2, 1, 1))
 
     # ── Effet brûlure (zombie de surface au lever du soleil) ─────────────────
     if getattr(mob, 'burning', False):

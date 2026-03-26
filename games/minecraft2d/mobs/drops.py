@@ -31,6 +31,8 @@ MOB_PENGUIN    = 16
 MOB_POLAR_BEAR = 17
 MOB_SCORPION   = 18
 MOB_VULTURE    = 19
+MOB_WOLF       = 20
+MOB_CAT        = 21
 
 # Format : liste de (item, count_min, count_max, probabilité)
 # item = TILE_xxx (ressource bloc) ou (EQUIP_xxx, MAT_xxx) (équipement)
@@ -91,6 +93,10 @@ _MOB_DROPS = {
         (TILE_STONE,    1, 2, 0.60),
     ],
     MOB_VULTURE:    [],
+    MOB_WOLF:       [
+        (TILE_STONE, 1, 2, 0.60),
+    ],
+    MOB_CAT:        [],
 }
 
 

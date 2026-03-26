@@ -161,11 +161,12 @@ def save_blocks_batch(world_id, changes):
 
 # ── Persistance joueurs ───────────────────────────────────────────────────────
 
-def save_player(world_id, player_idx, x, y, inventory, flag=None):
+def save_player(world_id, player_idx, x, y, inventory, flag=None, familiar=None):
     """
     Enregistre la position et l'inventaire d'un joueur.
     inventory : instance de scenes.game.inventory.Inventory
     flag      : (flag_x, flag_y) en tuiles ou None
+    familiar  : dict {type, hp, egg} ou None
     """
     init()
     # Sérialisation JSON de l'inventaire
@@ -179,6 +180,7 @@ def save_player(world_id, player_idx, x, y, inventory, flag=None):
     equip_raw["bm"]  = {"mats": inventory.bows,     "idx": inventory.bow_idx}
     equip_raw["rod"] = inventory.has_rod
     equip_raw["ct"]  = inventory.craft_tier          # niveau table de craft
+    equip_raw["fam"] = familiar                      # familier (dict ou None)
     equip_json = json.dumps(equip_raw)
     flag_x = flag[0] if flag else None
     flag_y = flag[1] if flag else None
@@ -230,6 +232,7 @@ def load_players(world_id):
             bows, bow_idx = [], 0
         has_rod    = bool(eq_raw.pop("rod", False))
         craft_tier = eq_raw.pop("ct", 1)             # niveau table de craft
+        familiar   = eq_raw.pop("fam", None)          # familier sauvegardé
         equip = {int(k): [tuple(item) for item in v] for k, v in eq_raw.items()}
         result[player_idx] = {
             "x": x, "y": y, "tool": tool,
@@ -244,5 +247,6 @@ def load_players(world_id):
             "has_rod": has_rod,
             "craft_tier": craft_tier,
             "flag": (flag_x, flag_y) if flag_x is not None and flag_y is not None else None,
+            "familiar": familiar,
         }
     return result

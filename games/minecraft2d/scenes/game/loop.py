@@ -16,6 +16,7 @@ import db as _db
 import sounds as _sounds
 import music_player as _music
 import mobs as _mobs
+from mobs.familiar import FamiliarManager
 
 from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks, on_ice, in_lava, in_water
 from scenes.game.camera      import Camera, ChunkCache
@@ -61,7 +62,9 @@ def run(screen, joysticks, world_id, seed):
             _db.save_blocks_batch(world_id, [(c, r, t) for (c, r), t in _pending.items()])
             _pending.clear()
         for p in players:
-            _db.save_player(world_id, p.idx, p.x, p.y, p.inventory, flag=flag_positions[p.idx])
+            fam_data = fam_mgr.save_data(p.idx) if fam_mgr else None
+            _db.save_player(world_id, p.idx, p.x, p.y, p.inventory,
+                            flag=flag_positions[p.idx], familiar=fam_data)
 
     mid = 1_000_000; spawn_cols = [mid - 3, mid + 3]
     def _sx(col): return col - PLAYER_W / TILE_SIZE / 2
@@ -87,6 +90,7 @@ def run(screen, joysticks, world_id, seed):
             p.inventory.equip_idx[sl] = min(p.inventory.equip_idx.get(sl, 0), max(0, len(lst) - 1))
         eject_from_blocks(p, world)
         if sv.get("flag") is not None: flag_positions[p.idx] = sv["flag"]
+        fam_mgr.load_data(p.idx, sv.get("familiar"), p)
 
     HALF_W = SCREEN_WIDTH // 2; max_cy = ROWS * TILE_SIZE - SCREEN_HEIGHT
     shared_cam  = Camera()
@@ -100,6 +104,7 @@ def run(screen, joysticks, world_id, seed):
     chunks.preload_around(shared_cam.x, shared_cam.y, SCREEN_WIDTH)
 
     mob_mgr = _mobs.MobManager(world); _mob_cd = [0.0]
+    fam_mgr = FamiliarManager()
     joy1 = joysticks[0] if joysticks else None
     p_ctrl = [
         (joy1, J1_BTN_MINE, -1,            J1_BTN_MODIFIER, get_dir_p1, KB_J1_MINE, KB_J1_MODIFIER),
@@ -138,6 +143,7 @@ def run(screen, joysticks, world_id, seed):
         for fi, fp in enumerate(flag_positions):
             if fp: draw_flag_in_world(surf, fp[0], fp[1], players[fi].color, cam)
         mob_mgr.draw(surf, cam)
+        fam_mgr.draw(surf, cam)
         proj_mgr.draw(surf, cam)
         for pl in players: draw_player(surf, pl, cam, font_sm)
         pi = players[k]
@@ -205,6 +211,11 @@ def run(screen, joysticks, world_id, seed):
                             cam.x = max(0, players[k].px() - HALF_W // 2)
                             cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
                     prev_mine[i] = cur_mine; prev_mod[i] = cur_mod; prev_dy[i] = dy; prev_dx[i] = dx
+                    continue
+                # ── Apprivoisement familier (Main + action, pas de troc) ─────
+                if fam_mgr.try_tame(player, i, mob_mgr, loot_notifs):
+                    prev_mine[i] = cur_mine; prev_mod[i] = cur_mod; prev_dy[i] = dy; prev_dx[i] = dx
+                    player._action_cd = 0.5
                     continue
 
             # ── Ouverture menu craft (outil actif = Table de Craft + action) ────────
@@ -315,6 +326,7 @@ def run(screen, joysticks, world_id, seed):
         mob_mgr.update(dt, players, world)
         mob_mgr.tick_day_night(_is_nite, world, players)
         proj_mgr.update(dt, world, mob_mgr, loot_notifs, players)
+        fam_mgr.update(dt, players, world, mob_mgr, loot_notifs)
 
         # ── Tick liquides (lave + eau) : itère seulement world.mods ──────
         _liquid_cd[0] -= dt

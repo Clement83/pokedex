@@ -22,8 +22,9 @@ from mobs.base import (
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
     MOB_TENDRIL, MOB_TROLL, MOB_WORM, MOB_WRAITH,
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
+    MOB_WOLF, MOB_CAT,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
-    _MOB_PW, _MOB_PH,
+    _MOB_PW, _MOB_PH, _MOB_HP,
 )
 from mobs.physics import _eject_mob
 from mobs.ai import update_mob
@@ -88,6 +89,12 @@ _SPAWN_RULES = [
      "surface",       0,    0,  0,  True,  False),
     (MOB_VULTURE,    83,  29, 0xAF01,  0.015, BIOME_DESERT, None,         None,
      "flying",        0,    0, -8,  True,  True),
+
+    # ── Domesticables ──────────────────────────────────────────────────────
+    (MOB_WOLF,      139,  53, 0xD06E,  0.018, BIOME_FOREST, None,         (TILE_GRASS, TILE_DIRT),
+     "surface",       0,    0,  0,  True,  False),
+    (MOB_CAT,       151,  61, 0xCA7E,  0.012, None,         BIOME_ICE,    None,
+     "surface",       0,    0,  0,  True,  False),
 ]
 
 _RESPAWN_COOLDOWN = 45.0   # secondes avant qu'une colonne puisse re-spawner un mob
@@ -365,6 +372,16 @@ class MobManager:
 
         for m in dead:
             self._mobs.remove(m)
+
+        # Loups en meute : si un loup est attaqué, les loups proches deviennent agressifs
+        if any(m.mob_type == MOB_WOLF for m in dead) or any(
+            m.mob_type == MOB_WOLF and m.hp < _MOB_HP.get(MOB_WOLF, 4)
+            for m in self._mobs
+        ):
+            for m in self._mobs:
+                if m.mob_type == MOB_WOLF and abs(m.center_col() - cx) < 12:
+                    m.state     = "chase"
+                    m._state_cd = 8.0
 
         return len(dead), all_drops, immune
 

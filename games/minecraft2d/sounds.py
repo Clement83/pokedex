@@ -171,6 +171,17 @@ def _get(name: str) -> pygame.mixer.Sound | None:
         s     = _arpeggio(freqs, note_dur=0.08, sr=sr, decay=10.0)
         snd   = _build(s, vol=_VOLUME * 0.85)
 
+    elif name == "tame":
+        # Jingle doux 4 notes montantes : Mi-Sol-Si-Do (adoption familier)
+        freqs = [659.25, 783.99, 987.77, 1046.5]
+        s     = _arpeggio(freqs, note_dur=0.12, sr=sr, decay=7.0)
+        snd   = _build(s, vol=_VOLUME * 0.9)
+
+    elif name == "egg":
+        # Pop court et aigu (ponte d'œuf)
+        s   = _sine_decay(880.0, 0.08, sr, decay=15.0)
+        snd = _build(s, vol=_VOLUME * 0.55)
+
     _cache[name] = snd
     return snd
 
@@ -269,3 +280,9 @@ def sword_hit():
 
 def flag_place():
     _play(_get("flag_place"))
+
+def tame():
+    _play(_get("tame"))
+
+def egg():
+    _play(_get("egg"))

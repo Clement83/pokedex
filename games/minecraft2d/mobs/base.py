@@ -31,11 +31,14 @@ MOB_PENGUIN    = 16  # pingouin (passif, biome glace)
 MOB_POLAR_BEAR = 17  # ours polaire (agressif, biome glace)
 MOB_SCORPION   = 18  # scorpion (agressif, biome désert)
 MOB_VULTURE    = 19  # vautour (semi-agressif, biome désert, volant)
+MOB_WOLF       = 20  # loup (neutre, forêt, apprivoisable → familier combat)
+MOB_CAT        = 21  # chat sauvage (passif, apprivoisable → familier déco)
 
-_PASSIVE_MOBS       = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL, MOB_BAT, MOB_PENGUIN}
+_PASSIVE_MOBS       = {MOB_CHICKEN, MOB_FROG, MOB_SEAGULL, MOB_BAT, MOB_PENGUIN, MOB_CAT}
 _FLYING_MOBS        = {MOB_SEAGULL, MOB_BAT, MOB_DEMON, MOB_VULTURE}
 _GOLD_NEUTRAL_MOBS  = {MOB_BOAR}   # n'attaquent pas un joueur portant de l'or
 _DEEP_MOBS          = {MOB_TROLL, MOB_WORM, MOB_WRAITH, MOB_TENDRIL}  # gèrent leur propre déplacement
+_TAMEABLE_MOBS      = {MOB_CHICKEN, MOB_WOLF, MOB_CAT}  # domesticables
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 _MOB_HP = {
@@ -59,6 +62,8 @@ _MOB_HP = {
     MOB_POLAR_BEAR: 8,
     MOB_SCORPION:   3,
     MOB_VULTURE:    3,
+    MOB_WOLF:       4,
+    MOB_CAT:        2,
 }
 
 # Dégâts de l'épée par matériau (MAT_WOOD=0, MAT_IRON=1, MAT_GOLD=2, MAT_DIAMOND=3)
@@ -74,6 +79,7 @@ _MOB_ATTACK_DMG = {
     MOB_TROLL:    2, MOB_WORM:     3, MOB_WRAITH:   4,
     MOB_TENDRIL:  3,
     MOB_PENGUIN:  0, MOB_POLAR_BEAR: 3, MOB_SCORPION: 2, MOB_VULTURE: 1,
+    MOB_WOLF:     1, MOB_CAT: 0,
 }
 
 # Tier d'épée minimum pour infliger des dégâts
@@ -99,6 +105,8 @@ _MOB_MIN_SWORD_TIER = {
     MOB_POLAR_BEAR: 2,   # épée Fer min
     MOB_SCORPION:   1,   # épée Bois min
     MOB_VULTURE:    0,
+    MOB_WOLF:       0,
+    MOB_CAT:        0,
 }
 
 # ── Dimensions pixels ─────────────────────────────────────────────────────────
@@ -110,6 +118,7 @@ _MOB_PW = {
     MOB_TROLL:    14, MOB_WORM:     16, MOB_WRAITH:  12,
     MOB_TENDRIL:  14,
     MOB_PENGUIN:  8,  MOB_POLAR_BEAR: 16, MOB_SCORPION: 12, MOB_VULTURE: 10,
+    MOB_WOLF:    12,  MOB_CAT: 8,
 }
 _MOB_PH = {
     MOB_SLIME:    10, MOB_ZOMBIE:   16, MOB_GOLEM:   18,
@@ -119,6 +128,7 @@ _MOB_PH = {
     MOB_TROLL:    18, MOB_WORM:     8,  MOB_WRAITH:  14,
     MOB_TENDRIL:  20,
     MOB_PENGUIN:  10, MOB_POLAR_BEAR: 14, MOB_SCORPION: 8, MOB_VULTURE: 6,
+    MOB_WOLF:    10,  MOB_CAT: 6,
 }
 
 def _mw(t): return _MOB_PW[t] / TILE_SIZE
@@ -146,6 +156,8 @@ _MOB_COLOR = {
     MOB_POLAR_BEAR: (240, 240, 245),  # blanc polaire
     MOB_SCORPION:   (140, 100,  40),  # brun sable
     MOB_VULTURE:    ( 60,  45,  35),  # brun foncé
+    MOB_WOLF:       (140, 135, 125),  # gris loup
+    MOB_CAT:        (210, 155,  60),  # orange tabby
 }
 
 # ── Rayon de spawn / despawn ──────────────────────────────────────────────────

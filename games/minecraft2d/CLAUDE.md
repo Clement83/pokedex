@@ -15,7 +15,7 @@ scenes/
   select.py        – Menu sélection/création de monde (4 slots)
   game/            – Module de jeu (voir CLAUDE.md dédié dans scenes/game/)
 mobs/
-  base.py          – 20 types de mobs, constantes (taille, couleur, HP, dégâts, tier)
+  base.py          – 22 types de mobs, constantes (taille, couleur, HP, dégâts, tier)
   manager.py       – Spawn budgété (10/joueur), despawn à 80 tiles, cooldown 45s
   ai.py            – IA par type : chase, wander, flying, deep cave, spécial
   physics.py       – Collision et mouvement des mobs
@@ -23,6 +23,7 @@ mobs/
   renderer.py      – Dessin des mobs (rectangles colorés pixel-art)
   deep.py          – Mobs de grottes profondes (Troll, Worm, Wraith, Tendril)
   drops.py         – Tables de loot par type de mob
+  familiar.py      – Familiers : apprivoisement, suivi, loup combat, poule oeufs
 ```
 
 ## Monde
@@ -41,7 +42,8 @@ mobs/
 - **Craft** : 4 tiers (bois→fer→or→diamant), 24 recettes
 - **Combat** : épée (cooldown 0.35s, dégâts par matériau), arc (flèches paraboliques)
 - **Minage** : temps variable par bloc (0.2-3s), tier de pioche requis
-- **Mobs** : 20 types (agressifs avec tier d'immunité, passifs, boss)
+- **Mobs** : 22 types (agressifs avec tier d'immunité, passifs, boss, domesticables)
+- **Familiers** : 1 par joueur (loup=combat, chat=déco, poule=oeufs)
 - **Cycle jour/nuit** : 20 min, zombies au crépuscule, brûlent à l'aube
 - **Split-screen** : 2 viewports quand joueurs éloignés (>88px), caméra partagée sinon
 

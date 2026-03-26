@@ -9,6 +9,7 @@ from mobs.base import (
     MOB_CHICKEN, MOB_FROG, MOB_SEAGULL,
     MOB_SPIDER, MOB_SKELETON, MOB_BAT, MOB_CRAB, MOB_DEMON, MOB_BOAR,
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
+    MOB_WOLF, MOB_CAT,
     _PASSIVE_MOBS, _FLYING_MOBS, _DEEP_MOBS, _mw, _mh,
 )
 from mobs.physics import _solid, _move_mob_x, _move_mob_y
@@ -361,6 +362,45 @@ def update_mob(mob, dt, players, world):  # noqa: C901
                 mob._wander_cd  = 2.5 + mob._rng.random() * 3.5
             mob.vx = 3.0 * mob._wander_dir
             mob.vy = math.sin(mob._fly_phase) * 0.6
+
+    # ── Loup (neutre : fuit à l'approche, attaque en meute si frappé) ──────
+    elif mob.mob_type == MOB_WOLF:
+        if mob.state == "chase":
+            mob.vx = 3.5 * dir_to
+            nc = int(mob.x + dir_to * (_mw(MOB_WOLF) + 0.1))
+            if mob.on_ground and mob._jump_cd <= 0 and _solid(world, nc, int(cy)):
+                mob.vy = JUMP_VEL * 0.8; mob._jump_cd = 0.5
+            if mob._state_cd <= 0:
+                mob.state = "idle"
+        elif dist <= 4.0:
+            mob.vx = -dir_to * 3.5
+            if mob.on_ground and mob._jump_cd <= 0:
+                mob.vy = JUMP_VEL * 0.5; mob._jump_cd = 0.6
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd = 2.0 + mob._rng.random() * 3.0
+            mob.vx = 1.8 * mob._wander_dir
+            check_col = int(mob.x + mob._wander_dir * (_mw(MOB_WOLF) + 0.1))
+            if _solid(world, check_col, int(cy)):
+                mob._wander_dir *= -1; mob._wander_cd = 0.0
+
+    # ── Chat sauvage (passif, fuit les joueurs rapidement) ──────────────
+    elif mob.mob_type == MOB_CAT:
+        if dist <= 5.0:
+            mob.vx = -dir_to * 4.0
+            if mob.on_ground and mob._jump_cd <= 0:
+                mob.vy = JUMP_VEL * 0.55; mob._jump_cd = 0.5
+        else:
+            mob._wander_cd -= dt
+            if mob._wander_cd <= 0:
+                mob._wander_dir = 1 if mob._rng.random() > 0.5 else -1
+                mob._wander_cd = 1.5 + mob._rng.random() * 2.5
+            mob.vx = 2.0 * mob._wander_dir
+            check_col = int(mob.x + mob._wander_dir * (_mw(MOB_CAT) + 0.1))
+            if _solid(world, check_col, int(cy)):
+                mob._wander_dir *= -1; mob._wander_cd = 0.0
 
     elif mob.mob_type in _DEEP_MOBS: return _update_deep_mob(mob, dt, players, world)
     # ── Gravité + déplacement ─────────────────────────────────────────────────

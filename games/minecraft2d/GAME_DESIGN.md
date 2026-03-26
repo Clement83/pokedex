@@ -373,7 +373,8 @@ Ces drops sont à ajouter dans `mobs/drops.py`.
 | Mob | PV | Dégâts | Tier épée | Zone | Comportement | Priorité |
 |---|---|---|---|---|---|---|
 | **Liche** (boss donjon) | 20 | 3 | 3 (Or) | Donjon spécial, 1/monde | Invoque des squelettes, projectiles multiples | ⭐⭐ |
-| **Loup** | 3 | 1 | 0 | Forêts surface | Passif, mais attaque en meute si on frappe un loup | ⭐⭐ |
+| **Loup** ✅ | 4 | 1 | 0 | Forêts surface | Neutre, attaque en meute si on frappe un loup. Apprivoisable (Poisson) → compagnon de combat | ⭐⭐ |
+| **Chat sauvage** ✅ | 2 | 0 | 0 | Surface (hors glace) | Passif, fuit. Apprivoisable (Poisson) → familier décoratif | ⭐⭐ |
 | **Poisson** | 1 | 0 | 0 | Eau | Passif, pêchable pour nourriture | ⭐ |
 | **Fantôme** | 5 | 2 | 2 (Fer) | Surface la nuit | Volant, apparaît si le joueur n'a pas dormi | ⭐ |
 | **Mimic** | 6 | 2 | 1 (Bois) | Donjons | Ressemble à un coffre, attaque quand on l'ouvre | ⭐⭐⭐ |
@@ -615,11 +616,22 @@ Système d'eau complet avec physique de fluide et contenu aquatique.
 - Nécessite un **Alambic** (craft : Pierre ×4 + Vitre ×2)
 - Types : Soin, Régénération, Force, Vitesse, Vision nocturne, **Respiration aquatique**
 
-### 9.11 Animaux domesticables ⭐
+### 9.11 Animaux domesticables ✅
 **Impact : IMMERSION**
 
-- Loup apprivoisable avec de la viande → compagnon de combat
-- Poule apprivoisable → pond des œufs (nourriture passive)
+Chaque joueur peut avoir **un seul familier** à la fois. Apprivoisement avec **TOOL_HAND + action** près de l'animal.
+
+| Animal | Item requis | Comportement familier |
+|---|---|---|
+| **Poule** | Gratuit | Suit le joueur, pond un Oeuf toutes les 60s (ajouté à l'inventaire) |
+| **Loup** | Poisson ×1 | Suit le joueur, attaque les mobs hostiles proches (2 dmg, cd 1.5s) |
+| **Chat** | Poisson ×1 | Suit le joueur, ne fait rien (comme dans la vraie vie) |
+
+- Familier se téléporte si distance > 20 tuiles du joueur
+- Loup familier donne les drops au joueur quand il tue un mob
+- Poule familière produit TILE_EGG (nouvel item)
+- Sauvegardé en DB (type + HP + timer oeuf)
+- Coeur rouge pixel-art affiché au-dessus du familier
 
 ### 9.12 Système de farming ⭐
 **Impact : SURVIE**
@@ -670,7 +682,7 @@ Système d'eau complet avec physique de fluide et contenu aquatique.
 | 11 | Durabilité des outils | Progression | Faible |
 | 12 | Boss Liche | Combat | Élevée |
 | 13 | Boss Kraken (aquatique) | Combat/Eau | Élevée |
-| 14 | Loups (meute + domestication) | Immersion | Moyenne |
+| 14 | ~~Loups (meute + domestication)~~ ✅ | Immersion | Moyenne |
 | 15 | Sons & musique | Immersion | Moyenne |
 
 ### Priorité basse ⭐ — Nice to have, quand le reste est solide
@@ -682,7 +694,7 @@ Système d'eau complet avec physique de fluide et contenu aquatique.
 | 18 | Villages PNJ | Monde | Très élevée |
 | 19 | Portails/dimensions | Monde | Très élevée |
 | 20 | Enchantements | Progression | Élevée |
-| 21 | Animaux domesticables | Immersion | Moyenne |
+| 21 | ~~Animaux domesticables~~ ✅ | Immersion | Moyenne |
 
 ---
 

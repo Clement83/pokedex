@@ -36,9 +36,10 @@ TILE_TORCH       = 18       # torche (éclairage, plaçable)
 TILE_ARROW       = 19       # flèches  (munitions arc, item uniquement)
 TILE_SILK        = 20       # fil d'araignée (composant de craft, item uniquement)
 TILE_FISH        = 21       # poisson (pêche, nourriture future)
+TILE_EGG         = 22       # œuf (pondu par poule familière, nourriture)
 
 # Tiles qui sont des items purs (non plaçables dans le monde)
-TILE_ITEMS = frozenset({19, 20, 21})   # TILE_ARROW, TILE_SILK, TILE_FISH
+TILE_ITEMS = frozenset({19, 20, 21, 22})   # TILE_ARROW, TILE_SILK, TILE_FISH, TILE_EGG
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -64,6 +65,7 @@ TILE_NAMES = {
     TILE_ARROW:       "Flèches",
     TILE_SILK:        "Fil d'araignée",
     TILE_FISH:        "Poisson",
+    TILE_EGG:         "Œuf",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -185,6 +187,7 @@ TILE_COLORS = {
     TILE_ARROW:       (180, 155,  90),   # beige bois
     TILE_SILK:        (210, 215, 225),   # gris blanc
     TILE_FISH:        ( 60, 180, 180),   # cyan aquatique
+    TILE_EGG:         (245, 235, 210),   # crème coquille
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
