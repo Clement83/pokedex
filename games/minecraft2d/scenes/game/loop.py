@@ -84,9 +84,13 @@ def run(screen, joysticks, world_id, seed):
         p.inventory._tool_mat = sv.get("tool_mat")
         p.inventory.resources = [tuple(r) for r in sv["resources"]]
         p.inventory.craft_tier  = sv.get("craft_tier", 1)
-        p.inventory.equip = {k: [tuple(e) for e in v] for k, v in sv["equip"].items()}
-        for sl, lst in p.inventory.equip.items():
-            p.inventory.equip_idx[sl] = min(p.inventory.equip_idx.get(sl, 0), max(0, len(lst) - 1))
+        # Migration : anciennes armures stockées dans equip dict → resources
+        from config import EQUIP_TO_TILE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET
+        for armor_slot in (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET):
+            for piece in sv["equip"].get(armor_slot, []):
+                tile = EQUIP_TO_TILE.get(tuple(piece))
+                if tile:
+                    p.inventory.add(tile)
         eject_from_blocks(p, world)
         if sv.get("flag") is not None: flag_positions[p.idx] = sv["flag"]
         fam_mgr.load_data(p.idx, sv.get("familiar"), p)

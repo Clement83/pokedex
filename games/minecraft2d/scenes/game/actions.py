@@ -7,7 +7,6 @@ import sounds as _sounds
 
 from config import (
     TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_FISH, TILE_TORCH, TILE_SIZE, REACH_RADIUS,
-    TILE_ITEMS,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_BOW, TOOL_ROD, TOOL_TORCH,
     TILE_BREAK_TIME, TILE_PICKAXE_TIER, MAT_TIER,
     EQUIP_NAMES, PLAYER_W, PLAYER_H, ROWS,
@@ -206,7 +205,7 @@ def handle_block_actions(
     if tool == TOOL_PLACER and cur_mine and not prev_mine and not cur_mod:
         if tile_at == TILE_AIR:
             selected = player.inventory.selected_tile()
-            if selected != TILE_AIR and selected not in TILE_ITEMS:
+            if selected != TILE_AIR:
                 occupied = any(
                     int(p.x + PLAYER_W / TILE_SIZE / 2) == cur_col and
                     int(p.y + PLAYER_H / TILE_SIZE / 2) == cur_row

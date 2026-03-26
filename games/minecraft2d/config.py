@@ -51,9 +51,22 @@ TILE_SWORD_GOLD      = 32
 TILE_SWORD_DIAMOND   = 33
 TILE_BOW_WOOD        = 34
 TILE_BOW_IRON        = 35
+# Armures (portables + plaçables comme blocs)
+TILE_HEAD_WOOD       = 36
+TILE_HEAD_IRON       = 37
+TILE_HEAD_GOLD       = 38
+TILE_HEAD_DIAMOND    = 39
+TILE_BODY_WOOD       = 40
+TILE_BODY_IRON       = 41
+TILE_BODY_GOLD       = 42
+TILE_BODY_DIAMOND    = 43
+TILE_FEET_WOOD       = 44
+TILE_FEET_IRON       = 45
+TILE_FEET_GOLD       = 46
+TILE_FEET_DIAMOND    = 47
 
-# Tiles qui sont des items purs (non plaçables dans le monde)
-TILE_ITEMS = frozenset(range(19, 36))
+# Tiles qui sont des items (non générés naturellement)
+TILE_ITEMS = frozenset(range(19, 48))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -93,6 +106,18 @@ TILE_NAMES = {
     TILE_SWORD_DIAMOND:   "Épée Diamant",
     TILE_BOW_WOOD:        "Arc Bois",
     TILE_BOW_IRON:        "Arc Fer",
+    TILE_HEAD_WOOD:       "Casque Bois",
+    TILE_HEAD_IRON:       "Casque Fer",
+    TILE_HEAD_GOLD:       "Casque Or",
+    TILE_HEAD_DIAMOND:    "Casque Diamant",
+    TILE_BODY_WOOD:       "Plastron Bois",
+    TILE_BODY_IRON:       "Plastron Fer",
+    TILE_BODY_GOLD:       "Plastron Or",
+    TILE_BODY_DIAMOND:    "Plastron Diamant",
+    TILE_FEET_WOOD:       "Bottes Bois",
+    TILE_FEET_IRON:       "Bottes Fer",
+    TILE_FEET_GOLD:       "Bottes Or",
+    TILE_FEET_DIAMOND:    "Bottes Diamant",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -207,6 +232,24 @@ TOOL_MAT_TO_TILE = {v: k for k, v in TILE_TOOL_MAP.items()}
 _TOOL_TO_EQUIP = {TOOL_PICKAXE: EQUIP_PICKAXE, TOOL_SWORD: EQUIP_SWORD, TOOL_BOW: EQUIP_BOW}
 EQUIP_TO_TILE = {(_TOOL_TO_EQUIP[t], m): tile for tile, (t, m) in TILE_TOOL_MAP.items()}
 
+# Mapping tuile armure → (equip_slot, matériau)
+ARMOR_TILE_MAP = {
+    TILE_HEAD_WOOD:    (EQUIP_HEAD, MAT_WOOD),
+    TILE_HEAD_IRON:    (EQUIP_HEAD, MAT_IRON),
+    TILE_HEAD_GOLD:    (EQUIP_HEAD, MAT_GOLD),
+    TILE_HEAD_DIAMOND: (EQUIP_HEAD, MAT_DIAMOND),
+    TILE_BODY_WOOD:    (EQUIP_BODY, MAT_WOOD),
+    TILE_BODY_IRON:    (EQUIP_BODY, MAT_IRON),
+    TILE_BODY_GOLD:    (EQUIP_BODY, MAT_GOLD),
+    TILE_BODY_DIAMOND: (EQUIP_BODY, MAT_DIAMOND),
+    TILE_FEET_WOOD:    (EQUIP_FEET, MAT_WOOD),
+    TILE_FEET_IRON:    (EQUIP_FEET, MAT_IRON),
+    TILE_FEET_GOLD:    (EQUIP_FEET, MAT_GOLD),
+    TILE_FEET_DIAMOND: (EQUIP_FEET, MAT_DIAMOND),
+}
+# Compléter EQUIP_TO_TILE avec les armures
+EQUIP_TO_TILE.update({v: k for k, v in ARMOR_TILE_MAP.items()})
+
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
     TILE_AIR:         (100, 160, 220),   # ciel
@@ -245,6 +288,18 @@ TILE_COLORS = {
     TILE_SWORD_DIAMOND:   ( 80, 220, 235),
     TILE_BOW_WOOD:        (139,  90,  43),
     TILE_BOW_IRON:        (170, 170, 185),
+    TILE_HEAD_WOOD:       (139,  90,  43),
+    TILE_HEAD_IRON:       (170, 170, 185),
+    TILE_HEAD_GOLD:       (255, 200,   0),
+    TILE_HEAD_DIAMOND:    ( 80, 220, 235),
+    TILE_BODY_WOOD:       (139,  90,  43),
+    TILE_BODY_IRON:       (170, 170, 185),
+    TILE_BODY_GOLD:       (255, 200,   0),
+    TILE_BODY_DIAMOND:    ( 80, 220, 235),
+    TILE_FEET_WOOD:       (139,  90,  43),
+    TILE_FEET_IRON:       (170, 170, 185),
+    TILE_FEET_GOLD:       (255, 200,   0),
+    TILE_FEET_DIAMOND:    ( 80, 220, 235),
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -265,6 +320,15 @@ TILE_BREAK_TIME = {
     TILE_SNOW:        0.3,
     TILE_ICE:         0.5,
     TILE_TORCH:       0.2,   # torche cassable rapidement à la main
+    # Items posés dans le monde : cassables à la main en 0.3s
+    TILE_ARROW: 0.3, TILE_SILK: 0.3,  TILE_FISH: 0.3,  TILE_EGG: 0.3,
+    TILE_FLAG:  0.3, TILE_CRAFT: 0.3, TILE_ROD:  0.3,
+    TILE_PICKAXE_WOOD: 0.3, TILE_PICKAXE_IRON: 0.3, TILE_PICKAXE_GOLD: 0.3, TILE_PICKAXE_DIAMOND: 0.3,
+    TILE_SWORD_WOOD:   0.3, TILE_SWORD_IRON:   0.3, TILE_SWORD_GOLD:   0.3, TILE_SWORD_DIAMOND:   0.3,
+    TILE_BOW_WOOD:     0.3, TILE_BOW_IRON:     0.3,
+    TILE_HEAD_WOOD: 0.3, TILE_HEAD_IRON: 0.3, TILE_HEAD_GOLD: 0.3, TILE_HEAD_DIAMOND: 0.3,
+    TILE_BODY_WOOD: 0.3, TILE_BODY_IRON: 0.3, TILE_BODY_GOLD: 0.3, TILE_BODY_DIAMOND: 0.3,
+    TILE_FEET_WOOD: 0.3, TILE_FEET_IRON: 0.3, TILE_FEET_GOLD: 0.3, TILE_FEET_DIAMOND: 0.3,
 }
 
 # Tier de pioche minimum requis pour miner un bloc

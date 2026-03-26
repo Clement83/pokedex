@@ -6,7 +6,7 @@ from config import (
     TOOL_BOW, TOOL_ROD, TOOL_TORCH,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
     TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD,
-    TILE_TOOL_MAP, TOOL_MAT_TO_TILE, EQUIP_TO_TILE,
+    TILE_TOOL_MAP, TOOL_MAT_TO_TILE, EQUIP_TO_TILE, ARMOR_TILE_MAP,
     TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
 )
 
@@ -44,12 +44,12 @@ class Inventory:
         ]
         self.resource_idx = 0
         self.craft_tier   = 1           # niveau table de craft (1=Bois … 4=Diamant)
-        self.equip = {
-            EQUIP_HEAD: [],
-            EQUIP_BODY: [],
-            EQUIP_FEET: [],
-        }
-        self.equip_idx = {EQUIP_HEAD: 0, EQUIP_BODY: 0, EQUIP_FEET: 0}
+        # Équipements portés : sélection de l'armure active par slot
+        # Les pièces sont stockées dans resources (même système que piôches/épées)
+        self._equip_sel = {EQUIP_HEAD: 0, EQUIP_BODY: 0, EQUIP_FEET: 0}
+        # Conservé vide pour compatibilité (anciennes sauvegardes migrées dans loop.py)
+        self.equip = {}
+        self.equip_idx = {}   # alias vide pour éventuels accès externes
 
     # ── Propriétés matériaux actifs ───────────────────────────────────────────
 
@@ -109,31 +109,24 @@ class Inventory:
     # ── Équipement porté ──────────────────────────────────────────────────────
 
     def worn_equip(self, equip_slot):
-        lst = self.equip[equip_slot]
-        if not lst:
+        """Retourne (equip_slot, mat) de la pièce portée, ou None si aucune."""
+        matching = [tile for tile, c in self.resources
+                    if c > 0 and ARMOR_TILE_MAP.get(tile, (None,))[0] == equip_slot]
+        if not matching:
             return None
-        return lst[self.equip_idx[equip_slot]]
+        idx = self._equip_sel.get(equip_slot, 0) % len(matching)
+        return ARMOR_TILE_MAP[matching[idx]]
 
     def add_equip(self, item):
-        eslot, mat = item
         tile = EQUIP_TO_TILE.get(item)
         if tile:
             self.add(tile)
-        else:
-            if item not in self.equip[eslot]:
-                self.equip[eslot].append(item)
 
     def remove_equip(self, item):
         """Retire 1 exemplaire d'un équipement. Retourne True si succès."""
-        eslot, mat = item
         tile = EQUIP_TO_TILE.get(item)
         if tile:
             return self._remove_res(tile)
-        lst = self.equip.get(eslot, [])
-        if item in lst:
-            lst.remove(item)
-            self.equip_idx[eslot] = max(0, min(self.equip_idx.get(eslot, 0), len(lst) - 1))
-            return True
         return False
 
     def unlock_tool(self, tool_id):
@@ -147,13 +140,11 @@ class Inventory:
             self.add(tile)
 
     def drop_equip(self, equip_slot):
-        lst = self.equip[equip_slot]
-        if not lst:
+        worn = self.worn_equip(equip_slot)
+        if worn is None:
             return None
-        idx  = self.equip_idx[equip_slot]
-        item = lst.pop(idx)
-        self.equip_idx[equip_slot] = max(0, min(idx, len(lst) - 1))
-        return item
+        self.remove_equip(worn)
+        return worn
 
     # ── Ressources ────────────────────────────────────────────────────────────
 
@@ -261,9 +252,10 @@ class Inventory:
             self.resource_idx = (self.resource_idx + 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
             eslot = self.EQUIP_SLOT_MAP[s]
-            lst   = self.equip[eslot]
-            if len(lst) > 1:
-                self.equip_idx[eslot] = (self.equip_idx[eslot] + 1) % len(lst)
+            matching = [tile for tile, c in self.resources
+                        if c > 0 and ARMOR_TILE_MAP.get(tile, (None,))[0] == eslot]
+            if len(matching) > 1:
+                self._equip_sel[eslot] = (self._equip_sel.get(eslot, 0) + 1) % len(matching)
 
     def item_prev(self):
         s = self.active_slot
@@ -274,6 +266,7 @@ class Inventory:
             self.resource_idx = (self.resource_idx - 1) % len(self.resources)
         elif s in self.EQUIP_SLOT_MAP:
             eslot = self.EQUIP_SLOT_MAP[s]
-            lst   = self.equip[eslot]
-            if len(lst) > 1:
-                self.equip_idx[eslot] = (self.equip_idx[eslot] - 1) % len(lst)
+            matching = [tile for tile, c in self.resources
+                        if c > 0 and ARMOR_TILE_MAP.get(tile, (None,))[0] == eslot]
+            if len(matching) > 1:
+                self._equip_sel[eslot] = (self._equip_sel.get(eslot, 0) - 1) % len(matching)

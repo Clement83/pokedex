@@ -9,6 +9,13 @@ import pygame
 from config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE, ROWS,
     TILE_AIR, TILE_COLORS, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_TORCH,
+    TILE_ARROW, TILE_SILK, TILE_FISH, TILE_EGG, TILE_FLAG, TILE_CRAFT, TILE_ROD,
+    TILE_PICKAXE_WOOD, TILE_PICKAXE_IRON, TILE_PICKAXE_GOLD, TILE_PICKAXE_DIAMOND,
+    TILE_SWORD_WOOD, TILE_SWORD_IRON, TILE_SWORD_GOLD, TILE_SWORD_DIAMOND,
+    TILE_BOW_WOOD, TILE_BOW_IRON,
+    TILE_HEAD_WOOD, TILE_HEAD_IRON, TILE_HEAD_GOLD, TILE_HEAD_DIAMOND,
+    TILE_BODY_WOOD, TILE_BODY_IRON, TILE_BODY_GOLD, TILE_BODY_DIAMOND,
+    TILE_FEET_WOOD, TILE_FEET_IRON, TILE_FEET_GOLD, TILE_FEET_DIAMOND,
     BIOME_SKY_COLORS,
 )
 
@@ -128,6 +135,265 @@ def _draw_torch_tile(surf, x, y):
     surf.fill((255, 240, 100), (x + 7, y + 1,  2, 1))
 
 
+# ── Dessin d'une seule tuile (partagé render + update_tile) ──────────────────
+
+def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
+    """Dessine la tuile `tile` à (x, y) sur `surf`. biome_color = couleur ciel du biome."""
+    ts = TILE_SIZE
+    if tile == TILE_CHEST:
+        _draw_chest_tile(surf, x, y)
+    elif tile == TILE_LAVA:
+        _draw_lava_tile(surf, x, y, dc, dr)
+    elif tile == TILE_WATER:
+        _draw_water_tile(surf, x, y, dc, dr)
+    elif tile == TILE_TORCH:
+        surf.fill((80, 70, 60), (x, y, ts, ts))
+        _draw_torch_tile(surf, x, y)
+    elif tile == TILE_CRAFT:
+        _draw_craft_tile(surf, x, y)
+    elif tile == TILE_ROD:
+        _draw_rod_tile(surf, x, y)
+    elif tile == TILE_FLAG:
+        _draw_flag_item_tile(surf, x, y)
+    elif tile == TILE_ARROW:
+        _draw_arrow_tile(surf, x, y)
+    elif tile == TILE_SILK:
+        _draw_silk_tile(surf, x, y)
+    elif tile == TILE_FISH:
+        _draw_fish_tile(surf, x, y)
+    elif tile == TILE_EGG:
+        _draw_egg_tile(surf, x, y)
+    elif tile in (TILE_PICKAXE_WOOD, TILE_PICKAXE_IRON,
+                  TILE_PICKAXE_GOLD, TILE_PICKAXE_DIAMOND):
+        _draw_pickaxe_tile(surf, x, y, TILE_COLORS[tile])
+    elif tile in (TILE_SWORD_WOOD, TILE_SWORD_IRON,
+                  TILE_SWORD_GOLD, TILE_SWORD_DIAMOND):
+        _draw_sword_tile(surf, x, y, TILE_COLORS[tile])
+    elif tile in (TILE_BOW_WOOD, TILE_BOW_IRON):
+        _draw_bow_tile(surf, x, y, TILE_COLORS[tile])
+    elif tile in (TILE_HEAD_WOOD, TILE_HEAD_IRON, TILE_HEAD_GOLD, TILE_HEAD_DIAMOND):
+        _draw_head_tile(surf, x, y, TILE_COLORS[tile])
+    elif tile in (TILE_BODY_WOOD, TILE_BODY_IRON, TILE_BODY_GOLD, TILE_BODY_DIAMOND):
+        _draw_body_tile(surf, x, y, TILE_COLORS[tile])
+    elif tile in (TILE_FEET_WOOD, TILE_FEET_IRON, TILE_FEET_GOLD, TILE_FEET_DIAMOND):
+        _draw_feet_tile(surf, x, y, TILE_COLORS[tile])
+    else:
+        color = biome_color if tile == TILE_AIR else TILE_COLORS[tile]
+        surf.fill(color, (x, y, ts, ts))
+        if tile != TILE_AIR:
+            pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+
+
+# ── Items plaçables – pixel-art 16×16 ────────────────────────────────────────
+
+_BG_ITEM = (45, 42, 48)    # fond sombre commun aux items
+_HANDLE  = (120, 80, 35)   # brun manche
+
+
+def _draw_pickaxe_tile(surf, x, y, color):
+    """Pioche : tête horizontale (couleur matériau) + manche diagonal brun."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Tête (barre + deux pointes)
+    surf.fill(color,   (x+2, y+3, 11, 3))
+    surf.fill(color,   (x+2, y+5,  2, 2))   # pointe gauche
+    surf.fill(color,   (x+11, y+5, 2, 3))   # pointe droite
+    # Manche diagonal
+    surf.fill(_HANDLE, (x+6,  y+5,  2, 2))
+    surf.fill(_HANDLE, (x+7,  y+7,  2, 2))
+    surf.fill(_HANDLE, (x+8,  y+9,  2, 2))
+    surf.fill(_HANDLE, (x+9,  y+11, 2, 2))
+    surf.fill(_HANDLE, (x+10, y+13, 2, 2))
+
+
+def _draw_sword_tile(surf, x, y, color):
+    """Épée : lame diagonale + croisillon doré + manche brun."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Lame (haut-droit → bas-gauche)
+    surf.fill(color, (x+9,  y+2,  2, 2))
+    surf.fill(color, (x+8,  y+3,  2, 2))
+    surf.fill(color, (x+7,  y+4,  2, 2))
+    surf.fill(color, (x+6,  y+5,  2, 2))
+    surf.fill(color, (x+5,  y+6,  2, 2))
+    # Croisillon
+    surf.fill((200, 170, 80), (x+3, y+7, 8, 2))
+    # Manche
+    surf.fill(_HANDLE, (x+4, y+9,  2, 2))
+    surf.fill(_HANDLE, (x+3, y+11, 2, 2))
+
+
+def _draw_bow_tile(surf, x, y, color):
+    """Arc : courbe en C (couleur matériau) + corde blanche."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Courbure
+    surf.fill(color, (x+5,  y+2,  3, 2))
+    surf.fill(color, (x+4,  y+4,  2, 2))
+    surf.fill(color, (x+3,  y+6,  2, 4))
+    surf.fill(color, (x+4,  y+10, 2, 2))
+    surf.fill(color, (x+5,  y+12, 3, 2))
+    # Corde
+    surf.fill((210, 205, 185), (x+8, y+3, 1, 10))
+
+
+def _draw_craft_tile(surf, x, y):
+    """Table de craft : fond bois + grille 2×2 gravée."""
+    surf.fill((155, 105, 48), (x, y, 16, 16))
+    pygame.draw.rect(surf, (80, 50, 20), (x, y, 16, 16), 1)
+    # Séparateurs de grille
+    surf.fill((80, 50, 20), (x+7, y+1, 2, 14))
+    surf.fill((80, 50, 20), (x+1, y+7, 14, 2))
+    # Cellules légèrement plus sombres
+    surf.fill((130, 88, 38), (x+2,  y+2,  4, 4))
+    surf.fill((130, 88, 38), (x+10, y+2,  4, 4))
+    surf.fill((130, 88, 38), (x+2,  y+10, 4, 4))
+    surf.fill((130, 88, 38), (x+10, y+10, 4, 4))
+
+
+def _draw_rod_tile(surf, x, y):
+    """Canne à pêche : bâton diagonal + fil blanc."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Bâton diagonal (bas-gauche → haut-droite)
+    surf.fill(_HANDLE, (x+2,  y+12, 2, 2))
+    surf.fill(_HANDLE, (x+4,  y+10, 2, 2))
+    surf.fill(_HANDLE, (x+6,  y+8,  2, 2))
+    surf.fill(_HANDLE, (x+8,  y+6,  2, 2))
+    surf.fill(_HANDLE, (x+10, y+4,  2, 2))
+    surf.fill(_HANDLE, (x+12, y+3,  2, 2))
+    # Fil de pêche depuis le bout
+    surf.fill((200, 200, 200), (x+13, y+4, 1, 1))
+    surf.fill((200, 200, 200), (x+13, y+5, 1, 3))
+    surf.fill((200, 200, 200), (x+12, y+8, 2, 1))
+
+
+def _draw_flag_item_tile(surf, x, y):
+    """Drapeau : hampe dorée + triangle rouge dégradé."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    surf.fill((180, 140, 70), (x+6, y+2, 2, 12))   # hampe
+    surf.fill((220, 50, 50),  (x+8, y+2, 5, 3))
+    surf.fill((200, 40, 40),  (x+8, y+5, 4, 2))
+    surf.fill((180, 30, 30),  (x+8, y+7, 3, 2))
+
+
+def _draw_arrow_tile(surf, x, y):
+    """Flèche diagonale : corps beige + pointe métal + plumes."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    _S = (180, 155, 90)    # corps
+    _T = (185, 185, 200)   # pointe métal
+    _F = (200, 195, 185)   # plumes
+    # Corps diagonal
+    surf.fill(_S, (x+4, y+11, 2, 2))
+    surf.fill(_S, (x+5, y+10, 2, 2))
+    surf.fill(_S, (x+6, y+9,  2, 2))
+    surf.fill(_S, (x+7, y+8,  2, 2))
+    surf.fill(_S, (x+8, y+7,  2, 2))
+    # Pointe
+    surf.fill(_T, (x+9,  y+6,  2, 2))
+    surf.fill(_T, (x+10, y+5,  2, 2))
+    surf.fill(_T, (x+11, y+3,  2, 3))
+    # Plumes
+    surf.fill(_F, (x+2, y+12, 3, 2))
+    surf.fill(_F, (x+3, y+11, 2, 2))
+
+
+def _draw_silk_tile(surf, x, y):
+    """Toile d'araignée : fils verticaux + horizontaux gris clair."""
+    surf.fill((38, 38, 48), (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    _W = (200, 205, 215)
+    for col_off in (3, 7, 11):
+        surf.fill(_W, (x + col_off, y+2, 1, 12))
+    surf.fill(_W, (x+2, y+4,  12, 1))
+    surf.fill(_W, (x+2, y+8,  12, 1))
+    surf.fill(_W, (x+2, y+12, 12, 1))
+
+
+def _draw_fish_tile(surf, x, y):
+    """Poisson : corps ovale cyan + queue + œil."""
+    surf.fill((28, 48, 78), (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    _FC = (60, 190, 190)
+    _FS = (45, 155, 155)
+    # Corps
+    surf.fill(_FC, (x+3, y+6, 8, 4))
+    surf.fill(_FC, (x+4, y+5, 6, 6))
+    # Queue
+    surf.fill(_FS, (x+11, y+5, 3, 2))
+    surf.fill(_FS, (x+12, y+7, 2, 2))
+    surf.fill(_FS, (x+11, y+9, 3, 2))
+    # Œil
+    surf.fill((230, 230, 230), (x+5, y+7, 2, 2))
+    surf.fill((40,  40,  40),  (x+5, y+7, 1, 1))
+
+
+def _draw_egg_tile(surf, x, y):
+    """Œuf : ovale ivoire avec ombre latérale."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    _EG = (240, 230, 200)
+    _ES = (210, 195, 165)
+    surf.fill(_EG, (x+5,  y+3,  6,  2))
+    surf.fill(_EG, (x+4,  y+4,  8,  2))
+    surf.fill(_EG, (x+3,  y+6,  10, 5))
+    surf.fill(_EG, (x+4,  y+11, 8,  2))
+    surf.fill(_EG, (x+5,  y+13, 6,  1))
+    surf.fill(_ES, (x+9,  y+5,  3,  7))   # ombre droite
+
+def _draw_head_tile(surf, x, y, color):
+    """Casque pixel-art 16x16 (forme de heaume)."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    dark = (max(0, color[0]-60), max(0, color[1]-60), max(0, color[2]-60))
+    # Sommet arrondi
+    surf.fill(color, (x+4,  y+2,  8,  1))
+    surf.fill(color, (x+2,  y+3,  12, 1))
+    surf.fill(color, (x+1,  y+4,  14, 1))
+    # Corps
+    surf.fill(color, (x+1,  y+5,  14, 5))
+    surf.fill((20, 20, 20), (x+4, y+5, 8, 5))  # fente visière
+    # Joues
+    surf.fill(color, (x+1,  y+10, 5, 4))
+    surf.fill(color, (x+10, y+10, 5, 4))
+    surf.fill(dark,  (x+1,  y+13, 5, 1))
+    surf.fill(dark,  (x+10, y+13, 5, 1))
+
+
+def _draw_body_tile(surf, x, y, color):
+    """Plastron pixel-art 16x16."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    dark = (max(0, color[0]-60), max(0, color[1]-60), max(0, color[2]-60))
+    # Encolure
+    surf.fill(color, (x+1, y+1, 14, 2))
+    surf.fill((20, 20, 20), (x+5, y+1, 6, 2))  # échancrure
+    # Corps
+    surf.fill(color, (x+1, y+3, 14, 11))
+    # Nervure centrale
+    surf.fill(dark, (x+7, y+4, 2, 9))
+    # Boucles d'épaule
+    surf.fill(dark, (x+3, y+6, 2, 2))
+    surf.fill(dark, (x+11, y+6, 2, 2))
+    surf.fill(dark, (x+1, y+13, 14, 1))
+
+
+def _draw_feet_tile(surf, x, y, color):
+    """Bottes pixel-art 16x16 (paire)."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    dark = (max(0, color[0]-60), max(0, color[1]-60), max(0, color[2]-60))
+    # Botte gauche
+    surf.fill(color, (x+1,  y+3,  6, 8))
+    surf.fill(color, (x+1,  y+11, 8, 3))
+    surf.fill(dark,  (x+1,  y+13, 8, 1))
+    # Botte droite
+    surf.fill(color, (x+9,  y+3,  6, 8))
+    surf.fill(color, (x+7,  y+11, 8, 3))
+    surf.fill(dark,  (x+7,  y+13, 8, 1))
+
 class ChunkCache:
     _MAX_CHUNKS = 16   # chunks 16×16 tuiles — ~6 visibles + marge split screen
 
@@ -182,20 +448,8 @@ class ChunkCache:
             for dc, tile in enumerate(row_tiles):
                 x = dc * ts
                 y = dr * ts
-                if tile == TILE_CHEST:
-                    _draw_chest_tile(surf, x, y)
-                elif tile == TILE_LAVA:
-                    _draw_lava_tile(surf, x, y, dc, dr)
-                elif tile == TILE_WATER:
-                    _draw_water_tile(surf, x, y, dc, dr)
-                elif tile == TILE_TORCH:
-                    surf.fill((80, 70, 60), (x, y, ts, ts))   # fond pierre sombre
-                    _draw_torch_tile(surf, x, y)
-                else:
-                    color = BIOME_SKY_COLORS[biomes[dc]] if tile == TILE_AIR else TILE_COLORS[tile]
-                    surf.fill(color, (x, y, ts, ts))
-                    if tile != TILE_AIR:
-                        pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+                _draw_single_tile(surf, x, y, tile,
+                                  BIOME_SKY_COLORS[biomes[dc]], dc, dr)
         return surf.convert()
 
     def flush_ready(self):
@@ -237,28 +491,11 @@ class ChunkCache:
         if key not in self._cache:
             return  # pas encore en cache, sera construit correctement à la prochaine frame
         surf = self._cache[key]
-        dc = col % CHUNK_COLS
-        dr = row % CHUNK_ROWS
-        x  = dc * TILE_SIZE
-        y  = dr * TILE_SIZE
-        ts = TILE_SIZE
-        if tile == TILE_CHEST:
-            _draw_chest_tile(surf, x, y)
-        elif tile == TILE_LAVA:
-            _draw_lava_tile(surf, x, y, col % 16, row % 16)
-        elif tile == TILE_WATER:
-            _draw_water_tile(surf, x, y, col % 16, row % 16)
-        elif tile == TILE_TORCH:
-            surf.fill((80, 70, 60), (x, y, TILE_SIZE, TILE_SIZE))   # fond pierre sombre
-            _draw_torch_tile(surf, x, y)
-        else:
-            if tile == TILE_AIR:
-                color = BIOME_SKY_COLORS[self._world.biome_at(col)]
-            else:
-                color = TILE_COLORS[tile]
-            surf.fill(color, (x, y, ts, ts))
-            if tile != TILE_AIR:
-                pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+        x  = (col % CHUNK_COLS) * TILE_SIZE
+        y  = (row % CHUNK_ROWS) * TILE_SIZE
+        biome_color = BIOME_SKY_COLORS[self._world.biome_at(col)]
+        _draw_single_tile(surf, x, y, tile, biome_color,
+                          col % CHUNK_COLS, row % CHUNK_ROWS)
 
     def invalidate(self, col, row=None):
         if row is None:

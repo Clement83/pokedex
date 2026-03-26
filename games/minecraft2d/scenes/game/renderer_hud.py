@@ -13,7 +13,7 @@ from config import (
     EQUIP_NAMES,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_COLORS, MAT_NAMES,
     TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD,
-    TILE_TOOL_MAP,
+    TILE_TOOL_MAP, ARMOR_TILE_MAP,
 )
 from scenes.game.inventory import Inventory
 
@@ -339,6 +339,9 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
                     draw_tool_icon(screen, TOOL_ROD, sx, y, sw, sh)
                 elif tile == TILE_TORCH:
                     draw_tool_icon(screen, TOOL_TORCH, sx, y, sw, sh)
+                elif tile in ARMOR_TILE_MAP:
+                    eslot, mat = ARMOR_TILE_MAP[tile]
+                    draw_equip_icon(screen, eslot, MAT_COLORS[mat], sx, y, sw, sh)
                 else:
                     pygame.draw.rect(screen, TILE_COLORS.get(tile, (80, 80, 80)),
                                      (sx + 3, y + 3, sh - 6, sh - 6))
@@ -361,9 +364,10 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
             mat_c  = MAT_COLORS[item[1]] if item else None
             draw_equip_icon(screen, eslot, mat_c, sx, y, sw, sh)
             if item:
-                lst = inventory.equip[eslot]
-                if len(lst) > 1:
-                    cnt_s = font.render(str(len(lst)), True, (255, 255, 255))
+                match_count = sum(1 for tile, c in inventory.resources
+                                  if c > 0 and ARMOR_TILE_MAP.get(tile, (None,))[0] == eslot)
+                if match_count > 1:
+                    cnt_s = font.render(str(match_count), True, (255, 255, 255))
                     screen.blit(cnt_s, (sx + sw - cnt_s.get_width() - 1,
                                         y + sh - cnt_s.get_height()))
 
