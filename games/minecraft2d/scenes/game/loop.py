@@ -74,6 +74,8 @@ def run(screen, joysticks, world_id, seed):
     for p in players: eject_from_blocks(p, world)
     flag_positions = [None, None]
 
+    fam_mgr = FamiliarManager()
+
     for p in players:
         sv = saves.get(p.idx)
         if not sv: continue
@@ -101,7 +103,6 @@ def run(screen, joysticks, world_id, seed):
     chunks.preload_around(shared_cam.x, shared_cam.y, SCREEN_WIDTH)
 
     mob_mgr = _mobs.MobManager(world); _mob_cd = [0.0]
-    fam_mgr = FamiliarManager()
     joy1 = joysticks[0] if joysticks else None
     p_ctrl = [
         (joy1, J1_BTN_MINE, -1,            J1_BTN_MODIFIER, get_dir_p1, KB_J1_MINE, KB_J1_MODIFIER),
