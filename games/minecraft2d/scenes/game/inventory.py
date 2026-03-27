@@ -117,6 +117,15 @@ class Inventory:
         idx = self._equip_sel.get(equip_slot, 0) % len(matching)
         return ARMOR_TILE_MAP[matching[idx]]
 
+    def worn_tile(self, equip_slot):
+        """Retourne le tile ID de la pièce d'armure portée, ou None."""
+        matching = [tile for tile, c in self.resources
+                    if c > 0 and ARMOR_TILE_MAP.get(tile, (None,))[0] == equip_slot]
+        if not matching:
+            return None
+        idx = self._equip_sel.get(equip_slot, 0) % len(matching)
+        return matching[idx]
+
     def add_equip(self, item):
         tile = EQUIP_TO_TILE.get(item)
         if tile:

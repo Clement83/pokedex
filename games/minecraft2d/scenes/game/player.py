@@ -150,6 +150,32 @@ def on_ice(player, world):
     return False
 
 
+def armor_bonuses(player):
+    """Retourne (bonus_hp, bonus_dmg, bonus_speed) des armures améliorées portées."""
+    from config import EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, VITAL_TILES, FORCE_TILES, SWIFT_TILES
+    hp = dmg = 0
+    spd = 0.0
+    head = player.inventory.worn_tile(EQUIP_HEAD)
+    if head in VITAL_TILES:
+        hp += 2
+    body = player.inventory.worn_tile(EQUIP_BODY)
+    if body in FORCE_TILES:
+        dmg += 1
+    feet = player.inventory.worn_tile(EQUIP_FEET)
+    if feet in SWIFT_TILES:
+        spd += 1.5
+    return hp, dmg, spd
+
+
+# Alias pour compatibilité
+crystal_bonuses = armor_bonuses
+
+
+def effective_max_hp(player):
+    """Max HP effectif = base + bonus casque amélioré."""
+    return player.max_hp + armor_bonuses(player)[0]
+
+
 def eject_from_blocks(player, world):
     """Éjecte le joueur vers le haut hors de tout bloc solide."""
     ph   = PLAYER_H / TILE_SIZE

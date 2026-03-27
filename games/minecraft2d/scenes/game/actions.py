@@ -7,6 +7,7 @@ import sounds as _sounds
 
 from config import (
     TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_FISH, TILE_TORCH, TILE_SIZE, REACH_RADIUS,
+    TILE_HEART_CRYSTAL, TILE_TOTEM,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_BOW, TOOL_ROD, TOOL_TORCH,
     TILE_BREAK_TIME, TILE_PICKAXE_TIER, MAT_TIER,
     EQUIP_NAMES, PLAYER_W, PLAYER_H, ROWS,
@@ -46,7 +47,8 @@ def handle_sword(player, mob_mgr, loot_notifs, cur_mine, prev_mine, cur_mod):
     if immune > 0:
         loot_notifs.append(["⚔ IMMUNE !", 1.2, (255, 60, 60)])
     if killed > 0:
-        player.hp = player.max_hp
+        from scenes.game.player import effective_max_hp
+        player.hp = effective_max_hp(player)
         _collect_drops(player, drops, loot_notifs)
 
     player._action_cd = 0.35
@@ -57,11 +59,14 @@ def handle_sword(player, mob_mgr, loot_notifs, cur_mine, prev_mine, cur_mod):
 def _swords_dmg(player):
     from config import MAT_WOOD
     from mobs.base import _SWORD_DMG
+    from scenes.game.player import crystal_bonuses
     sm = player.inventory.sword_mat
     if sm is None:
-        return 1
-    idx = min(sm, len(_SWORD_DMG) - 1)
-    return _SWORD_DMG[idx]
+        base = 1
+    else:
+        idx = min(sm, len(_SWORD_DMG) - 1)
+        base = _SWORD_DMG[idx]
+    return base + crystal_bonuses(player)[1]
 
 
 def _collect_drops(player, drops, loot_notifs):
@@ -98,6 +103,25 @@ def handle_bow(player, proj_mgr, loot_notifs, cur_mine, prev_mine, cur_mod, p_di
         loot_notifs.append(["Pas de flèches !", 1.0, (220, 100, 80)])
         player._action_cd = 0.3
     return fired
+
+
+def handle_consumable(player, loot_notifs, cur_mine, prev_mine, cur_mod):
+    """Utilise un consommable (Cœur de cristal → +2 PV max)."""
+    if player.inventory.tool != TOOL_HAND:
+        return False
+    if player._action_cd > 0 or not cur_mine or prev_mine or cur_mod:
+        return False
+    sel = player.inventory.selected_tile()
+    if sel == TILE_HEART_CRYSTAL:
+        player.inventory.consume()
+        player.max_hp += 2
+        from scenes.game.player import effective_max_hp
+        player.hp = min(player.hp + 2, effective_max_hp(player))
+        player._action_cd = 0.5
+        loot_notifs.append(["❤ +2 PV max !", 3.0, (220, 100, 255)])
+        _sounds.chest_open()
+        return True
+    return False
 
 
 _ROD_RANGE = 4   # distance max à l'eau pour pêcher (tuiles)

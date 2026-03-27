@@ -18,14 +18,14 @@ import music_player as _music
 import mobs as _mobs
 from mobs.familiar import FamiliarManager
 
-from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks, on_ice, in_lava, in_water
+from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks, on_ice, in_lava, in_water, effective_max_hp, crystal_bonuses
 from scenes.game.camera      import Camera, ChunkCache
 from scenes.game.controls    import joy_btn, get_dir_p1, get_dir_p2, get_cursor
 from scenes.game.sky         import sky_color, night_alpha, is_night, draw_night_overlay, draw_sky_hud, DAY_CYCLE_DURATION, biome_sky_tint
 from scenes.game.renderer_world  import draw_world, draw_cursor, draw_flag_in_world
 from scenes.game.renderer_player import draw_player, draw_hearts, draw_compass, _HEART_W, _HEART_GAP
 from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H as _HOTBAR_SLOT_H
-from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch
+from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch, handle_consumable
 from scenes.game.craft        import CraftMenu
 from scenes.game.trade        import TradeMenu
 from scenes.game.projectiles  import ProjectileManager
@@ -155,7 +155,7 @@ def run(screen, joysticks, world_id, seed):
             surf.blit(_ds, (0, 0))
         _hy = HOTBAR_Y + (_HOTBAR_SLOT_H - 5) // 2 + 1
         draw_hotbar(surf, pi.inventory, 4, pi.color, font_sm)
-        draw_hearts(surf, pi.hp, pi.max_hp, 4 + HOTBAR_TOTAL + 4, _hy)
+        draw_hearts(surf, pi.hp, effective_max_hp(pi), 4 + HOTBAR_TOTAL + 4, _hy)
         if view_w < SCREEN_WIDTH: draw_compass(surf, cam, pi, players[1 - k], view_w, players[1 - k].color)
         if craft_menus[k].visible: craft_menus[k].draw(surf, pi.inventory, pi.color, font_sm)
 
@@ -261,14 +261,15 @@ def run(screen, joysticks, world_id, seed):
                     player.inventory.active_slot = saved
                     _sounds.inv_change()
                 mod_used[i] = False
+                _speed = WALK_SPEED + crystal_bonuses(player)[2]
                 if _on_ice:
                     # Glace : inertie — accélération lente, friction faible
-                    target = dx * WALK_SPEED
+                    target = dx * _speed
                     player.vx += (target - player.vx) * 2.5 * dt
                     if abs(dx) < 0.1:
                         player.vx *= (1.0 - 0.8 * dt)  # friction douce quand aucune touche
                 else:
-                    player.vx = dx * WALK_SPEED
+                    player.vx = dx * _speed
             if dx or dy: p_dirs[i] = (dx, dy)
             prev_dx[i] = dx; prev_dy[i] = dy
 
@@ -288,6 +289,7 @@ def run(screen, joysticks, world_id, seed):
             handle_sword(player, mob_mgr, loot_notifs, cur_mine, prev_mine[i], cur_mod)
             handle_bow(player, proj_mgr, loot_notifs, cur_mine, prev_mine[i], cur_mod, p_dirs[i])
             handle_flag(player, flag_positions, loot_notifs, cur_mine, prev_mine[i], cur_mod)
+            handle_consumable(player, loot_notifs, cur_mine, prev_mine[i], cur_mod)
             handle_rod(player, world, loot_notifs, cur_mine, prev_mine[i], cur_mod)
             handle_torch(player, world, chunks, players, loot_notifs,
                          cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, _queue)
@@ -300,6 +302,10 @@ def run(screen, joysticks, world_id, seed):
 
         for player in players:
             player._dmg_flash = max(0.0, player._dmg_flash - dt)
+            # Cap HP si le joueur retire son armure cristal
+            _eff = effective_max_hp(player)
+            if player.hp > _eff:
+                player.hp = _eff
         # ── Dégâts de lave (1 PV par seconde) ────────────────────────────
         for i, player in enumerate(players):
             if in_lava(player, world):
@@ -317,18 +323,42 @@ def run(screen, joysticks, world_id, seed):
                 player.vx *= 0.85
         for i, player in enumerate(players):
             if player.hp <= 0 or player.y * TILE_SIZE > ROWS * TILE_SIZE + 64:
-                player.hp = player.max_hp
-                fp = flag_positions[i]
-                if fp: player.x, player.y = fp
-                else:  player.x = _sx(spawn_cols[i]); player.y = _sy(spawn_cols[i])
-                player.vx = player.vy = 0.0; eject_from_blocks(player, world)
+                # Totem de résurrection : revit sur place au lieu de respawn
+                from config import TILE_TOTEM
+                totem_used = False
+                if player.hp <= 0:
+                    new_res = []
+                    for t, c in player.inventory.resources:
+                        if t == TILE_TOTEM and not totem_used:
+                            totem_used = True
+                            if c > 1:
+                                new_res.append((t, c - 1))
+                        else:
+                            new_res.append((t, c))
+                    if totem_used:
+                        player.inventory.resources = new_res
+                        player.hp = effective_max_hp(player)
+                        player._dmg_flash = 0.6
+                        loot_notifs.append(["✟ TOTEM ! Résurrection !", 3.0, (255, 220, 100)])
+                if not totem_used:
+                    player.hp = effective_max_hp(player)
+                    fp = flag_positions[i]
+                    if fp: player.x, player.y = fp
+                    else:  player.x = _sx(spawn_cols[i]); player.y = _sy(spawn_cols[i])
+                    player.vx = player.vy = 0.0; eject_from_blocks(player, world)
 
         _mob_cd[0] -= dt
         if _mob_cd[0] <= 0:
             mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 6.0
         mob_mgr.update(dt, players, world)
         mob_mgr.tick_day_night(_is_nite, world, players)
-        proj_mgr.update(dt, world, mob_mgr, loot_notifs, players)
+        # Drops de mobs tués par le poison → joueur le plus proche
+        if mob_mgr._poison_drops:
+            from scenes.game.actions import _collect_drops
+            closest = min(players, key=lambda p: abs(p.x))
+            _collect_drops(closest, mob_mgr._poison_drops, loot_notifs)
+            mob_mgr._poison_drops.clear()
+        proj_mgr.update(dt, world, mob_mgr, loot_notifs, players, chunks, _queue)
         fam_mgr.update(dt, players, world, mob_mgr, loot_notifs)
 
         # ── Tick liquides (lave + eau) : itère seulement world.mods ──────
@@ -396,8 +426,9 @@ def run(screen, joysticks, world_id, seed):
             _draw_view(screen, shared_cam, SCREEN_WIDTH, 0, break_infos[0] or break_infos[1])
             _hy = HOTBAR_Y + (_HOTBAR_SLOT_H - 5) // 2 + 1
             draw_hotbar(screen, players[1].inventory, SCREEN_WIDTH - HOTBAR_TOTAL - 4, P2_COLOR, font_sm)
-            _hw = players[1].max_hp // 2 * (_HEART_W + _HEART_GAP) - _HEART_GAP
-            draw_hearts(screen, players[1].hp, players[1].max_hp,
+            _p2_eff_hp = effective_max_hp(players[1])
+            _hw = _p2_eff_hp // 2 * (_HEART_W + _HEART_GAP) - _HEART_GAP
+            draw_hearts(screen, players[1].hp, _p2_eff_hp,
                         SCREEN_WIDTH - HOTBAR_TOTAL - 4 - 4 - _hw, _hy)
             if players[1]._dmg_flash > 0:
                 _ds = _dmg_surf_full

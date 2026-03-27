@@ -64,9 +64,46 @@ TILE_FEET_WOOD       = 44
 TILE_FEET_IRON       = 45
 TILE_FEET_GOLD       = 46
 TILE_FEET_DIAMOND    = 47
+# Matériaux spéciaux (drops de mobs)
+TILE_BONE            = 48       # os (squelettes, zombies, morts-vivants)
+TILE_SLIME_BALL      = 49       # bave de slime
+TILE_FANG            = 50       # croc (bêtes : loup, sanglier, ours, scorpion)
+TILE_CRYSTAL         = 51       # cristal (golems, trolls, vers, boss)
+TILE_FEATHER         = 52       # plume (oiseaux, chauves-souris)
+TILE_VENOM           = 53       # venin (araignées, scorpions)
+TILE_MAGMA           = 54       # cœur de magma (démons, boss)
+# Flèches spéciales
+TILE_ARROW_FIRE      = 55       # flèche de feu (dégâts x2.5)
+TILE_ARROW_POISON    = 56       # flèche empoisonnée (DoT 4s)
+TILE_ARROW_EXPLOSIVE = 57       # flèche explosive (dégâts zone + casse blocs)
+# Objets spéciaux craftables
+TILE_HEART_CRYSTAL   = 58       # cœur de cristal (consommable : +2 PV max)
+TILE_TOTEM           = 59       # totem de résurrection (auto : revit au lieu de mourir)
+# Armure cristal (défense tier 3, base pour améliorations)
+TILE_HEAD_CRYSTAL    = 60
+TILE_BODY_CRYSTAL    = 61
+TILE_FEET_CRYSTAL    = 62
+# Armures améliorées — Vital (casque, +2 PV max)
+TILE_HEAD_WOOD_VITAL     = 63
+TILE_HEAD_IRON_VITAL     = 64
+TILE_HEAD_GOLD_VITAL     = 65
+TILE_HEAD_DIAMOND_VITAL  = 66
+TILE_HEAD_CRYSTAL_VITAL  = 67
+# Armures améliorées — Force (plastron, +1 dégât épée)
+TILE_BODY_WOOD_FORCE     = 68
+TILE_BODY_IRON_FORCE     = 69
+TILE_BODY_GOLD_FORCE     = 70
+TILE_BODY_DIAMOND_FORCE  = 71
+TILE_BODY_CRYSTAL_FORCE  = 72
+# Armures améliorées — Véloce (bottes, +1.5 vitesse)
+TILE_FEET_WOOD_SWIFT     = 73
+TILE_FEET_IRON_SWIFT     = 74
+TILE_FEET_GOLD_SWIFT     = 75
+TILE_FEET_DIAMOND_SWIFT  = 76
+TILE_FEET_CRYSTAL_SWIFT  = 77
 
 # Tiles qui sont des items (non générés naturellement)
-TILE_ITEMS = frozenset(range(19, 48))
+TILE_ITEMS = frozenset(range(19, 78))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -118,6 +155,39 @@ TILE_NAMES = {
     TILE_FEET_IRON:       "Bottes Fer",
     TILE_FEET_GOLD:       "Bottes Or",
     TILE_FEET_DIAMOND:    "Bottes Diamant",
+    TILE_BONE:            "Os",
+    TILE_SLIME_BALL:      "Bave de slime",
+    TILE_FANG:            "Croc",
+    TILE_CRYSTAL:         "Cristal",
+    TILE_FEATHER:         "Plume",
+    TILE_VENOM:           "Venin",
+    TILE_MAGMA:           "Cœur de magma",
+    TILE_ARROW_FIRE:      "Flèche de feu",
+    TILE_ARROW_POISON:    "Flèche poison",
+    TILE_ARROW_EXPLOSIVE: "Flèche explosive",
+    TILE_HEART_CRYSTAL:   "Cœur de cristal",
+    TILE_TOTEM:           "Totem",
+    TILE_HEAD_CRYSTAL:    "Casque Cristal",
+    TILE_BODY_CRYSTAL:    "Plastron Cristal",
+    TILE_FEET_CRYSTAL:    "Bottes Cristal",
+    # Améliorées — Vital (+PV)
+    TILE_HEAD_WOOD_VITAL:    "Casque Bois ❤",
+    TILE_HEAD_IRON_VITAL:    "Casque Fer ❤",
+    TILE_HEAD_GOLD_VITAL:    "Casque Or ❤",
+    TILE_HEAD_DIAMOND_VITAL: "Casque Diamant ❤",
+    TILE_HEAD_CRYSTAL_VITAL: "Casque Cristal ❤",
+    # Améliorées — Force (+dégâts)
+    TILE_BODY_WOOD_FORCE:    "Plastron Bois ⚔",
+    TILE_BODY_IRON_FORCE:    "Plastron Fer ⚔",
+    TILE_BODY_GOLD_FORCE:    "Plastron Or ⚔",
+    TILE_BODY_DIAMOND_FORCE: "Plastron Diamant ⚔",
+    TILE_BODY_CRYSTAL_FORCE: "Plastron Cristal ⚔",
+    # Améliorées — Véloce (+vitesse)
+    TILE_FEET_WOOD_SWIFT:    "Bottes Bois ➤",
+    TILE_FEET_IRON_SWIFT:    "Bottes Fer ➤",
+    TILE_FEET_GOLD_SWIFT:    "Bottes Or ➤",
+    TILE_FEET_DIAMOND_SWIFT: "Bottes Diamant ➤",
+    TILE_FEET_CRYSTAL_SWIFT: "Bottes Cristal ➤",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -166,7 +236,8 @@ MAT_WOOD    = 0
 MAT_IRON    = 1
 MAT_GOLD    = 2
 MAT_DIAMOND = 3
-MAT_NAMES = {MAT_WOOD: "Bois", MAT_IRON: "Fer", MAT_GOLD: "Or", MAT_DIAMOND: "Diamant"}
+MAT_CRYSTAL = 4
+MAT_NAMES = {MAT_WOOD: "Bois", MAT_IRON: "Fer", MAT_GOLD: "Or", MAT_DIAMOND: "Diamant", MAT_CRYSTAL: "Cristal"}
 
 # Couleurs des matériaux sur le bonhomme
 MAT_COLORS = {
@@ -174,14 +245,15 @@ MAT_COLORS = {
     MAT_IRON:    (170, 170, 185),   # gris métal
     MAT_GOLD:    (255, 200,   0),   # jaune or
     MAT_DIAMOND: ( 80, 220, 235),   # cyan diamant
+    MAT_CRYSTAL: (180, 130, 255),   # violet cristallin
 }
 
 # Tier de matériau (pour vérification pioche/épée)
-MAT_TIER = {MAT_WOOD: 1, MAT_IRON: 2, MAT_GOLD: 3, MAT_DIAMOND: 4}
+MAT_TIER = {MAT_WOOD: 1, MAT_IRON: 2, MAT_GOLD: 3, MAT_DIAMOND: 4, MAT_CRYSTAL: 3}
 
 # Défense d'armure par matériau (par pièce portée)
 # Full Fer=3, Full Or=3, Full Diamant=6
-ARMOR_DEF = {MAT_WOOD: 0, MAT_IRON: 1, MAT_GOLD: 1, MAT_DIAMOND: 2}
+ARMOR_DEF = {MAT_WOOD: 0, MAT_IRON: 1, MAT_GOLD: 1, MAT_DIAMOND: 2, MAT_CRYSTAL: 1}
 
 # item_id = (slot, material) — tuples uniques
 # ex. (EQUIP_HEAD, MAT_WOOD) = casque en bois
@@ -213,6 +285,10 @@ EQUIP_NAMES = {
     # Arcs
     (EQUIP_BOW, MAT_WOOD):  "Arc Bois",
     (EQUIP_BOW, MAT_IRON):  "Arc Fer",
+    # Armure cristal
+    (EQUIP_HEAD, MAT_CRYSTAL): "Casque Cristal",
+    (EQUIP_BODY, MAT_CRYSTAL): "Plastron Cristal",
+    (EQUIP_FEET, MAT_CRYSTAL): "Bottes Cristal",
 }
 
 # ── Mapping tiles-outils ↔ (tool, mat) ──────────────────────────────────────
@@ -246,9 +322,44 @@ ARMOR_TILE_MAP = {
     TILE_FEET_IRON:    (EQUIP_FEET, MAT_IRON),
     TILE_FEET_GOLD:    (EQUIP_FEET, MAT_GOLD),
     TILE_FEET_DIAMOND: (EQUIP_FEET, MAT_DIAMOND),
+    TILE_HEAD_CRYSTAL: (EQUIP_HEAD, MAT_CRYSTAL),
+    TILE_BODY_CRYSTAL: (EQUIP_BODY, MAT_CRYSTAL),
+    TILE_FEET_CRYSTAL: (EQUIP_FEET, MAT_CRYSTAL),
 }
-# Compléter EQUIP_TO_TILE avec les armures
+# Compléter EQUIP_TO_TILE avec les armures de BASE uniquement
 EQUIP_TO_TILE.update({v: k for k, v in ARMOR_TILE_MAP.items()})
+
+# Armures améliorées : même (slot, mat) que la base → défense identique, bonus spéciaux
+# Ajoutées APRÈS EQUIP_TO_TILE pour ne pas écraser les mappings de craft de base
+_ENHANCED_ARMOR = {
+    # Vital — casques (+2 PV max)
+    TILE_HEAD_WOOD_VITAL:    (EQUIP_HEAD, MAT_WOOD),
+    TILE_HEAD_IRON_VITAL:    (EQUIP_HEAD, MAT_IRON),
+    TILE_HEAD_GOLD_VITAL:    (EQUIP_HEAD, MAT_GOLD),
+    TILE_HEAD_DIAMOND_VITAL: (EQUIP_HEAD, MAT_DIAMOND),
+    TILE_HEAD_CRYSTAL_VITAL: (EQUIP_HEAD, MAT_CRYSTAL),
+    # Force — plastrons (+1 dégât épée)
+    TILE_BODY_WOOD_FORCE:    (EQUIP_BODY, MAT_WOOD),
+    TILE_BODY_IRON_FORCE:    (EQUIP_BODY, MAT_IRON),
+    TILE_BODY_GOLD_FORCE:    (EQUIP_BODY, MAT_GOLD),
+    TILE_BODY_DIAMOND_FORCE: (EQUIP_BODY, MAT_DIAMOND),
+    TILE_BODY_CRYSTAL_FORCE: (EQUIP_BODY, MAT_CRYSTAL),
+    # Véloce — bottes (+1.5 vitesse)
+    TILE_FEET_WOOD_SWIFT:    (EQUIP_FEET, MAT_WOOD),
+    TILE_FEET_IRON_SWIFT:    (EQUIP_FEET, MAT_IRON),
+    TILE_FEET_GOLD_SWIFT:    (EQUIP_FEET, MAT_GOLD),
+    TILE_FEET_DIAMOND_SWIFT: (EQUIP_FEET, MAT_DIAMOND),
+    TILE_FEET_CRYSTAL_SWIFT: (EQUIP_FEET, MAT_CRYSTAL),
+}
+ARMOR_TILE_MAP.update(_ENHANCED_ARMOR)
+
+# Sets de détection des bonus d'armure améliorée
+VITAL_TILES = frozenset((TILE_HEAD_WOOD_VITAL, TILE_HEAD_IRON_VITAL, TILE_HEAD_GOLD_VITAL,
+                         TILE_HEAD_DIAMOND_VITAL, TILE_HEAD_CRYSTAL_VITAL))
+FORCE_TILES = frozenset((TILE_BODY_WOOD_FORCE, TILE_BODY_IRON_FORCE, TILE_BODY_GOLD_FORCE,
+                         TILE_BODY_DIAMOND_FORCE, TILE_BODY_CRYSTAL_FORCE))
+SWIFT_TILES = frozenset((TILE_FEET_WOOD_SWIFT, TILE_FEET_IRON_SWIFT, TILE_FEET_GOLD_SWIFT,
+                         TILE_FEET_DIAMOND_SWIFT, TILE_FEET_CRYSTAL_SWIFT))
 
 # Couleurs des tuiles (dessin simple, pas de sprites)
 TILE_COLORS = {
@@ -300,6 +411,39 @@ TILE_COLORS = {
     TILE_FEET_IRON:       (170, 170, 185),
     TILE_FEET_GOLD:       (255, 200,   0),
     TILE_FEET_DIAMOND:    ( 80, 220, 235),
+    TILE_BONE:            (220, 210, 190),   # ivoire
+    TILE_SLIME_BALL:      (100, 220,  80),   # vert gluant
+    TILE_FANG:            (235, 225, 200),   # blanc cassé
+    TILE_CRYSTAL:         (180, 130, 255),   # violet cristallin
+    TILE_FEATHER:         (240, 240, 250),   # blanc duveteux
+    TILE_VENOM:           ( 80, 180,  50),   # vert toxique
+    TILE_MAGMA:           (255, 100,  20),   # orange incandescent
+    TILE_ARROW_FIRE:      (255, 120,  30),   # orange feu
+    TILE_ARROW_POISON:    (100, 200,  60),   # vert poison
+    TILE_ARROW_EXPLOSIVE: (255,  60,  60),   # rouge explosif
+    TILE_HEART_CRYSTAL:   (220, 100, 255),   # violet rosé
+    TILE_TOTEM:           (255, 220, 100),   # doré lumineux
+    TILE_HEAD_CRYSTAL:    (180, 130, 255),
+    TILE_BODY_CRYSTAL:    (180, 130, 255),
+    TILE_FEET_CRYSTAL:    (180, 130, 255),
+    # Vital — teinte rosée
+    TILE_HEAD_WOOD_VITAL:    (175,  95,  75),
+    TILE_HEAD_IRON_VITAL:    (195, 150, 175),
+    TILE_HEAD_GOLD_VITAL:    (255, 175, 100),
+    TILE_HEAD_DIAMOND_VITAL: (150, 190, 235),
+    TILE_HEAD_CRYSTAL_VITAL: (210, 120, 230),
+    # Force — teinte orangée
+    TILE_BODY_WOOD_FORCE:    (175, 105,  45),
+    TILE_BODY_IRON_FORCE:    (195, 160, 145),
+    TILE_BODY_GOLD_FORCE:    (255, 180,  50),
+    TILE_BODY_DIAMOND_FORCE: (140, 200, 200),
+    TILE_BODY_CRYSTAL_FORCE: (200, 130, 200),
+    # Véloce — teinte bleutée
+    TILE_FEET_WOOD_SWIFT:    (150, 130, 105),
+    TILE_FEET_IRON_SWIFT:    (175, 190, 210),
+    TILE_FEET_GOLD_SWIFT:    (230, 210, 130),
+    TILE_FEET_DIAMOND_SWIFT: (120, 220, 245),
+    TILE_FEET_CRYSTAL_SWIFT: (180, 170, 255),
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -329,7 +473,21 @@ TILE_BREAK_TIME = {
     TILE_HEAD_WOOD: 0.3, TILE_HEAD_IRON: 0.3, TILE_HEAD_GOLD: 0.3, TILE_HEAD_DIAMOND: 0.3,
     TILE_BODY_WOOD: 0.3, TILE_BODY_IRON: 0.3, TILE_BODY_GOLD: 0.3, TILE_BODY_DIAMOND: 0.3,
     TILE_FEET_WOOD: 0.3, TILE_FEET_IRON: 0.3, TILE_FEET_GOLD: 0.3, TILE_FEET_DIAMOND: 0.3,
+    TILE_BONE: 0.3, TILE_SLIME_BALL: 0.3, TILE_FANG: 0.3, TILE_CRYSTAL: 0.3,
+    TILE_FEATHER: 0.3, TILE_VENOM: 0.3, TILE_MAGMA: 0.3,
+    TILE_ARROW_FIRE: 0.3, TILE_ARROW_POISON: 0.3, TILE_ARROW_EXPLOSIVE: 0.3,
+    TILE_HEART_CRYSTAL: 0.3, TILE_TOTEM: 0.3,
+    TILE_HEAD_CRYSTAL: 0.3, TILE_BODY_CRYSTAL: 0.3, TILE_FEET_CRYSTAL: 0.3,
+    TILE_HEAD_WOOD_VITAL: 0.3, TILE_HEAD_IRON_VITAL: 0.3, TILE_HEAD_GOLD_VITAL: 0.3,
+    TILE_HEAD_DIAMOND_VITAL: 0.3, TILE_HEAD_CRYSTAL_VITAL: 0.3,
+    TILE_BODY_WOOD_FORCE: 0.3, TILE_BODY_IRON_FORCE: 0.3, TILE_BODY_GOLD_FORCE: 0.3,
+    TILE_BODY_DIAMOND_FORCE: 0.3, TILE_BODY_CRYSTAL_FORCE: 0.3,
+    TILE_FEET_WOOD_SWIFT: 0.3, TILE_FEET_IRON_SWIFT: 0.3, TILE_FEET_GOLD_SWIFT: 0.3,
+    TILE_FEET_DIAMOND_SWIFT: 0.3, TILE_FEET_CRYSTAL_SWIFT: 0.3,
 }
+
+# Ensemble des tiles flèche (pour le système d'arc)
+ARROW_TILES = frozenset((TILE_ARROW, TILE_ARROW_FIRE, TILE_ARROW_POISON, TILE_ARROW_EXPLOSIVE))
 
 # Tier de pioche minimum requis pour miner un bloc
 # 0=main/n'importe, 1=Bois, 2=Fer, 3=Or, 4=Diamant

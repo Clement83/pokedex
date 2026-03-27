@@ -11,8 +11,8 @@ import math
 import random
 from collections import Counter
 from world import _hash1
-from config import (TILE_SIZE, PLAYER_W, PLAYER_H, TILE_AIR, ROWS, MAT_TIER,
-                    TILE_SAND, TILE_GRASS, TILE_DIRT,
+from config import (TILE_SIZE, PLAYER_W, PLAYER_H, TILE_AIR, TILE_LAVA, TILE_WATER,
+                    ROWS, MAT_TIER, TILE_SAND, TILE_GRASS, TILE_DIRT,
                     BIOME_FOREST, BIOME_DESERT, BIOME_ICE)
 
 from mobs.base import (
@@ -25,6 +25,7 @@ from mobs.base import (
     MOB_WOLF, MOB_CAT,
     _mw, _mh, _SPAWN_RANGE, _DESPAWN_RANGE, _MOB_MIN_SWORD_TIER,
     _MOB_PW, _MOB_PH, _MOB_HP,
+    _MOB_LAVA_RESIST, _MOB_WATER_RESIST, _LAVA_DPS, _WATER_DPS,
 )
 from mobs.physics import _eject_mob
 from mobs.ai import update_mob
@@ -97,6 +98,33 @@ _SPAWN_RULES = [
      "surface",       0,    0,  0,  True,  False),
 ]
 
+def _apply_env_damage(mob, world, dt):
+    """Applique les dégâts de lave/eau selon les résistances du mob."""
+    mw = _mw(mob.mob_type)
+    mh = _mh(mob.mob_type)
+    in_lava = in_water = False
+    for c in range(int(mob.x), int(mob.x + mw - 0.01) + 1):
+        for r in range(int(mob.y), int(mob.y + mh - 0.01) + 1):
+            t = world.get(c, r)
+            if t == TILE_LAVA:
+                in_lava = True
+            elif t == TILE_WATER:
+                in_water = True
+    if in_lava:
+        resist = _MOB_LAVA_RESIST.get(mob.mob_type, 0.0)
+        if resist < 1.0:
+            mob._env_dmg += _LAVA_DPS * (1.0 - resist) * dt
+    if in_water:
+        resist = _MOB_WATER_RESIST.get(mob.mob_type, 0.0)
+        if resist < 1.0:
+            mob._env_dmg += _WATER_DPS * (1.0 - resist) * dt
+    if mob._env_dmg >= 1.0:
+        dmg = int(mob._env_dmg)
+        mob.hp -= dmg
+        mob._env_dmg -= dmg
+        mob._hp_bar_timer = 2.0
+
+
 _RESPAWN_COOLDOWN = 45.0   # secondes avant qu'une colonne puisse re-spawner un mob
 _MOB_PER_PLAYER   = 10
 _ZONE_HALF        = 20     # ±20 tuiles = zone de 40 tuiles
@@ -111,6 +139,7 @@ class MobManager:
         self._spawned   = {}      # (col, mob_type) → expiry_time (horloge interne)
         self._was_night = False
         self._clock     = 0.0     # timer interne pour les cooldowns de respawn
+        self._poison_drops = []   # drops des mobs tués par poison (récupérés par le joueur le plus proche)
 
     # ── Helpers cooldown ────────────────────────────────────────────────────
 
@@ -312,6 +341,25 @@ class MobManager:
                 mob.burn_timer -= dt
                 if mob.burn_timer <= 0:
                     mob.vanish = True
+            # Tick poison (1 dégât par seconde pendant la durée)
+            if mob._poison_t > 0:
+                mob._poison_t  -= dt
+                mob._poison_cd -= dt
+                if mob._poison_cd <= 0:
+                    mob.hp -= 1
+                    mob._poison_cd = 1.0
+                    mob._hp_bar_timer = 2.0
+                    if mob.hp <= 0:
+                        mob.vanish = True
+                        self._poison_drops.extend(roll_drops(mob.mob_type))
+            # Dégâts environnementaux (lave / eau)
+            _apply_env_damage(mob, world, dt)
+            if mob.hp <= 0 and not mob.vanish:
+                mob.vanish = True
+                self._poison_drops.extend(roll_drops(mob.mob_type))
+            # Timer barre de vie
+            if mob._hp_bar_timer > 0:
+                mob._hp_bar_timer -= dt
         self._mobs = [m for m in self._mobs if not m.vanish]
 
     def tick_day_night(self, is_night, world, players):
@@ -345,7 +393,7 @@ class MobManager:
 
     # ── Attaque épée avec tier + drops ──────────────────────────────────────
 
-    def attack_near(self, px, py, reach, damage, sword_tier=0):
+    def attack_near(self, px, py, reach, damage, sword_tier=0, poison=0.0):
         """Inflige dégâts. Retourne (nb_tués: int, drops: list, nb_immunisés: int)."""
         pw = PLAYER_W / TILE_SIZE
         ph = PLAYER_H / TILE_SIZE
@@ -366,6 +414,10 @@ class MobManager:
                 immune += 1
                 continue
             m.hp -= damage
+            m._hp_bar_timer = 2.0
+            if poison > 0 and m.hp > 0:
+                m._poison_t  = max(m._poison_t, poison)
+                m._poison_cd = min(m._poison_cd, 0.0)
             if m.hp <= 0:
                 dead.append(m)
                 all_drops.extend(roll_drops(m.mob_type))

@@ -282,13 +282,14 @@ def _process_explosions(to_explode, bombs, grid, players, explosions):
     return [b for b in bombs if id(b) not in processed], all_destroyed
 
 
-def _apply_bonus(player, bonus_type):
+def _apply_bonus(player, bonus_type, player_idx=0):
     if bonus_type == BONUS_BOMB:
         player.max_bombs = min(BONUS_MAX_BOMBS, player.max_bombs + 1)
     elif bonus_type == BONUS_RANGE:
         player.bomb_range = min(BONUS_MAX_RANGE, player.bomb_range + 1)
     elif bonus_type == BONUS_SPEED:
-        player.move_cooldown = max(BONUS_MIN_CD, player.move_cooldown - BONUS_SPEED_GAIN)
+        min_cd = AI_MIN_CD if player_idx >= 2 else BONUS_MIN_CD
+        player.move_cooldown = max(min_cd, player.move_cooldown - BONUS_SPEED_GAIN)
 
 
 # ── Intelligence artificielle ──────────────────────────────────────────────────
@@ -840,6 +841,9 @@ def run(screen, joysticks):
         Player(COLS - 2,   1,          P3_COLOR),   # IA1 haut-droite
         Player(1,          ROWS - 2,   P4_COLOR),   # IA2 bas-gauche
     ]
+    # Ralentir les IA pour qu'elles soient jouables
+    for idx in (2, 3):
+        players[idx].move_cooldown = AI_MOVE_COOLDOWN
     bombs      = []
     explosions = []
     bonuses    = []
@@ -969,12 +973,12 @@ def run(screen, joysticks):
                     sounds.play('bomb_place')
 
         # ── Ramassage des bonus ──────────────────────────────────────────────
-        for p in players:
+        for pidx, p in enumerate(players):
             if not p.alive:
                 continue
             for bx in bonuses[:]:
                 if p.col == bx.col and p.row == bx.row:
-                    _apply_bonus(p, bx.type)
+                    _apply_bonus(p, bx.type, pidx)
                     bonuses.remove(bx)
                     sounds.play('bonus')
 

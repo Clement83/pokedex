@@ -327,31 +327,61 @@ class World:
         depth : profondeur en tuiles sous la surface (0 = surface).
         """
         from config import (EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD,
-                            EQUIP_PICKAXE, MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND,
+                            EQUIP_PICKAXE, EQUIP_BOW,
+                            MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND,
                             TILE_WOOD, TILE_STONE, TILE_COAL,
-                            TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE)
+                            TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE,
+                            TILE_SILK, TILE_TORCH, TILE_ARROW, TILE_FISH,
+                            TILE_EGG, TILE_ROD, TILE_FLAG,
+                            TILE_BONE, TILE_FEATHER, TILE_VENOM, TILE_CRYSTAL,
+                            TILE_FANG, TILE_SLIME_BALL)
         r = random.random
         results = []
 
         if depth < 20:
-            # ── Surface : bois, pierre, charbon – équipement quasi absent ──────
+            # ── Surface : bois, pierre, charbon + consommables variés ──────
             results.append((TILE_WOOD,  random.randint(2, 4)))
-            if r() < 0.25: results.append((TILE_COAL,  random.randint(1, 2)))
-            if r() < 0.20: results.append((TILE_STONE, random.randint(1, 2)))
+            if r() < 0.25: results.append((TILE_COAL,     random.randint(1, 2)))
+            if r() < 0.20: results.append((TILE_STONE,    random.randint(1, 2)))
+            # Consommables & composants de craft
+            if r() < 0.20: results.append((TILE_TORCH,    random.randint(2, 4)))
+            if r() < 0.15: results.append((TILE_SILK,     random.randint(1, 2)))
+            if r() < 0.15: results.append((TILE_ARROW,    random.randint(3, 6)))
+            if r() < 0.10: results.append((TILE_FISH,     random.randint(1, 2)))
+            if r() < 0.08: results.append((TILE_EGG,      random.randint(1, 3)))
+            if r() < 0.05: results.append((TILE_FLAG,     1))
+            # Matériaux spéciaux (rares en surface)
+            if r() < 0.10: results.append((TILE_FEATHER,  random.randint(1, 2)))
+            if r() < 0.08: results.append((TILE_BONE,     random.randint(1, 2)))
+            if r() < 0.05: results.append((TILE_SLIME_BALL, 1))
             # Équipement bois très rare (5 %)
             if r() < 0.05:
-                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
                                        EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET])
                 results.append(((eslot, MAT_WOOD), 1))
 
         elif depth < 50:
-            # ── Grotte : minerai de fer surtout ──────────────────────────────
+            # ── Grotte : minerai de fer + composants utiles ──────────────────
             if r() < 0.70: results.append((TILE_IRON_ORE, random.randint(1, 2)))
             if r() < 0.40: results.append((TILE_COAL,     random.randint(1, 3)))
             if r() < 0.25: results.append((TILE_STONE,    random.randint(2, 3)))
+            # Consommables & composants de craft
+            if r() < 0.25: results.append((TILE_SILK,     random.randint(1, 3)))
+            if r() < 0.20: results.append((TILE_ARROW,    random.randint(4, 8)))
+            if r() < 0.18: results.append((TILE_TORCH,    random.randint(3, 6)))
+            if r() < 0.12: results.append((TILE_FISH,     random.randint(1, 3)))
+            if r() < 0.10: results.append((TILE_EGG,      random.randint(1, 2)))
+            if r() < 0.08: results.append((TILE_WOOD,     random.randint(2, 5)))
+            if r() < 0.06: results.append((TILE_ROD,      1))
+            # Matériaux spéciaux (plus courants en grotte)
+            if r() < 0.18: results.append((TILE_BONE,     random.randint(1, 3)))
+            if r() < 0.15: results.append((TILE_VENOM,    random.randint(1, 2)))
+            if r() < 0.12: results.append((TILE_FANG,     random.randint(1, 2)))
+            if r() < 0.10: results.append((TILE_CRYSTAL,  1))
+            if r() < 0.08: results.append((TILE_SLIME_BALL, random.randint(1, 2)))
             # Équipement (Bois 12 %, Fer 5 %)
             if r() < 0.17:
-                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
                                        EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
                 mat   = MAT_WOOD if r() < 0.70 else MAT_IRON
                 results.append(((eslot, mat), 1))
@@ -360,18 +390,33 @@ class World:
             # ── Donjon profond : or + diamant, équipement de qualité ─────────
             if r() < 0.80: results.append((TILE_GOLD_ORE,    random.randint(2, 4)))
             if r() < 0.25: results.append((TILE_DIAMOND_ORE, random.randint(1, 2)))
+            # Consommables en quantité généreuse
+            if r() < 0.30: results.append((TILE_SILK,     random.randint(2, 4)))
+            if r() < 0.30: results.append((TILE_ARROW,    random.randint(6, 12)))
+            if r() < 0.20: results.append((TILE_TORCH,    random.randint(4, 8)))
+            if r() < 0.15: results.append((TILE_IRON_ORE, random.randint(1, 3)))
+            if r() < 0.12: results.append((TILE_FISH,     random.randint(2, 4)))
+            if r() < 0.10: results.append((TILE_EGG,      random.randint(2, 4)))
+            if r() < 0.08: results.append((TILE_FLAG,     1))
+            # Matériaux spéciaux (abondants en donjon)
+            if r() < 0.25: results.append((TILE_CRYSTAL,  random.randint(1, 3)))
+            if r() < 0.20: results.append((TILE_BONE,     random.randint(2, 4)))
+            if r() < 0.18: results.append((TILE_VENOM,    random.randint(1, 3)))
+            if r() < 0.15: results.append((TILE_FANG,     random.randint(1, 2)))
+            if r() < 0.12: results.append((TILE_SLIME_BALL, random.randint(1, 3)))
+            if r() < 0.08: results.append((TILE_FEATHER,  random.randint(2, 4)))
             # Équipement (Fer 20 %, Or 30 %, Diamant 8 %)
             eq_roll = r()
             if eq_roll < 0.08:
-                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
                                        EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
                 results.append(((eslot, MAT_DIAMOND), 1))
             elif eq_roll < 0.38:
-                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
                                        EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
                 results.append(((eslot, MAT_GOLD), 1))
             elif eq_roll < 0.58:
-                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE,
+                eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,
                                        EQUIP_HEAD,  EQUIP_BODY,  EQUIP_FEET])
                 results.append(((eslot, MAT_IRON), 1))
 

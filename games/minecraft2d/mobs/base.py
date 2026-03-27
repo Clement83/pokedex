@@ -109,6 +109,35 @@ _MOB_MIN_SWORD_TIER = {
     MOB_CAT:        0,
 }
 
+# ── Résistances environnementales ────────────────────────────────────────────
+# 0.0 = plein dégâts, 1.0 = immunisé
+_LAVA_DPS  = 3.0   # dégâts base lave par seconde
+_WATER_DPS = 1.0   # dégâts base eau (noyade) par seconde
+
+_MOB_LAVA_RESIST = {
+    MOB_DEMON:    1.0,   # créature de feu
+    MOB_WRAITH:   1.0,   # spectral
+    MOB_TENDRIL:  0.8,   # boss végétal, très résistant
+    MOB_GOLEM:    0.7,   # pierre
+    MOB_WORM:     0.5,   # souterrain
+    MOB_TROLL:    0.5,   # robuste
+    MOB_SCORPION: 0.3,   # désert, résistant chaleur
+    MOB_SLIME:    0.3,   # gélatineux
+}
+
+_MOB_WATER_RESIST = {
+    MOB_FROG:       1.0,   # amphibien
+    MOB_CRAB:       1.0,   # aquatique
+    MOB_PENGUIN:    1.0,   # nageur
+    MOB_SEAGULL:    1.0,   # oiseau marin
+    MOB_POLAR_BEAR: 1.0,   # nageur
+    MOB_SLIME:      0.8,   # gélatineux, flotte
+    MOB_WOLF:       0.7,   # sait nager
+    MOB_CHICKEN:    0.5,   # flotte un peu
+    MOB_BOAR:       0.5,   # traverse les cours d'eau
+    MOB_CAT:        0.3,   # survit mais n'aime pas
+}
+
 # ── Dimensions pixels ─────────────────────────────────────────────────────────
 _MOB_PW = {
     MOB_SLIME:    12, MOB_ZOMBIE:   8,  MOB_GOLEM:   14,
@@ -190,6 +219,11 @@ class Mob:
         self.burn_timer  = 0.0     # secondes avant mort par brûlure
         self._surface_zombie = False   # zombie spawné en surface la nuit
         self._tendril_cd = 0.0    # cooldown attaque Vrille
+        self._poison_t   = 0.0    # durée restante du poison (secondes)
+        self._poison_cd  = 0.0    # cooldown entre deux ticks de poison
+        self._max_hp       = self.hp
+        self._hp_bar_timer = 0.0  # timer affichage barre de vie (2s après dégâts)
+        self._env_dmg      = 0.0  # accumulateur dégâts environnementaux fractionnaires
         self._rng = random.Random(int(col) * 1000 + int(row) + mob_type + seed)
 
     # ── Helpers géométriques ──────────────────────────────────────────────────
