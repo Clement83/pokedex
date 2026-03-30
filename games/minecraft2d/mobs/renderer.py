@@ -258,11 +258,6 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         dr(screen, tk,  (sx + 1, sy + 17,  3,  3))
         dr(screen, tk,  (sx + 6, sy + 17,  2,  3))
         dr(screen, tk,  (sx + 10,sy + 17,  3,  3))
-        # Barre de vie en dessous (boss)
-        hp_frac = max(0.0, mob.hp / 25.0)
-        bar_w = int(mw * hp_frac)
-        pygame.draw.rect(screen, (160, 20, 20), (sx, sy + mh + 2, mw, 3))
-        pygame.draw.rect(screen, ( 40, 200, 60), (sx, sy + mh + 2, bar_w, 3))
 
     elif mob.mob_type == MOB_PENGUIN:
         dr = pygame.draw.rect
@@ -525,3 +520,23 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         burn  = pygame.Surface((mw, mh), pygame.SRCALPHA)
         burn.fill((255, 80, 0, min(230, alpha)))
         screen.blit(burn, (sx, sy))
+
+    # ── Barre de vie temporaire (2s après dégâts) ─────────────────────────────
+    if mob._hp_bar_timer > 0 and mob._max_hp > 0:
+        hp_frac = max(0.0, mob.hp / mob._max_hp)
+        bar_w = max(mw, 12)
+        bar_h = 2
+        bar_x = int(sx + (mw - bar_w) / 2)
+        bar_y = int(sy - 4)
+        # Fond sombre
+        pygame.draw.rect(screen, (30, 30, 30), (bar_x, bar_y, bar_w, bar_h))
+        # Remplissage : vert > 60%, orange > 30%, rouge sinon
+        if hp_frac > 0.6:
+            color = (40, 200, 40)
+        elif hp_frac > 0.3:
+            color = (220, 160, 20)
+        else:
+            color = (200, 30, 30)
+        fill_w = max(0, int(bar_w * hp_frac))
+        if fill_w > 0:
+            pygame.draw.rect(screen, color, (bar_x, bar_y, fill_w, bar_h))

@@ -2,7 +2,8 @@
 Intelligence artificielle des mobs : mise à jour comportementale par frame.
 """
 import math
-from config import GRAVITY, MAX_FALL_SPEED, JUMP_VEL, PLAYER_W, PLAYER_H, TILE_SIZE
+from config import (GRAVITY, MAX_FALL_SPEED, JUMP_VEL, PLAYER_W, PLAYER_H,
+                    TILE_SIZE, TILE_LAVA, TILE_WATER)
 
 from mobs.base import (
     MOB_SLIME, MOB_ZOMBIE, MOB_GOLEM,
@@ -11,6 +12,7 @@ from mobs.base import (
     MOB_PENGUIN, MOB_POLAR_BEAR, MOB_SCORPION, MOB_VULTURE,
     MOB_WOLF, MOB_CAT,
     _PASSIVE_MOBS, _FLYING_MOBS, _DEEP_MOBS, _mw, _mh,
+    _MOB_LAVA_RESIST, _MOB_WATER_RESIST,
 )
 from mobs.physics import _solid, _move_mob_x, _move_mob_y
 from mobs.armor import _apply_contact_dmg, wears_gold
@@ -44,6 +46,91 @@ def _has_los(col0, row0, col1, row1, world):
         if _solid(world, c, r):
             return False
     return True
+
+
+def _avoid_liquids(mob, world):
+    """Mobs non-immunisés évitent lave/eau et tentent d'en sortir."""
+    mw = _mw(mob.mob_type)
+    mh = _mh(mob.mob_type)
+    lava_r  = _MOB_LAVA_RESIST.get(mob.mob_type, 0.0)
+    water_r = _MOB_WATER_RESIST.get(mob.mob_type, 0.0)
+
+    if lava_r >= 1.0 and water_r >= 1.0:
+        return
+
+    def _dangerous(c, r):
+        t = world.get(c, r)
+        return (t == TILE_LAVA and lava_r < 1.0) or (t == TILE_WATER and water_r < 1.0)
+
+    # ── Détection : le mob est-il dans un liquide dangereux ? ────────────────
+    in_danger = False
+    for c in range(int(mob.x), int(mob.x + mw - 0.01) + 1):
+        for r in range(int(mob.y), int(mob.y + mh - 0.01) + 1):
+            if _dangerous(c, r):
+                in_danger = True
+                break
+        if in_danger:
+            break
+
+    if in_danger:
+        # Fuite : chercher la direction la plus sûre
+        left_col  = int(mob.x) - 1
+        right_col = int(mob.x + mw - 0.01) + 1
+
+        def _col_safe(col):
+            for r in range(int(mob.y), int(mob.y + mh - 0.01) + 1):
+                if _dangerous(col, r):
+                    return False
+            return True
+
+        left_safe  = _col_safe(left_col)
+        right_safe = _col_safe(right_col)
+
+        speed = 3.5
+        if right_safe and not left_safe:
+            mob.vx = speed
+        elif left_safe and not right_safe:
+            mob.vx = -speed
+        elif left_safe and right_safe:
+            mob.vx = speed if mob.vx >= 0 else -speed
+        else:
+            mob.vx = speed * mob._wander_dir
+
+        # Sauter pour s'extirper
+        if mob.on_ground and mob._jump_cd <= 0:
+            mob.vy       = JUMP_VEL * 0.8
+            mob._jump_cd = 0.3
+        return
+
+    # ── Pas en danger : vérifier devant ──────────────────────────────────────
+    if abs(mob.vx) < 0.1:
+        return
+
+    dir_x     = 1 if mob.vx > 0 else -1
+    ahead_col = int(mob.x + dir_x * (mw + 0.3))
+    foot_row  = int(mob.y + mh - 0.01)
+
+    danger_ahead = False
+    # Tuiles devant au niveau du corps
+    for r in range(int(mob.y), foot_row + 1):
+        if _dangerous(ahead_col, r):
+            danger_ahead = True
+            break
+
+    # Fosse de liquide devant (regarder jusqu'à 4 tuiles en dessous)
+    if not danger_ahead:
+        for depth in range(1, 5):
+            r = foot_row + depth
+            if _dangerous(ahead_col, r):
+                danger_ahead = True
+                break
+            if _solid(world, ahead_col, r):
+                break
+
+    if danger_ahead:
+        mob.vx         = -dir_x * abs(mob.vx)
+        mob._wander_dir = -dir_x
+        mob._wander_cd  = 1.0
 
 
 # ── Logique principale ────────────────────────────────────────────────────────
@@ -403,6 +490,11 @@ def update_mob(mob, dt, players, world):  # noqa: C901
                 mob._wander_dir *= -1; mob._wander_cd = 0.0
 
     elif mob.mob_type in _DEEP_MOBS: return _update_deep_mob(mob, dt, players, world)
+
+    # ── Évitement lave/eau (mobs au sol uniquement) ──────────────────────────
+    if mob.mob_type not in _FLYING_MOBS:
+        _avoid_liquids(mob, world)
+
     # ── Gravité + déplacement ─────────────────────────────────────────────────
     if mob.mob_type in _FLYING_MOBS:
         mob.x += mob.vx * dt

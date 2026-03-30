@@ -36,7 +36,9 @@ TEXT_COLOR    = (210, 210, 230)
 BOMB_TIMER    = 3.0    # secondes avant explosion
 BOMB_RANGE    = 2      # portée en cellules
 EXPLOSION_DUR = 0.6    # durée d'affichage de l'explosion
-MOVE_COOLDOWN = 0.14   # secondes entre chaque déplacement d'une case
+MOVE_COOLDOWN    = 0.14   # secondes entre chaque déplacement d'une case
+AI_MOVE_COOLDOWN = 0.23   # cooldown IA plus lent pour ne pas être injouable
+AI_MIN_CD        = 0.14   # cooldown minimal IA (même avec bonus vitesse)
 BOMB_PLACE_CD = 0.3    # anti-double placement
 SUDDEN_DEATH  = 90.0   # mort subite après N secondes
 
