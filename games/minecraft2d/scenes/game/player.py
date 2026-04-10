@@ -4,7 +4,7 @@ Classe Player et utilitaires de collision / physique du joueur.
 from config import (
     TILE_SIZE, PLAYER_W, PLAYER_H, ROWS,
     GRAVITY, MAX_FALL_SPEED, JUMP_VEL, WALK_SPEED, CLIMB_SPEED,
-    REACH_RADIUS, TILE_AIR, TILE_ICE, TILE_LAVA, TILE_WATER,
+    REACH_RADIUS, TILE_AIR, TILE_ICE, TILE_LAVA, TILE_WATER, TILE_PORTAL,
 )
 from scenes.game.inventory import Inventory
 
@@ -48,7 +48,7 @@ def solid(world, col, row):
     if row < 0 or row >= ROWS:
         return True
     t = world.get(col, row)
-    return t != TILE_AIR and t != TILE_LAVA and t != TILE_WATER
+    return t != TILE_AIR and t != TILE_LAVA and t != TILE_WATER and t != TILE_PORTAL
 
 
 def in_lava(player, world):
@@ -65,6 +65,15 @@ def in_water(player, world):
     for c in player_cols(player):
         for r in player_rows(player):
             if world.get(c, r) == TILE_WATER:
+                return True
+    return False
+
+
+def in_portal(player, world):
+    """Retourne True si le joueur touche un portail actif."""
+    for c in player_cols(player):
+        for r in player_rows(player):
+            if world.get(c, r) == TILE_PORTAL:
                 return True
     return False
 

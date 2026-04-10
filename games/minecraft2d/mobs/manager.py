@@ -193,8 +193,7 @@ class MobManager:
                 # Tendril (cas spécial : espacement 200 cols)
                 self._try_spawn_tendril(col, surf, world, seed)
 
-                # Gorgone (cas spécial : cavité requise, très rare)
-                self._try_spawn_gorgon(col, surf, world, seed)
+                # Gorgone : spawn uniquement dans l'arène boss (plus dans le monde normal)
 
                 # Tous les mobs génériques via la table
                 for rule in _SPAWN_RULES:

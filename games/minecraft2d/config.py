@@ -102,9 +102,13 @@ TILE_FEET_GOLD_SWIFT     = 75
 TILE_FEET_DIAMOND_SWIFT  = 76
 TILE_FEET_CRYSTAL_SWIFT  = 77
 TILE_GORGON_HEART        = 78   # cœur unique du boss Gorgone
+# Portail & livres
+TILE_BOOK                = 79   # livre (trouvé dans les coffres, lisible)
+TILE_PORTAL_STONE        = 80   # pierre de portail (craftable, composant du portail)
+TILE_PORTAL              = 81   # portail actif (non-solide, téléporte vers l'arène boss)
 
 # Tiles qui sont des items (non générés naturellement)
-TILE_ITEMS = frozenset(range(19, 79))
+TILE_ITEMS = frozenset(range(19, 82))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -190,6 +194,9 @@ TILE_NAMES = {
     TILE_FEET_DIAMOND_SWIFT: "Bottes Diamant ➤",
     TILE_FEET_CRYSTAL_SWIFT: "Bottes Cristal ➤",
     TILE_GORGON_HEART:       "Cœur de Gorgone",
+    TILE_BOOK:               "Livre ancien",
+    TILE_PORTAL_STONE:       "Pierre de Portail",
+    TILE_PORTAL:             "Portail",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -447,6 +454,9 @@ TILE_COLORS = {
     TILE_FEET_DIAMOND_SWIFT: (120, 220, 245),
     TILE_FEET_CRYSTAL_SWIFT: (180, 170, 255),
     TILE_GORGON_HEART:       (170,  10,  80),   # rouge-violet sombre, loot boss
+    TILE_BOOK:               (160, 120,  60),   # brun parchemin
+    TILE_PORTAL_STONE:       ( 80,  30, 120),   # violet sombre
+    TILE_PORTAL:             (120,  40, 200),   # violet lumineux (actif)
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -487,6 +497,7 @@ TILE_BREAK_TIME = {
     TILE_BODY_DIAMOND_FORCE: 0.3, TILE_BODY_CRYSTAL_FORCE: 0.3,
     TILE_FEET_WOOD_SWIFT: 0.3, TILE_FEET_IRON_SWIFT: 0.3, TILE_FEET_GOLD_SWIFT: 0.3,
     TILE_FEET_DIAMOND_SWIFT: 0.3, TILE_FEET_CRYSTAL_SWIFT: 0.3,
+    TILE_BOOK: 0.3, TILE_PORTAL_STONE: 2.0,
 }
 
 # Ensemble des tiles flèche (pour le système d'arc)
@@ -507,6 +518,7 @@ TILE_PICKAXE_TIER = {
     TILE_GOLD_ORE:    2,
     TILE_OBSIDIAN:    3,
     TILE_DIAMOND_ORE: 3,
+    TILE_PORTAL_STONE: 3,
     TILE_SNOW:        0,
     TILE_ICE:         1,
 }
@@ -595,3 +607,214 @@ KB_J2_MODIFIER = pygame.K_RETURN  # ENTREE + dirs = slot | ENTREE + RCTRL = pose
 # Craft (menu de fabrication)
 KB_J1_CRAFT = pygame.K_c
 KB_J2_CRAFT = pygame.K_n
+
+# ── Portail & Arène Boss ─────────────────────────────────────────────────────
+BOSS_ARENA_COL = -500_000   # colonne de l'arène boss (très loin à gauche)
+BOSS_ARENA_W   = 40         # largeur de l'arène (colonnes)
+BOSS_ARENA_H   = 35         # hauteur de l'arène (rangées)
+
+# Textes des livres anciens (lore + guide)
+BOOK_TEXTS = [
+    # 0 — Guide du portail
+    [
+        "~ LE PORTAIL ~",
+        "",
+        "Les anciens parlent d'un portail",
+        "menant au repaire de la Gorgone.",
+        "",
+        "Construction :",
+        "  Creusez un trou de 3 blocs.",
+        "  Entourez d'Obsidienne",
+        "  (lave + eau = obsidienne).",
+        "  Placez 3 Pierres de Portail",
+        "  au centre du cadre.",
+        "",
+        "  OBS [P] [P] [P] OBS",
+        "  OBS OBS OBS OBS OBS",
+        "",
+        "Pierre de Portail :",
+        "  Table Diamant : Cristal x2",
+        "  Magma x2, Diamant x1",
+        "",
+        "Sautez dedans... si vous l'osez.",
+    ],
+    # 1 — Les biomes
+    [
+        "~ LES TROIS TERRES ~",
+        "",
+        "Foret : terres verdoyantes,",
+        "arbres denses, cabanes de bois.",
+        "Les sangliers et loups y rodent.",
+        "",
+        "Desert : dunes de sable brulant,",
+        "pyramides oubliees, scorpions",
+        "et vautours tournoyants.",
+        "",
+        "Glace : etendues gelees,",
+        "igloos enneiges. Les ours",
+        "polaires et pingouins y vivent.",
+        "",
+        "Chaque terre cache ses propres",
+        "structures et ses dangers.",
+    ],
+    # 2 — Faune de surface
+    [
+        "~ BESTIAIRE DE SURFACE ~",
+        "",
+        "Poulets : inoffensifs, donnent",
+        "  oeufs et plumes. Apprivoisables.",
+        "Grenouilles : paisibles, foret.",
+        "Mouettes : survolent les cotes.",
+        "Crabes : agressifs sur le sable.",
+        "Sangliers : chargent en foret.",
+        "Loups : neutres, attaquent en",
+        "  meute si provoques. Domptables.",
+        "Chats : timides, apprivoisables.",
+        "",
+        "Nourrir un loup ou chat avec",
+        "un poisson pour l'apprivoiser.",
+    ],
+    # 3 — Horreurs des profondeurs
+    [
+        "~ LES PROFONDEURS ~",
+        "",
+        "Sous la pierre, le danger croit.",
+        "",
+        "Slimes : cavernes peu profondes.",
+        "Araignees : tissent dans l'ombre.",
+        "Zombies : errent sans relache.",
+        "Squelettes : embusques, profonds.",
+        "Trolls : lents mais resistants.",
+        "Vers : traversent la roche meme.",
+        "Spectres : flottent dans l'abime.",
+        "Demons : gardiens des laves,",
+        "  seule une epee d'Or les blesse.",
+        "",
+        "Plus on creuse, plus c'est mortel.",
+    ],
+    # 4 — Structures
+    [
+        "~ RUINES ET BATISSES ~",
+        "",
+        "Cabanes : petites, en bois,",
+        "  gardees par un Golem de pierre.",
+        "  Coffre a l'interieur.",
+        "",
+        "Chateaux : murs de brique,",
+        "  fenetres de verre. Foret/glace.",
+        "",
+        "Pyramides : briques et obsidienne.",
+        "  Grandes pyramides dans le desert",
+        "  cachent 2 coffres en leur sein.",
+        "",
+        "Navires pirates : echoues,",
+        "  2 coffres dans la cale.",
+        "",
+        "Donjons : sous terre, obsidienne.",
+        "  Butin precieux dans les coffres.",
+    ],
+    # 5 — Minerais
+    [
+        "~ RICHESSES SOUTERRAINES ~",
+        "",
+        "Charbon : partout sous la pierre.",
+        "  Sert aux torches et au craft.",
+        "",
+        "Fer : profondeur moyenne.",
+        "  Outils et armures solides.",
+        "",
+        "Or : grottes profondes.",
+        "  Armes capables de blesser",
+        "  les demons et la Vrille.",
+        "",
+        "Diamant : abimes les plus bas.",
+        "  Le materiau ultime. Requis",
+        "  pour la table de craft finale.",
+        "",
+        "Obsidienne : ou lave et eau",
+        "  se rencontrent. Quasi eternelle.",
+    ],
+    # 6 — L'art du craft
+    [
+        "~ L'ART DU CRAFT ~",
+        "",
+        "La table de craft evolue :",
+        "  Bois -> Fer -> Or -> Diamant",
+        "  Chaque tier debloque de",
+        "  nouvelles recettes.",
+        "",
+        "Fleches speciales :",
+        "  Feu (Magma), Poison (Venin),",
+        "  Explosive (Bave + Magma).",
+        "",
+        "Armures ameliorees :",
+        "  Vital (casque) : +2 PV max",
+        "  Force (plastron) : +1 degat",
+        "  Veloce (bottes) : +vitesse",
+        "",
+        "Le Cristal forge une armure",
+        "aussi solide que l'Or.",
+    ],
+    # 7 — Familiers
+    [
+        "~ COMPAGNONS FIDELES ~",
+        "",
+        "Trois creatures domesticables :",
+        "",
+        "Loup : offrez-lui un poisson.",
+        "  Il combattra a vos cotes,",
+        "  attaquant vos ennemis.",
+        "",
+        "Chat : offrez-lui un poisson.",
+        "  Compagnon fidele et discret.",
+        "",
+        "Poulet : approchez avec la Main.",
+        "  Pond des oeufs regulierement.",
+        "",
+        "Un seul familier par joueur.",
+        "Prenez-en soin : ils ne",
+        "reviennent pas une fois perdus.",
+    ],
+    # 8 — La Gorgone
+    [
+        "~ LA LEGENDE DE LA GORGONE ~",
+        "",
+        "Dans les entrailles du monde,",
+        "une creature ancestrale sommeille.",
+        "",
+        "La Gorgone : un serpent geant",
+        "ancre au sol par ses racines.",
+        "Sa tete oscille, cherchant",
+        "le moindre bruit, la moindre",
+        "vibration dans la roche.",
+        "",
+        "50 coups pour l'abattre.",
+        "Seule une epee d'Or ou mieux",
+        "peut entamer sa chair.",
+        "",
+        "Son coeur est un trophee",
+        "unique... pour les survivants.",
+    ],
+    # 9 — Survie
+    [
+        "~ CONSEILS DE SURVIE ~",
+        "",
+        "Posez un drapeau : c'est votre",
+        "  point de respawn a la mort.",
+        "",
+        "La nuit, les zombies emergent.",
+        "  Ils brulent a l'aube.",
+        "",
+        "Torches : eclairent les grottes",
+        "  et eloignent l'obscurite.",
+        "",
+        "Totem : vous ressuscite une",
+        "  fois sur place. Precieux.",
+        "",
+        "Coeur de cristal : +2 PV max",
+        "  permanent. Ne les gaspillez pas.",
+        "",
+        "L'eau ralentit. La lave tue.",
+        "Grimpez aux murs avec Haut.",
+    ],
+]

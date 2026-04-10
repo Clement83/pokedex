@@ -16,6 +16,7 @@ from config import (
     TILE_HEAD_WOOD, TILE_HEAD_IRON, TILE_HEAD_GOLD, TILE_HEAD_DIAMOND,
     TILE_BODY_WOOD, TILE_BODY_IRON, TILE_BODY_GOLD, TILE_BODY_DIAMOND,
     TILE_FEET_WOOD, TILE_FEET_IRON, TILE_FEET_GOLD, TILE_FEET_DIAMOND,
+    TILE_BOOK, TILE_PORTAL_STONE, TILE_PORTAL,
     BIOME_SKY_COLORS,
 )
 
@@ -135,6 +136,61 @@ def _draw_torch_tile(surf, x, y):
     surf.fill((255, 240, 100), (x + 7, y + 1,  2, 1))
 
 
+def _draw_book_tile(surf, x, y):
+    """Livre ancien pixel-art 16×16 — couverture brune + pages blanches."""
+    surf.fill((45, 42, 48), (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Couverture
+    surf.fill((120, 80, 30), (x + 2, y + 2, 12, 12))
+    surf.fill((90, 55, 15), (x + 2, y + 2, 12, 12))
+    # Pages (blanc cassé)
+    surf.fill((235, 225, 200), (x + 4, y + 3, 9, 10))
+    # Tranche
+    surf.fill((200, 190, 160), (x + 3, y + 3, 1, 10))
+    # Lignes de texte
+    surf.fill((100, 80, 60), (x + 5, y + 5, 6, 1))
+    surf.fill((100, 80, 60), (x + 5, y + 7, 5, 1))
+    surf.fill((100, 80, 60), (x + 5, y + 9, 7, 1))
+    # Fermoir doré
+    surf.fill((200, 170, 40), (x + 7, y + 12, 2, 1))
+
+
+def _draw_portal_stone_tile(surf, x, y, dc, dr):
+    """Pierre de portail pixel-art 16×16 — violet sombre avec veines."""
+    surf.fill((60, 20, 100), (x, y, 16, 16))
+    pygame.draw.rect(surf, (40, 10, 70), (x, y, 16, 16), 1)
+    h = ((dc * 13 + dr * 7) * 2654435761) & 0xFF
+    # Veines violettes lumineuses
+    if h < 100:
+        surf.fill((140, 60, 220), (x + 3, y + 4, 4, 2))
+    if h > 80 and h < 180:
+        surf.fill((120, 50, 200), (x + 8, y + 8, 3, 3))
+    if h > 140:
+        surf.fill((160, 80, 240), (x + 5, y + 11, 5, 2))
+    # Reflet central
+    surf.fill((180, 100, 255), (x + 7, y + 7, 2, 2))
+
+
+def _draw_portal_tile(surf, x, y, dc, dr):
+    """Portail actif pixel-art 16×16 — tourbillon violet animé."""
+    surf.fill((40, 10, 80), (x, y, 16, 16))
+    h = ((dc * 17 + dr * 11) * 2654435761) & 0xFF
+    # Spirales violettes (pattern déterministe)
+    surf.fill((100, 40, 180), (x + 2, y + 2, 5, 3))
+    surf.fill((130, 60, 220), (x + 8, y + 5, 4, 4))
+    surf.fill((90, 30, 160), (x + 3, y + 9, 6, 3))
+    # Particules lumineuses
+    if h < 80:
+        surf.fill((200, 140, 255), (x + 4, y + 3, 2, 1))
+    if h > 100:
+        surf.fill((200, 140, 255), (x + 10, y + 7, 2, 1))
+    if h > 60 and h < 160:
+        surf.fill((220, 170, 255), (x + 6, y + 11, 1, 1))
+    # Centre brillant
+    surf.fill((180, 120, 255), (x + 6, y + 6, 4, 4))
+    surf.fill((220, 180, 255), (x + 7, y + 7, 2, 2))
+
+
 # ── Dessin d'une seule tuile (partagé render + update_tile) ──────────────────
 
 def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
@@ -177,6 +233,12 @@ def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
         _draw_body_tile(surf, x, y, TILE_COLORS[tile])
     elif tile in (TILE_FEET_WOOD, TILE_FEET_IRON, TILE_FEET_GOLD, TILE_FEET_DIAMOND):
         _draw_feet_tile(surf, x, y, TILE_COLORS[tile])
+    elif tile == TILE_BOOK:
+        _draw_book_tile(surf, x, y)
+    elif tile == TILE_PORTAL_STONE:
+        _draw_portal_stone_tile(surf, x, y, dc, dr)
+    elif tile == TILE_PORTAL:
+        _draw_portal_tile(surf, x, y, dc, dr)
     else:
         color = biome_color if tile == TILE_AIR else TILE_COLORS[tile]
         surf.fill(color, (x, y, ts, ts))

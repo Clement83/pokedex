@@ -14,7 +14,7 @@ from config import (
     TILE_FLAG, TILE_CRAFT, TILE_ROD,
     TILE_BONE, TILE_SLIME_BALL, TILE_FANG, TILE_CRYSTAL, TILE_FEATHER, TILE_VENOM, TILE_MAGMA,
     TILE_ARROW_FIRE, TILE_ARROW_POISON, TILE_ARROW_EXPLOSIVE,
-    TILE_HEART_CRYSTAL, TILE_TOTEM,
+    TILE_HEART_CRYSTAL, TILE_TOTEM, TILE_PORTAL_STONE,
     TILE_HEAD_WOOD, TILE_HEAD_IRON, TILE_HEAD_GOLD, TILE_HEAD_DIAMOND, TILE_HEAD_CRYSTAL,
     TILE_BODY_WOOD, TILE_BODY_IRON, TILE_BODY_GOLD, TILE_BODY_DIAMOND, TILE_BODY_CRYSTAL,
     TILE_FEET_WOOD, TILE_FEET_IRON, TILE_FEET_GOLD, TILE_FEET_DIAMOND, TILE_FEET_CRYSTAL,
@@ -104,8 +104,9 @@ CRAFT_RECIPES = [
     ((EQUIP_HEAD,    MAT_DIAMOND), {TILE_IRON_ORE: 1, TILE_DIAMOND_ORE: 2},  "Fer x1 Diamant x2",   4),
     ((EQUIP_BODY,    MAT_DIAMOND), {TILE_IRON_ORE: 2, TILE_DIAMOND_ORE: 3},  "Fer x2 Diamant x3",   4),
     ((EQUIP_FEET,    MAT_DIAMOND), {TILE_IRON_ORE: 1, TILE_DIAMOND_ORE: 1},  "Fer x1 Diamant x1",   4),
-    # ── Spécial Tier 4 : flèches explosives + améliorations diamant ────────
+    # ── Spécial Tier 4 : flèches explosives, pierre de portail, améliorations diamant
     (("__tiles__", TILE_ARROW_EXPLOSIVE, 4), {TILE_ARROW: 4, TILE_SLIME_BALL: 2, TILE_MAGMA: 1}, "Flèche x4 Bave x2 Magma x1", 4),
+    (("__tiles__", TILE_PORTAL_STONE, 3),   {TILE_CRYSTAL: 2, TILE_MAGMA: 2, TILE_DIAMOND_ORE: 1}, "Cristal x2 Magma x2 Diamant x1", 4),
     (("__tiles__", TILE_HEAD_DIAMOND_VITAL, 1), {TILE_HEAD_DIAMOND: 1, TILE_HEART_CRYSTAL: 1},          "Casque Diamant + Cœur",          4),
     (("__tiles__", TILE_BODY_DIAMOND_FORCE, 1), {TILE_BODY_DIAMOND: 1, TILE_FANG: 3, TILE_VENOM: 1},   "Plastron Diamant + Croc x3 Venin", 4),
     (("__tiles__", TILE_FEET_DIAMOND_SWIFT, 1), {TILE_FEET_DIAMOND: 1, TILE_FEATHER: 3, TILE_SLIME_BALL: 1}, "Bottes Diamant + Plume x3 Bave", 4),

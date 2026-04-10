@@ -7,7 +7,7 @@ from config import (
     ROWS,
     TILE_AIR, TILE_DIRT, TILE_STONE, TILE_GRASS, TILE_SAND, TILE_WOOD, TILE_COAL,
     TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE, TILE_CHEST,
-    TILE_SNOW, TILE_ICE, TILE_LAVA, TILE_WATER,
+    TILE_SNOW, TILE_ICE, TILE_LAVA, TILE_WATER, TILE_BOOK,
     SURFACE_Y, TERRAIN_AMPLITUDE, TERRAIN_FREQ, STONE_DEPTH,
     BIOME_FOREST, BIOME_DESERT, BIOME_ICE, BIOME_FREQ,
 )
@@ -337,6 +337,9 @@ class World:
                             TILE_FANG, TILE_SLIME_BALL)
         r = random.random
         results = []
+
+        # ── Livre ancien (toutes profondeurs) ─────────────────────────────
+        if r() < 0.12: results.append((TILE_BOOK, 1))
 
         if depth < 20:
             # ── Surface : bois, pierre, charbon + consommables variés ──────

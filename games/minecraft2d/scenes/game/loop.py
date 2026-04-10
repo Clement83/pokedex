@@ -18,14 +18,14 @@ import music_player as _music
 import mobs as _mobs
 from mobs.familiar import FamiliarManager
 
-from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks, on_ice, in_lava, in_water, effective_max_hp, crystal_bonuses
+from scenes.game.player      import Player, move_x, move_y, touching_wall, in_reach, eject_from_blocks, on_ice, in_lava, in_water, in_portal, effective_max_hp, crystal_bonuses
 from scenes.game.camera      import Camera, ChunkCache
 from scenes.game.controls    import joy_btn, get_dir_p1, get_dir_p2, get_cursor
 from scenes.game.sky         import sky_color, night_alpha, is_night, draw_night_overlay, draw_sky_hud, DAY_CYCLE_DURATION, biome_sky_tint
 from scenes.game.renderer_world  import draw_world, draw_cursor, draw_flag_in_world
 from scenes.game.renderer_player import draw_player, draw_hearts, draw_compass, _HEART_W, _HEART_GAP
 from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H as _HOTBAR_SLOT_H
-from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch, handle_consumable
+from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch, handle_consumable, handle_book
 from scenes.game.craft        import CraftMenu
 from scenes.game.trade        import TradeMenu
 from scenes.game.projectiles  import ProjectileManager
@@ -63,8 +63,14 @@ def run(screen, joysticks, world_id, seed):
             _pending.clear()
         for p in players:
             fam_data = fam_mgr.save_data(p.idx) if fam_mgr else None
-            _db.save_player(world_id, p.idx, p.x, p.y, p.inventory,
-                            flag=flag_positions[p.idx], familiar=fam_data)
+            # Si dans l'arène boss, sauvegarder la position normale
+            sx, sy = p.x, p.y
+            sf = flag_positions[p.idx]
+            if _boss_arena["active"] and _boss_arena["saved_pos"][p.idx]:
+                sx, sy = _boss_arena["saved_pos"][p.idx]
+                sf = _boss_arena["saved_flags"][p.idx]
+            _db.save_player(world_id, p.idx, sx, sy, p.inventory,
+                            flag=sf, familiar=fam_data)
 
     mid = 1_000_000; spawn_cols = [mid - 3, mid + 3]
     def _sx(col): return col - PLAYER_W / TILE_SIZE / 2
@@ -120,6 +126,185 @@ def run(screen, joysticks, world_id, seed):
     lava_dmg_cd = [0.0, 0.0]   # cooldown dégâts lave par joueur (1 PV/s)
     _liquid_cd = [0.0]         # tick physique liquides (lave/eau future)
 
+    # ── Portail & Arène Boss ─────────────────────────────────────────────────
+    _boss_arena = {
+        "active": False,          # True si les joueurs sont dans l'arène
+        "built": False,           # True si l'arène a déjà été construite (dans world.mods)
+        "saved_pos": [None, None], # positions sauvegardées [(x,y), (x,y)]
+        "saved_flags": [None, None],
+        "gorgon_spawned": False,  # True si la Gorgone a été spawn dans l'arène
+        "gorgon_dead": False,     # True si la Gorgone a été tuée
+        "portal_cd": 0.0,        # cooldown anti-spam téléportation
+    }
+    _book_states = [{"open": False, "text": []}, {"open": False, "text": []}]
+
+    def _build_boss_arena():
+        """Construit l'arène boss dans le monde via world.mods."""
+        if _boss_arena["built"]:
+            return
+        from config import BOSS_ARENA_COL, BOSS_ARENA_W, BOSS_ARENA_H, TILE_OBSIDIAN, TILE_STONE
+        ac = BOSS_ARENA_COL
+        ar_top = 40   # rangée du plafond
+        # Construire un rectangle creux d'obsidienne
+        for dc in range(BOSS_ARENA_W):
+            for dr in range(BOSS_ARENA_H):
+                c = ac + dc
+                r = ar_top + dr
+                if dc == 0 or dc == BOSS_ARENA_W - 1 or dr == 0 or dr == BOSS_ARENA_H - 1:
+                    world.set(c, r, TILE_OBSIDIAN)
+                    _queue(c, r, TILE_OBSIDIAN)
+                else:
+                    world.set(c, r, TILE_AIR)
+                    _queue(c, r, TILE_AIR)
+        # Sol en pierre au milieu (plateformes)
+        floor_row = ar_top + BOSS_ARENA_H - 2
+        for dc in range(1, BOSS_ARENA_W - 1):
+            world.set(ac + dc, floor_row, TILE_STONE)
+            _queue(ac + dc, floor_row, TILE_STONE)
+        # Quelques piliers décoratifs
+        for pillar_dc in (8, 16, 24, 32):
+            if pillar_dc < BOSS_ARENA_W - 1:
+                for pr in range(floor_row - 5, floor_row):
+                    world.set(ac + pillar_dc, pr, TILE_OBSIDIAN)
+                    _queue(ac + pillar_dc, pr, TILE_OBSIDIAN)
+        # Plateforme surélevée au centre
+        mid = ac + BOSS_ARENA_W // 2
+        plat_row = floor_row - 8
+        for dc in range(-4, 5):
+            world.set(mid + dc, plat_row, TILE_STONE)
+            _queue(mid + dc, plat_row, TILE_STONE)
+        # Portail de retour (en haut à gauche de l'arène)
+        ret_col = ac + 3
+        ret_row = floor_row - 1
+        for dc in range(3):
+            world.set(ret_col + dc, ret_row, TILE_PORTAL)
+            _queue(ret_col + dc, ret_row, TILE_PORTAL)
+        # Encadrer le portail de retour
+        world.set(ret_col - 1, ret_row, TILE_OBSIDIAN)
+        _queue(ret_col - 1, ret_row, TILE_OBSIDIAN)
+        world.set(ret_col + 3, ret_row, TILE_OBSIDIAN)
+        _queue(ret_col + 3, ret_row, TILE_OBSIDIAN)
+        for dc in range(-1, 4):
+            world.set(ret_col + dc, ret_row + 1, TILE_OBSIDIAN)
+            _queue(ret_col + dc, ret_row + 1, TILE_OBSIDIAN)
+        _boss_arena["built"] = True
+
+    def _teleport_to_boss():
+        """Téléporte les deux joueurs dans l'arène boss."""
+        from config import BOSS_ARENA_COL, BOSS_ARENA_H
+        _build_boss_arena()
+        # Sauvegarder positions
+        for i, p in enumerate(players):
+            _boss_arena["saved_pos"][i] = (p.x, p.y)
+            _boss_arena["saved_flags"][i] = flag_positions[i]
+        # Téléporter au centre de l'arène
+        ac = BOSS_ARENA_COL
+        ar_floor = 40 + BOSS_ARENA_H - 3
+        for i, p in enumerate(players):
+            p.x = float(ac + 5 + i * 3)
+            p.y = float(ar_floor - 2)
+            p.vx = p.vy = 0.0
+            eject_from_blocks(p, world)
+        # Invalider les chunks pour forcer le re-rendu
+        chunks._cache.clear()
+        chunks._pending.clear()
+        _boss_arena["active"] = True
+        _boss_arena["portal_cd"] = 2.0
+        # Spawn Gorgone si pas déjà fait et pas déjà morte
+        if not _boss_arena["gorgon_spawned"] and not _boss_arena["gorgon_dead"]:
+            from mobs.base import Mob, MOB_GORGON, _mw
+            _body_h = 20
+            gc = ac + BOSS_ARENA_W // 2
+            gfloor = ar_floor
+            gm = Mob(float(gc), float(gfloor - _body_h), MOB_GORGON, world.seed)
+            gm._anchor_x = gc + _mw(MOB_GORGON) / 2
+            gm._anchor_row = float(gfloor)
+            mob_mgr._mobs.append(gm)
+            _boss_arena["gorgon_spawned"] = True
+        loot_notifs.append(["Vous entrez dans le repaire de la Gorgone...", 4.0, (180, 100, 255)])
+
+    def _teleport_back():
+        """Ramène les deux joueurs au monde normal."""
+        for i, p in enumerate(players):
+            saved = _boss_arena["saved_pos"][i]
+            if saved:
+                p.x, p.y = saved
+            flag_positions[i] = _boss_arena["saved_flags"][i]
+            p.vx = p.vy = 0.0
+            eject_from_blocks(p, world)
+        chunks._cache.clear()
+        chunks._pending.clear()
+        _boss_arena["active"] = False
+        _boss_arena["portal_cd"] = 2.0
+        loot_notifs.append(["Retour au monde normal.", 3.0, (100, 200, 255)])
+
+    def _check_gorgon_dead():
+        """Vérifie si la Gorgone est morte dans l'arène."""
+        if not _boss_arena["active"] or _boss_arena["gorgon_dead"]:
+            return
+        if _boss_arena["gorgon_spawned"]:
+            from mobs.base import MOB_GORGON
+            alive = any(m.mob_type == MOB_GORGON for m in mob_mgr._mobs)
+            if not alive:
+                _boss_arena["gorgon_dead"] = True
+                loot_notifs.append(["La Gorgone est vaincue !", 5.0, (255, 220, 50)])
+
+    _BOOK_LINE_H = 12
+    _BOOK_PAD    = 10
+    _BOOK_FOOTER = 16    # hauteur réservée pour la légende en bas
+
+    def _draw_book_overlay(surf, book_state, font):
+        """Dessine l'overlay de lecture de livre avec scroll."""
+        if not book_state.get("open"):
+            return
+        lines = book_state.get("text", [])
+        bw = min(220, surf.get_width() - 10)
+        bh = min(280, SCREEN_HEIGHT - 20)
+        bx = (surf.get_width() - bw) // 2
+        by = (SCREEN_HEIGHT - bh) // 2
+
+        # Nombre de lignes visibles
+        text_area_h = bh - _BOOK_PAD * 2 - _BOOK_FOOTER
+        max_vis = max(1, text_area_h // _BOOK_LINE_H)
+        book_state["max_vis"] = max_vis
+        scroll = book_state.get("scroll", 0)
+        max_scroll = max(0, len(lines) - max_vis)
+        scroll = min(scroll, max_scroll)
+
+        # Fond parchemin
+        bg = pygame.Surface((bw, bh), pygame.SRCALPHA)
+        bg.fill((40, 30, 20, 230))
+        surf.blit(bg, (bx, by))
+        pygame.draw.rect(surf, (160, 120, 60), (bx, by, bw, bh), 2)
+
+        # Texte visible (fenêtre scrollée)
+        ty = by + _BOOK_PAD
+        visible = lines[scroll:scroll + max_vis]
+        for line in visible:
+            if line:
+                lbl = font.render(line, True, (220, 200, 160))
+                surf.blit(lbl, (bx + _BOOK_PAD, ty))
+            ty += _BOOK_LINE_H
+
+        # Barre de scroll (si nécessaire)
+        if max_scroll > 0:
+            bar_x = bx + bw - 6
+            bar_top = by + _BOOK_PAD
+            bar_h = text_area_h
+            # Rail
+            pygame.draw.rect(surf, (80, 60, 40), (bar_x, bar_top, 4, bar_h))
+            # Curseur
+            thumb_h = max(8, int(bar_h * max_vis / len(lines)))
+            thumb_y = bar_top + int((bar_h - thumb_h) * scroll / max_scroll)
+            pygame.draw.rect(surf, (200, 170, 100), (bar_x, thumb_y, 4, thumb_h))
+
+        # Légende
+        has_scroll = max_scroll > 0
+        legend = "nav  Action/Alt=fermer" if has_scroll else "Action/Alt=fermer"
+        close_lbl = font.render(legend, True, (140, 120, 80))
+        surf.blit(close_lbl, (bx + bw // 2 - close_lbl.get_width() // 2,
+                               by + bh - _BOOK_FOOTER + 2))
+
     # Dirty flags caméra pour éviter preload_around si la cam n'a pas bougé
     _preload_last = {}   # {cam_id: (x, y)}
 
@@ -133,8 +318,11 @@ def run(screen, joysticks, world_id, seed):
 
     def _draw_view(surf, cam, view_w, k, bi):
         center_col = int((cam.x + view_w // 2) / TILE_SIZE)
-        _biome = world.biome_at(center_col)
-        surf.fill(biome_sky_tint(_sky_c, _biome))
+        if _boss_arena["active"]:
+            surf.fill((15, 5, 25))   # ciel sombre violet pour l'arène boss
+        else:
+            _biome = world.biome_at(center_col)
+            surf.fill(biome_sky_tint(_sky_c, _biome))
         _preload_if_moved(cam, view_w)
         draw_world(surf, chunks, cam, bi)
         for j, pl in enumerate(players):
@@ -158,6 +346,7 @@ def run(screen, joysticks, world_id, seed):
         draw_hearts(surf, pi.hp, effective_max_hp(pi), 4 + HOTBAR_TOTAL + 4, _hy)
         if view_w < SCREEN_WIDTH: draw_compass(surf, cam, pi, players[1 - k], view_w, players[1 - k].color)
         if craft_menus[k].visible: craft_menus[k].draw(surf, pi.inventory, pi.color, font_sm)
+        _draw_book_overlay(surf, _book_states[k], font_sm)
 
     # ─────────────────────────────────────────────────────────────────────────
     while True:
@@ -306,6 +495,18 @@ def run(screen, joysticks, world_id, seed):
             cdx, cdy = p_dirs[i]
             cur_col, cur_row = get_cursor(player, cdx, cdy, world)
             cur_row = max(0, min(ROWS - 1, cur_row))
+            # ── Lecture de livre ──────────────────────────────────────────────
+            _book_just_opened = not _book_states[i].get("open")
+            if handle_book(player, loot_notifs, cur_mine, prev_mine[i], cur_mod,
+                           _book_states[i], dy, prev_dy[i]):
+                # Forcer le split-screen à l'ouverture (comme craft menu)
+                if _book_just_opened and _book_states[i].get("open") and not is_split:
+                    is_split = True
+                    for k, cam in enumerate(split_cams):
+                        cam.x = max(0, players[k].px() - HALF_W // 2)
+                        cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
+                prev_mine[i] = cur_mine; prev_mod[i] = cur_mod; prev_dy[i] = dy; prev_dx[i] = dx
+                continue
             handle_sword(player, mob_mgr, loot_notifs, cur_mine, prev_mine[i], cur_mod)
             handle_bow(player, proj_mgr, loot_notifs, cur_mine, prev_mine[i], cur_mod, p_dirs[i])
             handle_flag(player, flag_positions, loot_notifs, cur_mine, prev_mine[i], cur_mod)
@@ -362,10 +563,28 @@ def run(screen, joysticks, world_id, seed):
                         loot_notifs.append(["✟ TOTEM ! Résurrection !", 3.0, (255, 220, 100)])
                 if not totem_used:
                     player.hp = effective_max_hp(player)
-                    fp = flag_positions[i]
-                    if fp: player.x, player.y = fp
-                    else:  player.x = _sx(spawn_cols[i]); player.y = _sy(spawn_cols[i])
+                    if _boss_arena["active"]:
+                        # Mort dans l'arène : retour au monde normal
+                        _teleport_back()
+                        loot_notifs.append(["Vous avez fui le repaire...", 3.0, (200, 80, 80)])
+                    else:
+                        fp = flag_positions[i]
+                        if fp: player.x, player.y = fp
+                        else:  player.x = _sx(spawn_cols[i]); player.y = _sy(spawn_cols[i])
                     player.vx = player.vy = 0.0; eject_from_blocks(player, world)
+
+        # ── Détection portail ────────────────────────────────────────────
+        _boss_arena["portal_cd"] = max(0.0, _boss_arena["portal_cd"] - dt)
+        if _boss_arena["portal_cd"] <= 0:
+            for p in players:
+                if in_portal(p, world):
+                    if not _boss_arena["active"]:
+                        _teleport_to_boss()
+                    else:
+                        _teleport_back()
+                    break
+        # Vérifier si la Gorgone est morte
+        _check_gorgon_dead()
 
         _mob_cd[0] -= dt
         if _mob_cd[0] <= 0:
@@ -425,7 +644,7 @@ def run(screen, joysticks, world_id, seed):
             for k, cam in enumerate(split_cams):
                 cam.x = max(0, players[k].px() - HALF_W // 2)
                 cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
-        elif is_split and pdist <= UNSPLIT_DIST and not any(cm.visible for cm in craft_menus) and not trade_menu.visible:
+        elif is_split and pdist <= UNSPLIT_DIST and not any(cm.visible for cm in craft_menus) and not trade_menu.visible and not any(bs.get("open") for bs in _book_states):
             is_split = False
             shared_cam.x = max(0, (players[0].px() + players[1].px()) // 2 - SCREEN_WIDTH  // 2)
             shared_cam.y = max(0, min((players[0].py() + players[1].py()) // 2 - SCREEN_HEIGHT // 2, max_cy))
@@ -461,6 +680,10 @@ def run(screen, joysticks, world_id, seed):
         if night_alpha(_day_time[0]) > 0: draw_night_overlay(screen, _day_time[0])
         draw_sky_hud(screen, _day_time[0], font_sm)
         if trade_menu.visible: trade_menu.draw(screen, players, font_sm)
+        # ── Indicateur arène boss ────────────────────────────────────────
+        if _boss_arena["active"]:
+            _arena_lbl = font_med.render("~ REPAIRE DE LA GORGONE ~", True, (200, 80, 255))
+            screen.blit(_arena_lbl, (SCREEN_WIDTH // 2 - _arena_lbl.get_width() // 2, 2))
         if quit_combo.update_and_draw(screen): _flush(); return True
         if _sounds.is_muted():
             screen.blit(_mute_label, (SCREEN_WIDTH // 2 - _mute_label.get_width() // 2,

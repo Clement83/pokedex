@@ -7,7 +7,7 @@ import sounds as _sounds
 
 from config import (
     TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_FISH, TILE_TORCH, TILE_SIZE, REACH_RADIUS,
-    TILE_HEART_CRYSTAL, TILE_TOTEM,
+    TILE_HEART_CRYSTAL, TILE_TOTEM, TILE_BOOK, TILE_PORTAL_STONE, TILE_PORTAL, TILE_OBSIDIAN,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_BOW, TOOL_ROD, TOOL_TORCH,
     TILE_BREAK_TIME, TILE_PICKAXE_TIER, MAT_TIER,
     EQUIP_NAMES, PLAYER_W, PLAYER_H, ROWS,
@@ -244,6 +244,10 @@ def handle_block_actions(
                     player._action_cd = 0.2
                     queue_block_fn(cur_col, cur_row, selected)
                     _sounds.place()
+                    # Vérifier activation portail si c'est une Pierre de Portail
+                    if selected == TILE_PORTAL_STONE:
+                        if check_portal_activation(cur_col, cur_row, world, chunks, queue_block_fn):
+                            loot_notifs.append(["Le portail s'active !", 3.0, (180, 100, 255)])
         return
 
     # ── Coffre (main) ──────────────────────────────────────────────────────
@@ -270,7 +274,7 @@ def handle_block_actions(
         return
 
     # ── Minage (pioche ou mains) ─────────────────────────────────────────
-    _UNMINABLE = (TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER)
+    _UNMINABLE = (TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_PORTAL)
     if tile_at not in _UNMINABLE and tool in (TOOL_PICKAXE, TOOL_HAND):
         if cur_mine and not cur_mod:
             # Vérification du tier (mains = tier 0)
@@ -325,3 +329,76 @@ def handle_block_actions(
     if not cur_mine:
         break_infos[i]     = None
         player._break_time = 0.0
+
+
+# ── Lecture de livre ─────────────────────────────────────────────────────────
+
+def handle_book(player, loot_notifs, cur_mine, prev_mine, cur_mod,
+                book_state, dy=0, prev_dy=0):
+    """Ouvre/ferme un livre. Scroll haut/bas. Cycle les textes à chaque ouverture."""
+    if book_state.get("open"):
+        # Scroll haut/bas
+        if dy == -1 and prev_dy != -1:
+            book_state["scroll"] = max(0, book_state.get("scroll", 0) - 1)
+        elif dy == 1 and prev_dy != 1:
+            max_scroll = max(0, len(book_state.get("text", [])) - book_state.get("max_vis", 18))
+            book_state["scroll"] = min(max_scroll, book_state.get("scroll", 0) + 1)
+        # Action ou Modifier ferme le livre
+        if (cur_mine and not prev_mine) or cur_mod:
+            book_state["open"] = False
+            player._action_cd = 0.3
+        return True
+    if player.inventory.tool != TOOL_HAND:
+        return False
+    if player._action_cd > 0 or not cur_mine or prev_mine or cur_mod:
+        return False
+    sel = player.inventory.selected_tile()
+    if sel != TILE_BOOK:
+        return False
+    # Ouvrir le livre suivant (cycle dans la collection)
+    from config import BOOK_TEXTS
+    idx = book_state.get("book_idx", 0)
+    book_state["open"] = True
+    book_state["text"] = BOOK_TEXTS[idx % len(BOOK_TEXTS)]
+    book_state["book_idx"] = (idx + 1) % len(BOOK_TEXTS)
+    book_state["scroll"] = 0
+    player._action_cd = 0.3
+    _sounds.chest_open()
+    return True
+
+
+# ── Activation portail (vérification du pattern) ────────────────────────────
+
+def check_portal_activation(col, row, world, chunks, queue_block_fn):
+    """Vérifie si le placement d'une PORTAL_STONE complète un portail valide.
+    Pattern attendu (5 large × 2 haut) :
+       OBS  STONE STONE STONE  OBS   ← row (ligne du haut)
+       OBS  OBS   OBS   OBS   OBS   ← row+1 (sol)
+    Si valide, les 3 PORTAL_STONEs deviennent TILE_PORTAL.
+    """
+    # Chercher les bornes de la série de PORTAL_STONEs contiguë
+    left = col
+    while world.get(left - 1, row) == TILE_PORTAL_STONE:
+        left -= 1
+    right = col
+    while world.get(right + 1, row) == TILE_PORTAL_STONE:
+        right += 1
+    width = right - left + 1
+    if width < 3:
+        return False
+    # Vérifier le cadre d'obsidienne
+    # Murs gauche/droit
+    if world.get(left - 1, row) != TILE_OBSIDIAN:
+        return False
+    if world.get(right + 1, row) != TILE_OBSIDIAN:
+        return False
+    # Sol complet sous le portail
+    for c in range(left - 1, right + 2):
+        if world.get(c, row + 1) != TILE_OBSIDIAN:
+            return False
+    # Activer le portail : convertir les PORTAL_STONEs en TILE_PORTAL
+    for c in range(left, right + 1):
+        world.set(c, row, TILE_PORTAL)
+        chunks.update_tile(c, row, TILE_PORTAL)
+        queue_block_fn(c, row, TILE_PORTAL)
+    return True
