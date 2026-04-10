@@ -106,9 +106,28 @@ TILE_GORGON_HEART        = 78   # cœur unique du boss Gorgone
 TILE_BOOK                = 79   # livre (trouvé dans les coffres, lisible)
 TILE_PORTAL_STONE        = 80   # pierre de portail (craftable, composant du portail)
 TILE_PORTAL              = 81   # portail actif (non-solide, téléporte vers l'arène boss)
+# ── Farming ──────────────────────────────────────────────────────────────────
+TILE_FARMLAND            = 82   # terre labourée (solide, base des cultures)
+TILE_SEED_WHEAT          = 83   # graines de blé (item inventaire)
+TILE_SEED_CARROT         = 84   # graines de carotte (item inventaire)
+TILE_SEED_PUMPKIN        = 85   # graines de citrouille (item inventaire)
+TILE_WHEAT_1             = 86   # blé stade 1 (pousse)
+TILE_WHEAT_2             = 87   # blé stade 2 (croissance)
+TILE_WHEAT_3             = 88   # blé stade 3 (mature, récoltable)
+TILE_CARROT_1            = 89   # carotte stade 1
+TILE_CARROT_2            = 90   # carotte stade 2
+TILE_CARROT_3            = 91   # carotte stade 3
+TILE_PUMPKIN_1           = 92   # citrouille stade 1
+TILE_PUMPKIN_2           = 93   # citrouille stade 2
+TILE_PUMPKIN_3           = 94   # citrouille stade 3
+TILE_WHEAT               = 95   # blé récolté (pour craft pain)
+TILE_CARROT              = 96   # carotte récoltée (nourriture)
+TILE_PUMPKIN             = 97   # citrouille récoltée (nourriture)
+TILE_HOE                 = 98   # houe (outil, item inventaire)
+TILE_BREAD               = 99   # pain (nourriture)
 
 # Tiles qui sont des items (non générés naturellement)
-TILE_ITEMS = frozenset(range(19, 82))
+TILE_ITEMS = frozenset(range(19, 100))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -197,6 +216,24 @@ TILE_NAMES = {
     TILE_BOOK:               "Livre ancien",
     TILE_PORTAL_STONE:       "Pierre de Portail",
     TILE_PORTAL:             "Portail",
+    TILE_FARMLAND:           "Terre labourée",
+    TILE_SEED_WHEAT:         "Graines de Blé",
+    TILE_SEED_CARROT:        "Graines de Carotte",
+    TILE_SEED_PUMPKIN:       "Graines de Citrouille",
+    TILE_WHEAT_1:            "Blé (pousse)",
+    TILE_WHEAT_2:            "Blé (croissance)",
+    TILE_WHEAT_3:            "Blé (mature)",
+    TILE_CARROT_1:           "Carotte (pousse)",
+    TILE_CARROT_2:           "Carotte (croissance)",
+    TILE_CARROT_3:           "Carotte (mature)",
+    TILE_PUMPKIN_1:          "Citrouille (pousse)",
+    TILE_PUMPKIN_2:          "Citrouille (croissance)",
+    TILE_PUMPKIN_3:          "Citrouille (mature)",
+    TILE_WHEAT:              "Blé",
+    TILE_CARROT:             "Carotte",
+    TILE_PUMPKIN:            "Citrouille",
+    TILE_HOE:                "Houe",
+    TILE_BREAD:              "Pain",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -209,12 +246,13 @@ TOOL_CRAFT   = 5   # table de craft : action=ouvrir menu, alt=fermer
 TOOL_BOW     = 6   # arc : tirer une flèche (consomme TILE_ARROW)
 TOOL_ROD     = 7   # canne à pêche : pêcher dans l'eau
 TOOL_TORCH   = 8   # torche en main : poser une torche à portée
+TOOL_HOE     = 9   # houe : labourer la terre pour cultiver
 TOOL_NAMES   = {TOOL_HAND: "Main", TOOL_PICKAXE: "Pioche",
                 TOOL_PLACER: "Canon", TOOL_SWORD: "Épée", TOOL_FLAG: "Drapeau",
                 TOOL_CRAFT: "Table Craft", TOOL_BOW: "Arc", TOOL_ROD: "Canne à pêche",
-                TOOL_TORCH: "Torche"}
+                TOOL_TORCH: "Torche", TOOL_HOE: "Houe"}
 TOOLS_LIST   = [TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
-                TOOL_BOW, TOOL_ROD, TOOL_TORCH]
+                TOOL_BOW, TOOL_ROD, TOOL_TORCH, TOOL_HOE]
 
 # ── Équipements ───────────────────────────────────────────────────────────────
 # Slot d'équipement
@@ -457,6 +495,25 @@ TILE_COLORS = {
     TILE_BOOK:               (160, 120,  60),   # brun parchemin
     TILE_PORTAL_STONE:       ( 80,  30, 120),   # violet sombre
     TILE_PORTAL:             (120,  40, 200),   # violet lumineux (actif)
+    # Farming
+    TILE_FARMLAND:           (110,  70,  30),   # brun labouré
+    TILE_SEED_WHEAT:         (180, 160,  60),   # jaune graine
+    TILE_SEED_CARROT:        (220, 140,  40),   # orange graine
+    TILE_SEED_PUMPKIN:       (200, 160,  50),   # jaune-orange graine
+    TILE_WHEAT_1:            (100, 160,  40),   # vert clair pousse
+    TILE_WHEAT_2:            (140, 180,  50),   # vert-jaune croissance
+    TILE_WHEAT_3:            (210, 190,  60),   # jaune doré mature
+    TILE_CARROT_1:           ( 80, 150,  40),   # vert pousse
+    TILE_CARROT_2:           (100, 170,  50),   # vert croissance
+    TILE_CARROT_3:           (230, 130,  30),   # orange mature
+    TILE_PUMPKIN_1:          ( 80, 150,  40),   # vert pousse
+    TILE_PUMPKIN_2:          (110, 160,  50),   # vert croissance
+    TILE_PUMPKIN_3:          (220, 150,  20),   # orange citrouille
+    TILE_WHEAT:              (210, 190,  60),   # jaune doré
+    TILE_CARROT:             (230, 130,  30),   # orange carotte
+    TILE_PUMPKIN:            (220, 150,  20),   # orange citrouille
+    TILE_HOE:                (139,  90,  43),   # brun bois
+    TILE_BREAD:              (200, 160,  80),   # brun pain doré
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -498,6 +555,14 @@ TILE_BREAK_TIME = {
     TILE_FEET_WOOD_SWIFT: 0.3, TILE_FEET_IRON_SWIFT: 0.3, TILE_FEET_GOLD_SWIFT: 0.3,
     TILE_FEET_DIAMOND_SWIFT: 0.3, TILE_FEET_CRYSTAL_SWIFT: 0.3,
     TILE_BOOK: 0.3, TILE_PORTAL_STONE: 2.0,
+    # Farming
+    TILE_FARMLAND: 0.3,
+    TILE_WHEAT_1: 0.2, TILE_WHEAT_2: 0.2, TILE_WHEAT_3: 0.2,
+    TILE_CARROT_1: 0.2, TILE_CARROT_2: 0.2, TILE_CARROT_3: 0.2,
+    TILE_PUMPKIN_1: 0.2, TILE_PUMPKIN_2: 0.2, TILE_PUMPKIN_3: 0.2,
+    TILE_SEED_WHEAT: 0.3, TILE_SEED_CARROT: 0.3, TILE_SEED_PUMPKIN: 0.3,
+    TILE_WHEAT: 0.3, TILE_CARROT: 0.3, TILE_PUMPKIN: 0.3,
+    TILE_HOE: 0.3, TILE_BREAD: 0.3,
 }
 
 # Ensemble des tiles flèche (pour le système d'arc)
@@ -818,3 +883,45 @@ BOOK_TEXTS = [
         "Grimpez aux murs avec Haut.",
     ],
 ]
+
+# ── Farming ──────────────────────────────────────────────────────────────────
+# Mapping graine → tuile de culture stade 1
+SEED_TO_CROP = {
+    TILE_SEED_WHEAT:   TILE_WHEAT_1,
+    TILE_SEED_CARROT:  TILE_CARROT_1,
+    TILE_SEED_PUMPKIN: TILE_PUMPKIN_1,
+}
+
+# Progression des stades de culture : stade → stade suivant
+CROP_GROWTH = {
+    TILE_WHEAT_1:   TILE_WHEAT_2,
+    TILE_WHEAT_2:   TILE_WHEAT_3,
+    TILE_CARROT_1:  TILE_CARROT_2,
+    TILE_CARROT_2:  TILE_CARROT_3,
+    TILE_PUMPKIN_1: TILE_PUMPKIN_2,
+    TILE_PUMPKIN_2: TILE_PUMPKIN_3,
+}
+
+# Récolte : culture mature → [(item, min, max), ...]
+CROP_HARVEST = {
+    TILE_WHEAT_3:   [(TILE_WHEAT, 1, 2), (TILE_SEED_WHEAT, 1, 2)],
+    TILE_CARROT_3:  [(TILE_CARROT, 2, 3), (TILE_SEED_CARROT, 0, 1)],
+    TILE_PUMPKIN_3: [(TILE_PUMPKIN, 1, 1), (TILE_SEED_PUMPKIN, 1, 2)],
+}
+
+# Récolte immature : on récupère juste la graine
+CROP_SEED_BACK = {
+    TILE_WHEAT_1:   TILE_SEED_WHEAT,   TILE_WHEAT_2:   TILE_SEED_WHEAT,
+    TILE_CARROT_1:  TILE_SEED_CARROT,  TILE_CARROT_2:  TILE_SEED_CARROT,
+    TILE_PUMPKIN_1: TILE_SEED_PUMPKIN, TILE_PUMPKIN_2: TILE_SEED_PUMPKIN,
+}
+
+# Ensemble de toutes les tuiles de culture (pour détection collision non-solide)
+CROP_TILES = frozenset((
+    TILE_WHEAT_1, TILE_WHEAT_2, TILE_WHEAT_3,
+    TILE_CARROT_1, TILE_CARROT_2, TILE_CARROT_3,
+    TILE_PUMPKIN_1, TILE_PUMPKIN_2, TILE_PUMPKIN_3,
+))
+
+# Temps de croissance par tick (secondes entre chaque vérification)
+CROP_TICK_INTERVAL = 30.0

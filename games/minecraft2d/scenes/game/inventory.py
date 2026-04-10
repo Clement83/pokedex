@@ -3,9 +3,9 @@ Inventaire d'un joueur : outils, ressources et équipements.
 """
 from config import (
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
-    TOOL_BOW, TOOL_ROD, TOOL_TORCH,
+    TOOL_BOW, TOOL_ROD, TOOL_TORCH, TOOL_HOE,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET,
-    TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD,
+    TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD, TILE_HOE,
     TILE_TOOL_MAP, TOOL_MAT_TO_TILE, EQUIP_TO_TILE, ARMOR_TILE_MAP,
     TILE_NAMES, TOOL_NAMES, EQUIP_NAMES, MAT_NAMES,
 )
@@ -219,6 +219,8 @@ class Inventory:
             items.append(TOOL_ROD)
         if self.torch_count > 0:
             items.append(TOOL_TORCH)
+        if self._has_res(TILE_HOE):
+            items.append(TOOL_HOE)
         return items
 
     def ensure_valid_tool(self):

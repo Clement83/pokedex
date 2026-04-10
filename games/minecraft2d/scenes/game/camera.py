@@ -17,6 +17,11 @@ from config import (
     TILE_BODY_WOOD, TILE_BODY_IRON, TILE_BODY_GOLD, TILE_BODY_DIAMOND,
     TILE_FEET_WOOD, TILE_FEET_IRON, TILE_FEET_GOLD, TILE_FEET_DIAMOND,
     TILE_BOOK, TILE_PORTAL_STONE, TILE_PORTAL,
+    TILE_FARMLAND,
+    TILE_WHEAT_1, TILE_WHEAT_2, TILE_WHEAT_3,
+    TILE_CARROT_1, TILE_CARROT_2, TILE_CARROT_3,
+    TILE_PUMPKIN_1, TILE_PUMPKIN_2, TILE_PUMPKIN_3,
+    TILE_HOE, TILE_BREAD,
     BIOME_SKY_COLORS,
 )
 
@@ -191,6 +196,106 @@ def _draw_portal_tile(surf, x, y, dc, dr):
     surf.fill((220, 180, 255), (x + 7, y + 7, 2, 2))
 
 
+# ── Farming tiles pixel-art 16×16 ────────────────────────────────────────────
+
+def _draw_farmland_tile(surf, x, y):
+    """Terre labourée : brun avec lignes de sillons."""
+    surf.fill((110, 70, 30), (x, y, 16, 16))
+    # Sillons horizontaux
+    for ry in (3, 7, 11):
+        surf.fill((90, 55, 20), (x + 1, y + ry, 14, 1))
+    # Grains de terre clairs
+    surf.fill((130, 85, 40), (x + 2, y + 5, 2, 1))
+    surf.fill((130, 85, 40), (x + 9, y + 9, 2, 1))
+    surf.fill((130, 85, 40), (x + 5, y + 13, 2, 1))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+
+
+def _draw_crop_tile(surf, x, y, stage, crop_type):
+    """Dessine une culture à son stade de croissance. crop_type: 0=blé, 1=carotte, 2=citrouille."""
+    # Fond transparent (ciel)
+    # Le fond sera le biome_color, on dessine juste la plante par-dessus
+    ts = 16
+    if stage == 1:
+        # Stade 1 : petites pousses vertes
+        green = (80, 160, 40)
+        surf.fill(green, (x + 4, y + 12, 2, 4))
+        surf.fill(green, (x + 10, y + 13, 2, 3))
+        surf.fill((60, 140, 30), (x + 7, y + 11, 1, 5))
+    elif stage == 2:
+        # Stade 2 : tiges moyennes
+        green = (100, 170, 50)
+        dark = (70, 140, 35)
+        surf.fill(dark, (x + 3, y + 8, 2, 8))
+        surf.fill(green, (x + 2, y + 7, 3, 2))
+        surf.fill(dark, (x + 7, y + 9, 2, 7))
+        surf.fill(green, (x + 6, y + 8, 3, 2))
+        surf.fill(dark, (x + 11, y + 10, 2, 6))
+        surf.fill(green, (x + 10, y + 9, 3, 2))
+    else:
+        # Stade 3 : mature
+        if crop_type == 0:
+            # Blé doré
+            stalk = (160, 140, 40)
+            head = (210, 190, 60)
+            surf.fill(stalk, (x + 2, y + 6, 2, 10))
+            surf.fill(stalk, (x + 6, y + 5, 2, 11))
+            surf.fill(stalk, (x + 10, y + 6, 2, 10))
+            surf.fill(head, (x + 1, y + 3, 4, 4))
+            surf.fill(head, (x + 5, y + 2, 4, 4))
+            surf.fill(head, (x + 9, y + 3, 4, 4))
+            surf.fill((230, 210, 80), (x + 6, y + 2, 2, 2))
+        elif crop_type == 1:
+            # Carotte : feuilles vertes + pointe orange en bas
+            green = (60, 150, 40)
+            surf.fill(green, (x + 3, y + 4, 2, 6))
+            surf.fill(green, (x + 7, y + 3, 2, 7))
+            surf.fill(green, (x + 11, y + 5, 2, 5))
+            surf.fill(green, (x + 2, y + 3, 4, 2))
+            surf.fill(green, (x + 6, y + 2, 4, 2))
+            surf.fill(green, (x + 10, y + 4, 4, 2))
+            # Carottes visibles
+            surf.fill((230, 130, 30), (x + 3, y + 11, 3, 5))
+            surf.fill((230, 130, 30), (x + 8, y + 12, 3, 4))
+            surf.fill((240, 150, 40), (x + 4, y + 11, 1, 2))
+        else:
+            # Citrouille : tige verte + gros fruit orange
+            green = (60, 140, 30)
+            surf.fill(green, (x + 7, y + 3, 2, 5))
+            surf.fill(green, (x + 5, y + 2, 6, 2))
+            # Citrouille
+            surf.fill((220, 150, 20), (x + 3, y + 8, 10, 7))
+            surf.fill((200, 130, 15), (x + 4, y + 9, 8, 5))
+            # Lignes de côtes
+            surf.fill((180, 120, 10), (x + 7, y + 8, 2, 7))
+            surf.fill((240, 170, 30), (x + 5, y + 10, 2, 2))
+            # Tige
+            surf.fill((100, 80, 20), (x + 7, y + 7, 2, 2))
+
+
+def _draw_hoe_tile(surf, x, y):
+    """Houe pixel-art : manche + lame."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Manche diagonal
+    for i in range(8):
+        surf.fill(_HANDLE, (x + 3 + i, y + 12 - i, 2, 2))
+    # Lame (tête de houe)
+    surf.fill((150, 150, 160), (x + 9, y + 2, 5, 3))
+    surf.fill((130, 130, 140), (x + 10, y + 5, 3, 1))
+
+
+def _draw_bread_tile(surf, x, y):
+    """Pain pixel-art."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Miche de pain
+    surf.fill((200, 160, 80), (x + 3, y + 7, 10, 5))
+    surf.fill((180, 140, 60), (x + 4, y + 6, 8, 2))
+    surf.fill((220, 180, 100), (x + 5, y + 8, 6, 2))
+    surf.fill((170, 130, 50), (x + 3, y + 12, 10, 1))
+
+
 # ── Dessin d'une seule tuile (partagé render + update_tile) ──────────────────
 
 def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
@@ -239,8 +344,27 @@ def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
         _draw_portal_stone_tile(surf, x, y, dc, dr)
     elif tile == TILE_PORTAL:
         _draw_portal_tile(surf, x, y, dc, dr)
+    # ── Farming ──────────────────────────────────────────────────────────
+    elif tile == TILE_FARMLAND:
+        _draw_farmland_tile(surf, x, y)
+    elif tile in (TILE_WHEAT_1, TILE_WHEAT_2, TILE_WHEAT_3):
+        surf.fill(biome_color, (x, y, ts, ts))
+        stage = 1 + (tile - TILE_WHEAT_1)
+        _draw_crop_tile(surf, x, y, stage, 0)
+    elif tile in (TILE_CARROT_1, TILE_CARROT_2, TILE_CARROT_3):
+        surf.fill(biome_color, (x, y, ts, ts))
+        stage = 1 + (tile - TILE_CARROT_1)
+        _draw_crop_tile(surf, x, y, stage, 1)
+    elif tile in (TILE_PUMPKIN_1, TILE_PUMPKIN_2, TILE_PUMPKIN_3):
+        surf.fill(biome_color, (x, y, ts, ts))
+        stage = 1 + (tile - TILE_PUMPKIN_1)
+        _draw_crop_tile(surf, x, y, stage, 2)
+    elif tile == TILE_HOE:
+        _draw_hoe_tile(surf, x, y)
+    elif tile == TILE_BREAD:
+        _draw_bread_tile(surf, x, y)
     else:
-        color = biome_color if tile == TILE_AIR else TILE_COLORS[tile]
+        color = biome_color if tile == TILE_AIR else TILE_COLORS.get(tile, (200, 50, 200))
         surf.fill(color, (x, y, ts, ts))
         if tile != TILE_AIR:
             pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)

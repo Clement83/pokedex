@@ -10,7 +10,7 @@ import pygame
 
 from config import (
     TILE_WOOD, TILE_STONE, TILE_COAL, TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE,
-    TILE_TORCH, TILE_ARROW, TILE_SILK,
+    TILE_TORCH, TILE_ARROW, TILE_SILK, TILE_GRASS,
     TILE_FLAG, TILE_CRAFT, TILE_ROD,
     TILE_BONE, TILE_SLIME_BALL, TILE_FANG, TILE_CRYSTAL, TILE_FEATHER, TILE_VENOM, TILE_MAGMA,
     TILE_ARROW_FIRE, TILE_ARROW_POISON, TILE_ARROW_EXPLOSIVE,
@@ -24,6 +24,7 @@ from config import (
     TILE_BODY_DIAMOND_FORCE, TILE_BODY_CRYSTAL_FORCE,
     TILE_FEET_WOOD_SWIFT, TILE_FEET_IRON_SWIFT, TILE_FEET_GOLD_SWIFT,
     TILE_FEET_DIAMOND_SWIFT, TILE_FEET_CRYSTAL_SWIFT,
+    TILE_HOE, TILE_WHEAT, TILE_BREAD, TILE_SEED_WHEAT, TILE_PUMPKIN,
     EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_BOW,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND, MAT_CRYSTAL,
     EQUIP_NAMES, TILE_NAMES, TOOL_NAMES,
@@ -59,6 +60,9 @@ CRAFT_RECIPES = [
     (("__tiles__", TILE_ROD, 1),     {TILE_WOOD: 2, TILE_SILK: 1},        "Bois x2 Fil x1",     1),
     (("__tiles__", TILE_FLAG, 1),    {TILE_WOOD: 1, TILE_SILK: 1},        "Bois x1 Fil x1",     1),
     (("__tiles__", TILE_CRAFT, 1),   {TILE_WOOD: 4},                      "Bois x4",             1),
+    (("__tiles__", TILE_HOE, 1),     {TILE_WOOD: 2, TILE_STONE: 1},        "Bois x2 Pierre x1",  1),
+    (("__tiles__", TILE_SEED_WHEAT, 4), {TILE_GRASS: 2},                     "Herbe x2",           1),
+    (("__tiles__", TILE_BREAD, 2),   {TILE_WHEAT: 3},                        "Blé x3",             1),
     (("__upgrade__", 2),         {TILE_WOOD: 5, TILE_IRON_ORE: 3},        "Bois x5 Fer x3",     1),
     # ── Tier 2 : Table Fer (manche bois + tête fer, armure fer + fil) ───────
     ((EQUIP_PICKAXE, MAT_IRON),  {TILE_WOOD: 1, TILE_IRON_ORE: 2},        "Bois x1 Fer x2",     2),

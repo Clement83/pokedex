@@ -25,7 +25,7 @@ from scenes.game.sky         import sky_color, night_alpha, is_night, draw_night
 from scenes.game.renderer_world  import draw_world, draw_cursor, draw_flag_in_world
 from scenes.game.renderer_player import draw_player, draw_hearts, draw_compass, _HEART_W, _HEART_GAP
 from scenes.game.renderer_hud    import draw_hotbar, HOTBAR_TOTAL, HOTBAR_SLOT_H as _HOTBAR_SLOT_H
-from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch, handle_consumable, handle_book
+from scenes.game.actions     import handle_sword, handle_flag, handle_block_actions, handle_bow, handle_rod, handle_torch, handle_consumable, handle_book, handle_hoe
 from scenes.game.craft        import CraftMenu
 from scenes.game.trade        import TradeMenu
 from scenes.game.projectiles  import ProjectileManager
@@ -125,6 +125,7 @@ def run(screen, joysticks, world_id, seed):
     proj_mgr = ProjectileManager()
     lava_dmg_cd = [0.0, 0.0]   # cooldown dégâts lave par joueur (1 PV/s)
     _liquid_cd = [0.0]         # tick physique liquides (lave/eau future)
+    _crop_cd   = [0.0]         # tick croissance des cultures
 
     # ── Portail & Arène Boss ─────────────────────────────────────────────────
     _boss_arena = {
@@ -514,7 +515,10 @@ def run(screen, joysticks, world_id, seed):
             handle_rod(player, world, loot_notifs, cur_mine, prev_mine[i], cur_mod)
             handle_torch(player, world, chunks, players, loot_notifs,
                          cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, _queue)
-            if in_reach(player, cur_col, cur_row) and player.inventory.tool not in (TOOL_SWORD, TOOL_TORCH):
+            if in_reach(player, cur_col, cur_row):
+                handle_hoe(player, world, chunks, loot_notifs,
+                           cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, _queue)
+            if in_reach(player, cur_col, cur_row) and player.inventory.tool not in (TOOL_SWORD, TOOL_TORCH, TOOL_HOE):
                 handle_block_actions(player, i, world, chunks, mob_mgr, players,
                     break_infos, mine_tick_cd, loot_notifs,
                     cur_col, cur_row, cur_mine, prev_mine[i], cur_mod, dt, _queue)
@@ -636,6 +640,28 @@ def run(screen, joysticks, world_id, seed):
                         _queue(_col, _row, TILE_AIR)
                         _queue(_nc, _nr, TILE_OBSIDIAN)
                         break
+
+        # ── Tick croissance des cultures ─────────────────────────────────
+        _crop_cd[0] -= dt
+        if _crop_cd[0] <= 0:
+            _crop_cd[0] = CROP_TICK_INTERVAL
+            for (_cc, _cr), _ct in list(world.mods.items()):
+                _next = CROP_GROWTH.get(_ct)
+                if _next is None:
+                    continue
+                # Vérifier eau à proximité (4 tiles autour de la terre labourée)
+                _water_ok = False
+                for _ddc in range(-4, 5):
+                    for _ddr in range(-4, 5):
+                        if world.get(_cc + _ddc, _cr + 1 + _ddr) == TILE_WATER:
+                            _water_ok = True
+                            break
+                    if _water_ok:
+                        break
+                if _water_ok:
+                    world.set(_cc, _cr, _next)
+                    chunks.update_tile(_cc, _cr, _next)
+                    _queue(_cc, _cr, _next)
 
         dx_d = abs(players[0].px() - players[1].px()); dy_d = abs(players[0].py() - players[1].py())
         pdist = max(dx_d, dy_d)

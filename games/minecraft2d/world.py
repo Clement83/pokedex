@@ -334,7 +334,8 @@ class World:
                             TILE_SILK, TILE_TORCH, TILE_ARROW, TILE_FISH,
                             TILE_EGG, TILE_ROD, TILE_FLAG,
                             TILE_BONE, TILE_FEATHER, TILE_VENOM, TILE_CRYSTAL,
-                            TILE_FANG, TILE_SLIME_BALL)
+                            TILE_FANG, TILE_SLIME_BALL,
+                            TILE_SEED_WHEAT, TILE_SEED_CARROT, TILE_SEED_PUMPKIN)
         r = random.random
         results = []
 
@@ -357,6 +358,10 @@ class World:
             if r() < 0.10: results.append((TILE_FEATHER,  random.randint(1, 2)))
             if r() < 0.08: results.append((TILE_BONE,     random.randint(1, 2)))
             if r() < 0.05: results.append((TILE_SLIME_BALL, 1))
+            # Graines (farming)
+            if r() < 0.15: results.append((TILE_SEED_WHEAT,   random.randint(2, 4)))
+            if r() < 0.10: results.append((TILE_SEED_CARROT,  random.randint(1, 3)))
+            if r() < 0.08: results.append((TILE_SEED_PUMPKIN, random.randint(1, 2)))
             # Équipement bois très rare (5 %)
             if r() < 0.05:
                 eslot = random.choice([EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_BOW,

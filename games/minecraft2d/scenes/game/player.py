@@ -5,6 +5,7 @@ from config import (
     TILE_SIZE, PLAYER_W, PLAYER_H, ROWS,
     GRAVITY, MAX_FALL_SPEED, JUMP_VEL, WALK_SPEED, CLIMB_SPEED,
     REACH_RADIUS, TILE_AIR, TILE_ICE, TILE_LAVA, TILE_WATER, TILE_PORTAL,
+    CROP_TILES,
 )
 from scenes.game.inventory import Inventory
 
@@ -48,7 +49,7 @@ def solid(world, col, row):
     if row < 0 or row >= ROWS:
         return True
     t = world.get(col, row)
-    return t != TILE_AIR and t != TILE_LAVA and t != TILE_WATER and t != TILE_PORTAL
+    return t != TILE_AIR and t != TILE_LAVA and t != TILE_WATER and t != TILE_PORTAL and t not in CROP_TILES
 
 
 def in_lava(player, world):

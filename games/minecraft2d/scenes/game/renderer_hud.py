@@ -7,12 +7,12 @@ from config import (
     HOTBAR_Y,
     TILE_COLORS, TILE_NAMES,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_CRAFT,
-    TOOL_BOW, TOOL_ROD, TOOL_TORCH,
+    TOOL_BOW, TOOL_ROD, TOOL_TORCH, TOOL_HOE,
     TOOL_NAMES,
     EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_SWORD, EQUIP_BOW,
     EQUIP_NAMES,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_COLORS, MAT_NAMES,
-    TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD,
+    TILE_AIR, TILE_TORCH, TILE_FLAG, TILE_CRAFT, TILE_ROD, TILE_HOE,
     TILE_TOOL_MAP, ARMOR_TILE_MAP,
 )
 from scenes.game.inventory import Inventory
@@ -230,6 +230,23 @@ def draw_tool_icon(screen, tool, sx, sy, sw, sh, mat=None):
         R(screen, FLAME2, (ox + 5, oy + 2,  1, 3))
         R(screen, FLAME2, (ox + 8, oy + 2,  1, 3))
 
+    elif tool == TOOL_HOE:
+        # Houe pixel-art 14×14 px (manche + lame)
+        HNDL  = (155, 100, 42)
+        HSHAD = (100,  62, 20)
+        STEEL = (150, 150, 160)
+        SHINE = (195, 195, 210)
+        ox = sx + (sw - 14) // 2
+        oy = sy + (sh - 14) // 2
+        # Manche diagonal
+        for i in range(7):
+            R(screen, HNDL, (ox + 1 + i, oy + 12 - i, 2, 2))
+        R(screen, HSHAD, (ox + 1, oy + 13, 2, 1))
+        # Lame
+        R(screen, STEEL, (ox + 7, oy + 2, 6, 3))
+        R(screen, SHINE, (ox + 7, oy + 2, 6, 1))
+        R(screen, STEEL, (ox + 9, oy + 5, 3, 1))
+
 def draw_equip_icon(screen, eslot, mat_color, sx, sy, sw, sh):
     """Icône pixel-art de l'équipement centrée dans le slot (sw×sh)."""
     c    = mat_color if mat_color else (80, 80, 80)
@@ -339,6 +356,8 @@ def draw_hotbar(screen, inventory, x_offset, color, font):
                     draw_tool_icon(screen, TOOL_ROD, sx, y, sw, sh)
                 elif tile == TILE_TORCH:
                     draw_tool_icon(screen, TOOL_TORCH, sx, y, sw, sh)
+                elif tile == TILE_HOE:
+                    draw_tool_icon(screen, TOOL_HOE, sx, y, sw, sh)
                 elif tile in ARMOR_TILE_MAP:
                     eslot, mat = ARMOR_TILE_MAP[tile]
                     draw_equip_icon(screen, eslot, MAT_COLORS[mat], sx, y, sw, sh)

@@ -633,13 +633,16 @@ Chaque joueur peut avoir **un seul familier** à la fois. Apprivoisement avec **
 - Sauvegardé en DB (type + HP + timer oeuf)
 - Coeur rouge pixel-art affiché au-dessus du familier
 
-### 9.12 Système de farming ⭐
+### 9.12 Système de farming ⭐ ✅
 **Impact : SURVIE**
 
-- Planter des graines sur de la terre
-- Cultiver : Blé, Carottes, Citrouilles
-- Nécessite de l'eau à proximité
-- Récolte pour nourriture ou craft
+- Houe craftable (Bois x2 + Pierre x1) pour labourer terre/herbe → terre labourée
+- Planter des graines sur terre labourée (nécessite eau à 4 tiles)
+- Cultiver : Blé, Carottes, Citrouilles — 3 stades de croissance (~30s chacun)
+- Graines de blé : drop en minant l'herbe (30%) ou craft (Herbe x2 → Graines x4)
+- Graines de carotte/citrouille : coffres de surface
+- Récolte mature : produits + graines bonus. Récolte immature : graine récupérée
+- Craft : Pain x2 (Blé x3, Tier 1)
 
 ---
 
@@ -690,7 +693,7 @@ Chaque joueur peut avoir **un seul familier** à la fois. Apprivoisement avec **
 | # | Feature | Type | Complexité |
 |---|---|---|---|
 | 16 | Potions & alambic (dont Respiration aquatique) | Gameplay | Élevée |
-| 17 | Farming (nécessite eau) | Survie | Moyenne |
+| 17 | ~~Farming (nécessite eau)~~ ✅ | Survie | Moyenne |
 | 18 | Villages PNJ | Monde | Très élevée |
 | 19 | Portails/dimensions | Monde | Très élevée |
 | 20 | Enchantements | Progression | Élevée |
@@ -716,6 +719,7 @@ Chaque joueur peut avoir **un seul familier** à la fois. Apprivoisement avec **
 - Placement de blocs
 - Système de drapeau/respawn
 - Sauvegarde monde/inventaire
+- **Farming** : 3 cultures (Blé, Carotte, Citrouille), houe, terre labourée, croissance avec eau, craft pain
 
 ### ❌ Pas encore implémenté (du design original)
 - Boss Liche
@@ -731,7 +735,7 @@ Chaque joueur peut avoir **un seul familier** à la fois. Apprivoisement avec **
 - ~~Biomes variés~~ ✅ Implémenté (Forêt, Désert, Glace)
 - Effets de statut (poison, brûlure, noyade, etc.)
 - Potions (dont Respiration aquatique)
-- Farming (nécessite eau à proximité)
+- ~~Farming (nécessite eau à proximité)~~ ✅
 - PNJ marchands
 - Animaux domesticables
 - Particules visuelles

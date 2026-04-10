@@ -8,9 +8,12 @@ import sounds as _sounds
 from config import (
     TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_FISH, TILE_TORCH, TILE_SIZE, REACH_RADIUS,
     TILE_HEART_CRYSTAL, TILE_TOTEM, TILE_BOOK, TILE_PORTAL_STONE, TILE_PORTAL, TILE_OBSIDIAN,
+    TILE_DIRT, TILE_GRASS, TILE_FARMLAND,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_BOW, TOOL_ROD, TOOL_TORCH,
+    TOOL_HOE,
     TILE_BREAK_TIME, TILE_PICKAXE_TIER, MAT_TIER,
     EQUIP_NAMES, PLAYER_W, PLAYER_H, ROWS,
+    SEED_TO_CROP, CROP_HARVEST, CROP_SEED_BACK, CROP_TILES,
 )
 from scenes.game.player import in_reach, eject_from_blocks
 
@@ -209,6 +212,24 @@ def handle_torch(player, world, chunks, all_players, loot_notifs,
     return True
 
 
+def handle_hoe(player, world, chunks, loot_notifs,
+               cur_col, cur_row, cur_mine, prev_mine, cur_mod, queue_block_fn):
+    """Laboure la terre/herbe en terre labourée avec la houe."""
+    if player.inventory.tool != TOOL_HOE:
+        return False
+    if player._action_cd > 0 or not cur_mine or prev_mine or cur_mod:
+        return False
+    tile_at = world.get(cur_col, cur_row)
+    if tile_at not in (TILE_DIRT, TILE_GRASS):
+        return False
+    world.set(cur_col, cur_row, TILE_FARMLAND)
+    chunks.update_tile(cur_col, cur_row, TILE_FARMLAND)
+    queue_block_fn(cur_col, cur_row, TILE_FARMLAND)
+    player._action_cd = 0.3
+    _sounds.place()
+    return True
+
+
 def handle_block_actions(
     player, i, world, chunks, mob_mgr, all_players,
     break_infos, mine_tick_cd, loot_notifs,
@@ -230,6 +251,34 @@ def handle_block_actions(
         if tile_at == TILE_AIR:
             selected = player.inventory.selected_tile()
             if selected != TILE_AIR:
+                # Graines → planter sur terre labourée (le bloc en-dessous doit être FARMLAND)
+                crop_tile = SEED_TO_CROP.get(selected)
+                if crop_tile:
+                    below = world.get(cur_col, cur_row + 1)
+                    if below != TILE_FARMLAND:
+                        loot_notifs.append(["Terre labourée requise !", 1.0, (180, 140, 60)])
+                        player._action_cd = 0.3
+                        return
+                    # Vérifier eau à proximité (4 tiles)
+                    _has_water = False
+                    for _dc in range(-4, 5):
+                        for _dr in range(-4, 5):
+                            if world.get(cur_col + _dc, cur_row + 1 + _dr) == TILE_WATER:
+                                _has_water = True
+                                break
+                        if _has_water:
+                            break
+                    if not _has_water:
+                        loot_notifs.append(["Eau requise à proximité !", 1.0, (60, 140, 220)])
+                        player._action_cd = 0.3
+                        return
+                    world.set(cur_col, cur_row, crop_tile)
+                    chunks.update_tile(cur_col, cur_row, crop_tile)
+                    player.inventory.consume()
+                    player._action_cd = 0.3
+                    queue_block_fn(cur_col, cur_row, crop_tile)
+                    _sounds.place()
+                    return
                 occupied = any(
                     int(p.x + PLAYER_W / TILE_SIZE / 2) == cur_col and
                     int(p.y + PLAYER_H / TILE_SIZE / 2) == cur_row
@@ -273,6 +322,35 @@ def handle_block_actions(
             break_infos[i]     = (cur_col, cur_row, 0.0)
         return
 
+    # ── Récolte de cultures (main ou pioche, instantanée) ───────────────
+    if tile_at in CROP_TILES and cur_mine and not cur_mod:
+        world.set(cur_col, cur_row, TILE_AIR)
+        chunks.update_tile(cur_col, cur_row, TILE_AIR)
+        queue_block_fn(cur_col, cur_row, TILE_AIR)
+        # Récolte mature → produits + graines
+        harvest = CROP_HARVEST.get(tile_at)
+        if harvest:
+            from config import TILE_NAMES
+            for item, mn, mx in harvest:
+                count = random.randint(mn, mx)
+                for _ in range(count):
+                    player.inventory.add(item)
+                if count > 0:
+                    name = TILE_NAMES.get(item, "?")
+                    loot_notifs.append([f"Récolte : {name} x{count}", 2.0, (120, 200, 60)])
+        else:
+            # Culture immature → rend la graine
+            seed = CROP_SEED_BACK.get(tile_at)
+            if seed:
+                player.inventory.add(seed)
+                from config import TILE_NAMES
+                loot_notifs.append([f"Récupéré : {TILE_NAMES.get(seed, '?')}", 1.5, (180, 180, 100)])
+        break_infos[i] = None
+        player._break_time = 0.0
+        player._action_cd = 0.2
+        _sounds.mine_done()
+        return
+
     # ── Minage (pioche ou mains) ─────────────────────────────────────────
     _UNMINABLE = (TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_PORTAL)
     if tile_at not in _UNMINABLE and tool in (TOOL_PICKAXE, TOOL_HAND):
@@ -303,6 +381,11 @@ def handle_block_actions(
                 if player._break_time >= req_time:
                     if world._cabin_tile(cur_col, cur_row) != TILE_AIR:
                         mob_mgr.trigger_cabin_break(cur_col)
+                    # Minage d'herbe → chance de drop graines de blé
+                    if tile_at == TILE_GRASS and random.random() < 0.30:
+                        from config import TILE_SEED_WHEAT, TILE_NAMES
+                        player.inventory.add(TILE_SEED_WHEAT)
+                        loot_notifs.append([f"Trouvé : {TILE_NAMES[TILE_SEED_WHEAT]}", 1.5, (160, 180, 60)])
                     player.inventory.add(tile_at)
                     world.set(cur_col, cur_row, TILE_AIR)
                     chunks.update_tile(cur_col, cur_row, TILE_AIR)
