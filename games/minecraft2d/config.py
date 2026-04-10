@@ -125,9 +125,11 @@ TILE_CARROT              = 96   # carotte récoltée (nourriture)
 TILE_PUMPKIN             = 97   # citrouille récoltée (nourriture)
 TILE_HOE                 = 98   # houe (outil, item inventaire)
 TILE_BREAD               = 99   # pain (nourriture)
+TILE_BUCKET_EMPTY        = 100  # seau vide
+TILE_BUCKET_WATER        = 101  # seau d'eau (plein)
 
 # Tiles qui sont des items (non générés naturellement)
-TILE_ITEMS = frozenset(range(19, 100))
+TILE_ITEMS = frozenset(range(19, 102))
 
 # Noms affichés dans l'inventaire
 TILE_NAMES = {
@@ -234,6 +236,8 @@ TILE_NAMES = {
     TILE_PUMPKIN:            "Citrouille",
     TILE_HOE:                "Houe",
     TILE_BREAD:              "Pain",
+    TILE_BUCKET_EMPTY:       "Seau vide",
+    TILE_BUCKET_WATER:       "Seau d'eau",
 }
 
 # ── Outils ────────────────────────────────────────────────────────────────────
@@ -514,6 +518,8 @@ TILE_COLORS = {
     TILE_PUMPKIN:            (220, 150,  20),   # orange citrouille
     TILE_HOE:                (139,  90,  43),   # brun bois
     TILE_BREAD:              (200, 160,  80),   # brun pain doré
+    TILE_BUCKET_EMPTY:       (160, 160, 170),   # gris métal
+    TILE_BUCKET_WATER:       ( 60, 120, 200),   # bleu eau
 }
 
 # Temps en secondes pour casser un bloc (appui continu)
@@ -563,6 +569,7 @@ TILE_BREAK_TIME = {
     TILE_SEED_WHEAT: 0.3, TILE_SEED_CARROT: 0.3, TILE_SEED_PUMPKIN: 0.3,
     TILE_WHEAT: 0.3, TILE_CARROT: 0.3, TILE_PUMPKIN: 0.3,
     TILE_HOE: 0.3, TILE_BREAD: 0.3,
+    TILE_BUCKET_EMPTY: 0.3, TILE_BUCKET_WATER: 0.3,
 }
 
 # Ensemble des tiles flèche (pour le système d'arc)

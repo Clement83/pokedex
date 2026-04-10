@@ -22,6 +22,7 @@ from config import (
     TILE_CARROT_1, TILE_CARROT_2, TILE_CARROT_3,
     TILE_PUMPKIN_1, TILE_PUMPKIN_2, TILE_PUMPKIN_3,
     TILE_HOE, TILE_BREAD,
+    TILE_BUCKET_EMPTY, TILE_BUCKET_WATER,
     BIOME_SKY_COLORS,
 )
 
@@ -296,6 +297,28 @@ def _draw_bread_tile(surf, x, y):
     surf.fill((170, 130, 50), (x + 3, y + 12, 10, 1))
 
 
+def _draw_bucket_tile(surf, x, y, full):
+    """Seau pixel-art 16×16. full=True pour seau d'eau."""
+    surf.fill(_BG_ITEM, (x, y, 16, 16))
+    pygame.draw.rect(surf, (0, 0, 0), (x, y, 16, 16), 1)
+    # Corps du seau (trapèze)
+    METAL = (160, 160, 175)
+    DARK  = (110, 110, 125)
+    SHINE = (200, 200, 215)
+    surf.fill(METAL, (x + 4, y + 5, 8, 8))
+    surf.fill(METAL, (x + 3, y + 7, 10, 5))
+    surf.fill(DARK,  (x + 3, y + 12, 10, 1))
+    surf.fill(SHINE, (x + 4, y + 5, 8, 1))
+    # Anse
+    surf.fill(DARK, (x + 5, y + 3, 1, 3))
+    surf.fill(DARK, (x + 10, y + 3, 1, 3))
+    surf.fill(DARK, (x + 6, y + 2, 4, 1))
+    # Eau si plein
+    if full:
+        surf.fill((40, 90, 200), (x + 5, y + 7, 6, 4))
+        surf.fill((60, 120, 220), (x + 5, y + 7, 6, 1))
+
+
 # ── Dessin d'une seule tuile (partagé render + update_tile) ──────────────────
 
 def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
@@ -363,6 +386,10 @@ def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
         _draw_hoe_tile(surf, x, y)
     elif tile == TILE_BREAD:
         _draw_bread_tile(surf, x, y)
+    elif tile == TILE_BUCKET_EMPTY:
+        _draw_bucket_tile(surf, x, y, False)
+    elif tile == TILE_BUCKET_WATER:
+        _draw_bucket_tile(surf, x, y, True)
     else:
         color = biome_color if tile == TILE_AIR else TILE_COLORS.get(tile, (200, 50, 200))
         surf.fill(color, (x, y, ts, ts))

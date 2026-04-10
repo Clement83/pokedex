@@ -25,6 +25,7 @@ from config import (
     TILE_FEET_WOOD_SWIFT, TILE_FEET_IRON_SWIFT, TILE_FEET_GOLD_SWIFT,
     TILE_FEET_DIAMOND_SWIFT, TILE_FEET_CRYSTAL_SWIFT,
     TILE_HOE, TILE_WHEAT, TILE_BREAD, TILE_SEED_WHEAT, TILE_PUMPKIN,
+    TILE_BUCKET_EMPTY,
     EQUIP_SWORD, EQUIP_PICKAXE, EQUIP_HEAD, EQUIP_BODY, EQUIP_FEET, EQUIP_BOW,
     MAT_WOOD, MAT_IRON, MAT_GOLD, MAT_DIAMOND, MAT_CRYSTAL,
     EQUIP_NAMES, TILE_NAMES, TOOL_NAMES,
@@ -65,6 +66,7 @@ CRAFT_RECIPES = [
     (("__tiles__", TILE_BREAD, 2),   {TILE_WHEAT: 3},                        "Blé x3",             1),
     (("__upgrade__", 2),         {TILE_WOOD: 5, TILE_IRON_ORE: 3},        "Bois x5 Fer x3",     1),
     # ── Tier 2 : Table Fer (manche bois + tête fer, armure fer + fil) ───────
+    (("__tiles__", TILE_BUCKET_EMPTY, 1), {TILE_IRON_ORE: 3},             "Fer x3",              2),
     ((EQUIP_PICKAXE, MAT_IRON),  {TILE_WOOD: 1, TILE_IRON_ORE: 2},        "Bois x1 Fer x2",     2),
     ((EQUIP_SWORD,   MAT_IRON),  {TILE_WOOD: 1, TILE_IRON_ORE: 2},        "Bois x1 Fer x2",     2),
     ((EQUIP_BOW,     MAT_IRON),  {TILE_WOOD: 1, TILE_IRON_ORE: 1, TILE_SILK: 1}, "Bois x1 Fer x1 Fil x1", 2),

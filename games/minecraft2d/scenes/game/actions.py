@@ -9,6 +9,7 @@ from config import (
     TILE_AIR, TILE_CHEST, TILE_LAVA, TILE_WATER, TILE_FISH, TILE_TORCH, TILE_SIZE, REACH_RADIUS,
     TILE_HEART_CRYSTAL, TILE_TOTEM, TILE_BOOK, TILE_PORTAL_STONE, TILE_PORTAL, TILE_OBSIDIAN,
     TILE_DIRT, TILE_GRASS, TILE_FARMLAND,
+    TILE_BUCKET_EMPTY, TILE_BUCKET_WATER,
     TOOL_HAND, TOOL_PICKAXE, TOOL_PLACER, TOOL_SWORD, TOOL_FLAG, TOOL_BOW, TOOL_ROD, TOOL_TORCH,
     TOOL_HOE,
     TILE_BREAK_TIME, TILE_PICKAXE_TIER, MAT_TIER,
@@ -245,6 +246,47 @@ def handle_block_actions(
 
     tile_at  = world.get(cur_col, cur_row)
     tool     = player.inventory.tool
+
+    # ── Seau : ramasser / poser de l'eau ─────────────────────────────────
+    if tool == TOOL_PLACER and cur_mine and not prev_mine and not cur_mod:
+        selected = player.inventory.selected_tile()
+        if selected == TILE_BUCKET_EMPTY and tile_at == TILE_WATER:
+            world.set(cur_col, cur_row, TILE_AIR)
+            chunks.update_tile(cur_col, cur_row, TILE_AIR)
+            queue_block_fn(cur_col, cur_row, TILE_AIR)
+            # Remplacer seau vide → seau plein dans l'inventaire
+            inv = player.inventory
+            idx = inv.resource_idx
+            t, c = inv.resources[idx]
+            if c == 1:
+                inv.resources[idx] = (TILE_BUCKET_WATER, 1)
+            else:
+                inv.resources[idx] = (t, c - 1)
+                inv.add(TILE_BUCKET_WATER)
+            player._action_cd = 0.3
+            _sounds.place()
+            return
+        if selected == TILE_BUCKET_WATER and tile_at == TILE_AIR:
+            world.set(cur_col, cur_row, TILE_WATER)
+            chunks.update_tile(cur_col, cur_row, TILE_WATER)
+            queue_block_fn(cur_col, cur_row, TILE_WATER)
+            # Activer les liquides voisins
+            for _ac, _ar in ((cur_col, cur_row - 1), (cur_col, cur_row + 1),
+                             (cur_col - 1, cur_row), (cur_col + 1, cur_row)):
+                if (_ac, _ar) not in world.mods and world.get(_ac, _ar) in (TILE_LAVA, TILE_WATER):
+                    world.mods[(_ac, _ar)] = world.get(_ac, _ar)
+            # Remplacer seau plein → seau vide
+            inv = player.inventory
+            idx = inv.resource_idx
+            t, c = inv.resources[idx]
+            if c == 1:
+                inv.resources[idx] = (TILE_BUCKET_EMPTY, 1)
+            else:
+                inv.resources[idx] = (t, c - 1)
+                inv.add(TILE_BUCKET_EMPTY)
+            player._action_cd = 0.3
+            _sounds.place()
+            return
 
     # ── Placement ──────────────────────────────────────────────────────────
     if tool == TOOL_PLACER and cur_mine and not prev_mine and not cur_mod:
