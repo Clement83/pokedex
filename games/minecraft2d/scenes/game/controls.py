@@ -103,9 +103,14 @@ def get_cursor(player, dx, dy, world=None):
         row = int(player.y) - 1
     else:
         feet_row = int(player.y + ph - 0.01)
+        head_row = feet_row - 1
         if world is None or world.get(col, feet_row) != TILE_AIR:
-            row = feet_row
+            row = feet_row              # bloc solide aux pieds → miner
+        elif world.get(col, head_row) != TILE_AIR:
+            row = head_row              # bloc solide à la tête → miner surplomb
+        elif world.get(col, feet_row + 1) != TILE_AIR:
+            row = feet_row              # air au sol devant → placement naturel
         else:
-            row = feet_row - 1
+            row = head_row              # au-dessus d'un trou
 
     return col, row
