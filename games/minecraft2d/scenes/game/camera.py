@@ -41,7 +41,7 @@ class Camera:
         cx = target_px - self.view_w // 2
         cy = target_py - self.view_h // 2
         max_y = ROWS * TILE_SIZE - self.view_h
-        cx = max(0, cx)
+        # Pas de clamp sur x : le monde est infini (arène boss à col négatif)
         cy = max(0, min(cy, max_y))
         self.x += (cx - self.x) * min(1.0, 8.0 * dt)
         self.y += (cy - self.y) * min(1.0, 8.0 * dt)

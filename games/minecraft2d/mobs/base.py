@@ -121,6 +121,7 @@ _WATER_DPS = 1.0   # dégâts base eau (noyade) par seconde
 _MOB_LAVA_RESIST = {
     MOB_DEMON:    1.0,   # créature de feu
     MOB_WRAITH:   1.0,   # spectral
+    MOB_GORGON:   1.0,   # boss — immunisé lave/eau (combat uniquement)
     MOB_TENDRIL:  0.8,   # boss végétal, très résistant
     MOB_GOLEM:    0.7,   # pierre
     MOB_WORM:     0.5,   # souterrain
@@ -135,6 +136,7 @@ _MOB_WATER_RESIST = {
     MOB_PENGUIN:    1.0,   # nageur
     MOB_SEAGULL:    1.0,   # oiseau marin
     MOB_POLAR_BEAR: 1.0,   # nageur
+    MOB_GORGON:     1.0,   # boss — immunisé lave/eau
     MOB_SLIME:      0.8,   # gélatineux, flotte
     MOB_WOLF:       0.7,   # sait nager
     MOB_CHICKEN:    0.5,   # flotte un peu

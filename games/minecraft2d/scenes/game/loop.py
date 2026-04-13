@@ -66,7 +66,7 @@ def run(screen, joysticks, world_id, seed):
             # Si dans l'arène boss, sauvegarder la position normale
             sx, sy = p.x, p.y
             sf = flag_positions[p.idx]
-            if _boss_arena["active"] and _boss_arena["saved_pos"][p.idx]:
+            if _boss_arena["in_arena"][p.idx] and _boss_arena["saved_pos"][p.idx]:
                 sx, sy = _boss_arena["saved_pos"][p.idx]
                 sf = _boss_arena["saved_flags"][p.idx]
             _db.save_player(world_id, p.idx, sx, sy, p.inventory,
@@ -129,13 +129,15 @@ def run(screen, joysticks, world_id, seed):
 
     # ── Portail & Arène Boss ─────────────────────────────────────────────────
     _boss_arena = {
-        "active": False,          # True si les joueurs sont dans l'arène
-        "built": False,           # True si l'arène a déjà été construite (dans world.mods)
-        "saved_pos": [None, None], # positions sauvegardées [(x,y), (x,y)]
+        "active": False,           # True si AU MOINS UN joueur dans l'arène
+        "in_arena": [False, False], # par joueur
+        "built": False,            # True si l'arène a déjà été construite
+        "saved_pos": [None, None],  # positions sauvegardées [(x,y), (x,y)]
         "saved_flags": [None, None],
-        "gorgon_spawned": False,  # True si la Gorgone a été spawn dans l'arène
-        "gorgon_dead": False,     # True si la Gorgone a été tuée
-        "portal_cd": 0.0,        # cooldown anti-spam téléportation
+        "gorgon_spawned": False,
+        "gorgon_dead": False,
+        "gorgon_respawn_cd": 0.0,  # compteur avant respawn (s)
+        "portal_cd": 0.0,
     }
     _book_states = [{"open": False, "text": []}, {"open": False, "text": []}]
 
@@ -145,7 +147,7 @@ def run(screen, joysticks, world_id, seed):
             return
         from config import BOSS_ARENA_COL, BOSS_ARENA_W, BOSS_ARENA_H, TILE_OBSIDIAN, TILE_STONE
         ac = BOSS_ARENA_COL
-        ar_top = 40   # rangée du plafond
+        ar_top = 50   # rangée du plafond (profond = pas de terrain naturel visible)
         # Construire un rectangle creux d'obsidienne
         for dc in range(BOSS_ARENA_W):
             for dr in range(BOSS_ARENA_H):
@@ -190,26 +192,25 @@ def run(screen, joysticks, world_id, seed):
             _queue(ret_col + dc, ret_row + 1, TILE_OBSIDIAN)
         _boss_arena["built"] = True
 
-    def _teleport_to_boss():
-        """Téléporte les deux joueurs dans l'arène boss."""
+    def _teleport_to_boss(player_idx):
+        """Téléporte un joueur dans l'arène boss."""
         from config import BOSS_ARENA_COL, BOSS_ARENA_H
         _build_boss_arena()
-        # Sauvegarder positions
-        for i, p in enumerate(players):
-            _boss_arena["saved_pos"][i] = (p.x, p.y)
-            _boss_arena["saved_flags"][i] = flag_positions[i]
-        # Téléporter au centre de l'arène
+        p = players[player_idx]
+        # Sauvegarder position du joueur concerné
+        _boss_arena["saved_pos"][player_idx] = (p.x, p.y)
+        _boss_arena["saved_flags"][player_idx] = flag_positions[player_idx]
+        # Téléporter dans l'arène
         ac = BOSS_ARENA_COL
-        ar_floor = 40 + BOSS_ARENA_H - 3
-        for i, p in enumerate(players):
-            p.x = float(ac + 5 + i * 3)
-            p.y = float(ar_floor - 2)
-            p.vx = p.vy = 0.0
-            eject_from_blocks(p, world)
-        # Invalider les chunks pour forcer le re-rendu
+        ar_floor = 50 + BOSS_ARENA_H - 3   # ar_top=50, même valeur que _build_boss_arena
+        p.x = float(ac + 5 + player_idx * 3)
+        p.y = float(ar_floor - 2)
+        p.vx = p.vy = 0.0
+        eject_from_blocks(p, world)
+        _boss_arena["in_arena"][player_idx] = True
+        _boss_arena["active"] = any(_boss_arena["in_arena"])
         chunks._cache.clear()
         chunks._pending.clear()
-        _boss_arena["active"] = True
         _boss_arena["portal_cd"] = 2.0
         # Spawn Gorgone si pas déjà fait et pas déjà morte
         if not _boss_arena["gorgon_spawned"] and not _boss_arena["gorgon_dead"]:
@@ -224,31 +225,51 @@ def run(screen, joysticks, world_id, seed):
             _boss_arena["gorgon_spawned"] = True
         loot_notifs.append(["Vous entrez dans le repaire de la Gorgone...", 4.0, (180, 100, 255)])
 
-    def _teleport_back():
-        """Ramène les deux joueurs au monde normal."""
-        for i, p in enumerate(players):
-            saved = _boss_arena["saved_pos"][i]
-            if saved:
-                p.x, p.y = saved
-            flag_positions[i] = _boss_arena["saved_flags"][i]
-            p.vx = p.vy = 0.0
-            eject_from_blocks(p, world)
+    def _teleport_back(player_idx):
+        """Ramène un joueur au monde normal."""
+        p = players[player_idx]
+        saved = _boss_arena["saved_pos"][player_idx]
+        if saved:
+            p.x, p.y = saved
+        flag_positions[player_idx] = _boss_arena["saved_flags"][player_idx]
+        p.vx = p.vy = 0.0
+        eject_from_blocks(p, world)
+        _boss_arena["in_arena"][player_idx] = False
+        _boss_arena["active"] = any(_boss_arena["in_arena"])
         chunks._cache.clear()
         chunks._pending.clear()
-        _boss_arena["active"] = False
         _boss_arena["portal_cd"] = 2.0
         loot_notifs.append(["Retour au monde normal.", 3.0, (100, 200, 255)])
 
     def _check_gorgon_dead():
-        """Vérifie si la Gorgone est morte dans l'arène."""
-        if not _boss_arena["active"] or _boss_arena["gorgon_dead"]:
+        """Vérifie si la Gorgone est morte ; lance le respawn 30s plus tard."""
+        from mobs.base import MOB_GORGON
+        # Compte à rebours de respawn (tourne même sans joueur dans l'arène)
+        if _boss_arena["gorgon_dead"] and _boss_arena["gorgon_spawned"]:
+            _boss_arena["gorgon_respawn_cd"] -= dt
+            if _boss_arena["gorgon_respawn_cd"] <= 0:
+                # Respawn
+                from mobs.base import Mob, _mw
+                from config import BOSS_ARENA_COL, BOSS_ARENA_W, BOSS_ARENA_H
+                ac = BOSS_ARENA_COL
+                ar_floor = 50 + BOSS_ARENA_H - 3
+                _body_h = 20
+                gc = ac + BOSS_ARENA_W // 2
+                gm = Mob(float(gc), float(ar_floor - _body_h), MOB_GORGON, world.seed)
+                gm._anchor_x   = gc + _mw(MOB_GORGON) / 2
+                gm._anchor_row = float(ar_floor)
+                mob_mgr._mobs.append(gm)
+                _boss_arena["gorgon_dead"] = False
+                if _boss_arena["active"]:
+                    loot_notifs.append(["La Gorgone est de retour !", 4.0, (180, 100, 255)])
             return
-        if _boss_arena["gorgon_spawned"]:
-            from mobs.base import MOB_GORGON
-            alive = any(m.mob_type == MOB_GORGON for m in mob_mgr._mobs)
-            if not alive:
-                _boss_arena["gorgon_dead"] = True
-                loot_notifs.append(["La Gorgone est vaincue !", 5.0, (255, 220, 50)])
+        if not _boss_arena["active"] or not _boss_arena["gorgon_spawned"]:
+            return
+        alive = any(m.mob_type == MOB_GORGON for m in mob_mgr._mobs)
+        if not alive:
+            _boss_arena["gorgon_dead"] = True
+            _boss_arena["gorgon_respawn_cd"] = 30.0
+            loot_notifs.append(["La Gorgone est vaincue ! (respawn dans 30s)", 5.0, (255, 220, 50)])
 
     _BOOK_LINE_H = 12
     _BOOK_PAD    = 10
@@ -567,9 +588,9 @@ def run(screen, joysticks, world_id, seed):
                         loot_notifs.append(["✟ TOTEM ! Résurrection !", 3.0, (255, 220, 100)])
                 if not totem_used:
                     player.hp = effective_max_hp(player)
-                    if _boss_arena["active"]:
+                    if _boss_arena["in_arena"][i]:
                         # Mort dans l'arène : retour au monde normal
-                        _teleport_back()
+                        _teleport_back(i)
                         loot_notifs.append(["Vous avez fui le repaire...", 3.0, (200, 80, 80)])
                     else:
                         fp = flag_positions[i]
@@ -580,12 +601,12 @@ def run(screen, joysticks, world_id, seed):
         # ── Détection portail ────────────────────────────────────────────
         _boss_arena["portal_cd"] = max(0.0, _boss_arena["portal_cd"] - dt)
         if _boss_arena["portal_cd"] <= 0:
-            for p in players:
+            for pi, p in enumerate(players):
                 if in_portal(p, world):
-                    if not _boss_arena["active"]:
-                        _teleport_to_boss()
+                    if not _boss_arena["in_arena"][pi]:
+                        _teleport_to_boss(pi)
                     else:
-                        _teleport_back()
+                        _teleport_back(pi)
                     break
         # Vérifier si la Gorgone est morte
         _check_gorgon_dead()
@@ -665,14 +686,22 @@ def run(screen, joysticks, world_id, seed):
 
         dx_d = abs(players[0].px() - players[1].px()); dy_d = abs(players[0].py() - players[1].py())
         pdist = max(dx_d, dy_d)
-        if not is_split and pdist >= SPLIT_DIST:
+        _cross_zone = _boss_arena["in_arena"][0] != _boss_arena["in_arena"][1]
+        if _cross_zone:
+            # Un joueur dans l'arène, l'autre non → split forcé permanent
+            if not is_split:
+                is_split = True
+                for k, cam in enumerate(split_cams):
+                    cam.x = players[k].px() - HALF_W // 2
+                    cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
+        elif not is_split and pdist >= SPLIT_DIST:
             is_split = True
             for k, cam in enumerate(split_cams):
-                cam.x = max(0, players[k].px() - HALF_W // 2)
+                cam.x = players[k].px() - HALF_W // 2
                 cam.y = max(0, min(players[k].py() - SCREEN_HEIGHT // 2, max_cy))
         elif is_split and pdist <= UNSPLIT_DIST and not any(cm.visible for cm in craft_menus) and not trade_menu.visible and not any(bs.get("open") for bs in _book_states):
             is_split = False
-            shared_cam.x = max(0, (players[0].px() + players[1].px()) // 2 - SCREEN_WIDTH  // 2)
+            shared_cam.x = (players[0].px() + players[1].px()) // 2 - SCREEN_WIDTH  // 2
             shared_cam.y = max(0, min((players[0].py() + players[1].py()) // 2 - SCREEN_HEIGHT // 2, max_cy))
         if is_split:
             for k, cam in enumerate(split_cams): cam.follow(players[k].px(), players[k].py(), dt)

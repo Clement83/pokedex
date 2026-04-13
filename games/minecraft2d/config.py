@@ -681,7 +681,7 @@ KB_J1_CRAFT = pygame.K_c
 KB_J2_CRAFT = pygame.K_n
 
 # ── Portail & Arène Boss ─────────────────────────────────────────────────────
-BOSS_ARENA_COL = -500_000   # colonne de l'arène boss (très loin à gauche)
+BOSS_ARENA_COL = 5_000_000   # colonne de l'arène boss (très loin à droite, coordonnées positives)
 BOSS_ARENA_W   = 40         # largeur de l'arène (colonnes)
 BOSS_ARENA_H   = 35         # hauteur de l'arène (rangées)
 
