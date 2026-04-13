@@ -53,6 +53,8 @@ class Familiar:
         self.on_ground  = False
         self.owner_idx  = owner_idx
         self.hp         = _MOB_HP[mob_type]
+        self._max_hp    = self.hp
+        self._hp_bar_timer = 0.0
         self._attack_cd = 0.0
         self._egg_timer = 0.0
         self._jump_cd   = 0.0
@@ -85,10 +87,6 @@ class FamiliarManager:
         Tente d'apprivoiser un mob sauvage proche.
         Retourne True si réussi.
         """
-        if self.familiars[player_idx] is not None:
-            loot_notifs.append(["Vous avez déjà un familier !", 1.5, (220, 160, 60)])
-            return False
-
         px_center = player.x + PLAYER_W / TILE_SIZE / 2
         py_center = player.y + PLAYER_H / TILE_SIZE / 2
 
@@ -128,6 +126,10 @@ class FamiliarManager:
                 name = TILE_NAMES.get(required, "?")
                 loot_notifs.append([f"Il faut du {name} !", 1.5, (220, 120, 60)])
                 return False
+
+        # Libérer l'ancien familier s'il y en a un
+        if self.familiars[player_idx] is not None:
+            self.release(player_idx, loot_notifs)
 
         # Créer le familier
         fam = Familiar(best_mob.mob_type, best_mob.x, best_mob.y, player_idx)
@@ -237,12 +239,13 @@ class FamiliarManager:
             speed = 4.5 if dist > 5.0 else 3.0
             fam.vx = math.copysign(speed, dx) if abs(dx) > 0.3 else 0.0
 
-            # Saut si mur devant
+            # Saut si mur devant (détecte 1 ou 2 blocs de haut)
             if fam.on_ground and fam._jump_cd <= 0:
                 dir_x = 1 if dx > 0 else -1
                 check_col = int(fam.x + dir_x * (_mw(fam.mob_type) + 0.1))
-                if _solid(world, check_col, int(fam.center_row())):
-                    fam.vy = JUMP_VEL * 0.75
+                feet_row = int(fam.center_row())
+                if _solid(world, check_col, feet_row) or _solid(world, check_col, feet_row - 1):
+                    fam.vy = JUMP_VEL
                     fam._jump_cd = 0.5
         else:
             fam.vx *= 0.8  # friction douce quand assez proche
