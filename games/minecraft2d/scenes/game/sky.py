@@ -3,7 +3,7 @@ Cycle jour / nuit : couleur du ciel, opacité de l'overlay nuit et HUD soleil/lu
 """
 import math
 import pygame
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, BIOME_FOREST, BIOME_DESERT, BIOME_ICE
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, BIOME_FOREST, BIOME_DESERT, BIOME_ICE, BIOME_JUNGLE
 
 # ── Paramètres ────────────────────────────────────────────────────────────────
 DAY_CYCLE_DURATION = 300.0   # secondes pour un cycle complet (5 min)
@@ -53,6 +53,8 @@ def biome_sky_tint(base_color, biome):
         return _lerp3(base_color, (200, 160, 80), 0.30)
     elif biome == BIOME_ICE:
         return _lerp3(base_color, (160, 195, 240), 0.25)
+    elif biome == BIOME_JUNGLE:
+        return _lerp3(base_color, (60, 170, 130), 0.35)
     return base_color
 
 

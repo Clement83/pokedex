@@ -272,15 +272,20 @@ EQUIP_BOW     = 5   # arc (arme à distance)
 BIOME_FOREST = 0
 BIOME_DESERT = 1
 BIOME_ICE    = 2
+BIOME_JUNGLE = 3
 BIOME_FREQ   = 0.008   # biomes ~120 cols de large (4 écrans), autre biome à ~2 écrans
 
-BIOME_NAMES = {BIOME_FOREST: "Forêt", BIOME_DESERT: "Désert", BIOME_ICE: "Glace"}
+# Biome forcé : passé cette colonne, c'est jungle jusqu'à la fin (zone Gorgone)
+BIOME_JUNGLE_THRESHOLD = 4_999_000
+
+BIOME_NAMES = {BIOME_FOREST: "Forêt", BIOME_DESERT: "Désert", BIOME_ICE: "Glace", BIOME_JUNGLE: "Jungle"}
 
 # Couleur du ciel (tuiles AIR) par biome
 BIOME_SKY_COLORS = {
     BIOME_FOREST: (100, 160, 220),   # bleu classique
     BIOME_DESERT: (170, 155, 120),   # ciel chaud sableux
     BIOME_ICE:    (155, 190, 225),   # ciel froid bleuté
+    BIOME_JUNGLE: ( 80, 175, 150),   # vert-turquoise humide
 }
 
 MAT_WOOD    = 0

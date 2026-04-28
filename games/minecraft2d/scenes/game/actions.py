@@ -435,6 +435,9 @@ def handle_block_actions(
                     player._break_time = 0.0
                     player._action_cd  = 0.1
                     queue_block_fn(cur_col, cur_row, TILE_AIR)
+                    # Bruit pour la Gorgone (déclenche éventuellement une charge)
+                    from mobs.deep import push_gorgon_noise
+                    push_gorgon_noise()
                     # Activer les liquides voisins (pour qu'ils coulent au prochain tick)
                     for _ac, _ar in ((cur_col, cur_row - 1), (cur_col, cur_row + 1),
                                      (cur_col - 1, cur_row), (cur_col + 1, cur_row)):

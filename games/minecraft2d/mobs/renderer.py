@@ -413,13 +413,25 @@ def draw_mob(screen, mob, camera):  # noqa: C901
         dr     = pygame.draw.rect
         active = (mob.state == "chase")
         ph     = mob._fly_phase
+        charge_state = getattr(mob, "_charge_state", "idle")
+        # Wind-up : yeux rouges flashants (telegraph d'esquive pour le joueur)
+        windup = (charge_state == "windup")
+        # Dash : yeux jaunes (charge en cours)
+        dashing = (charge_state == "dash")
 
         # Couleurs
         gc  = ( 12,  42,   8)   # corps sombre
         gs  = ( 28,  75,  18)   # écailles
         gsl = ( 48, 115,  28)   # reflet écailles
         gf  = (155, 210, 120)   # ventre/face
-        ey  = (  0, 245, 100) if active else ( 15, 140,  55)
+        if windup:
+            # flash rouge synchronisé sur ph (~6 Hz)
+            flash = (math.sin(ph * 12) > 0)
+            ey = (255, 40, 40) if flash else (160, 20, 20)
+        elif dashing:
+            ey = (255, 220, 60)
+        else:
+            ey = (0, 245, 100) if active else (15, 140, 55)
         rk  = ( 28,  16,   4)   # racines
 
         # ── Positions clés en pixels-écran ────────────────────────────────────

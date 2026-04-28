@@ -488,6 +488,9 @@ class MobManager:
             sx, sy = camera.world_to_screen(mob.px(), mob.py())
             mw = _MOB_PW[mob.mob_type]
             mh = _MOB_PH[mob.mob_type]
+            # La Gorgone : corps visuel s'étend 320px sous la tête (cf. renderer)
+            if mob.mob_type == MOB_GORGON:
+                mh = mh + 320
             if sx + mw < 0 or sx > vw or sy + mh < 0 or sy > vh:
                 continue
             draw_mob(screen, mob, camera)

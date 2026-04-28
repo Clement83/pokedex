@@ -9,7 +9,8 @@ from config import (
     TILE_IRON_ORE, TILE_GOLD_ORE, TILE_DIAMOND_ORE, TILE_CHEST,
     TILE_SNOW, TILE_ICE, TILE_LAVA, TILE_WATER, TILE_BOOK,
     SURFACE_Y, TERRAIN_AMPLITUDE, TERRAIN_FREQ, STONE_DEPTH,
-    BIOME_FOREST, BIOME_DESERT, BIOME_ICE, BIOME_FREQ,
+    BIOME_FOREST, BIOME_DESERT, BIOME_ICE, BIOME_JUNGLE, BIOME_FREQ,
+    BIOME_JUNGLE_THRESHOLD,
 )
 from world_builders import (
     _hash1, _hash2, _smooth1, _smooth2,
@@ -45,6 +46,9 @@ class World:
 
     def biome_at(self, col):
         """Retourne le biome à la colonne col (bruit 1D lent)."""
+        # Zone Gorgone : jungle forcée passé le seuil
+        if col >= BIOME_JUNGLE_THRESHOLD:
+            return BIOME_JUNGLE
         v = _smooth1(col, BIOME_FREQ, self.seed ^ 0xB10E)
         if v < 0.33:
             return BIOME_ICE
@@ -149,10 +153,17 @@ class World:
         biome = self.biome_at(col)
         if biome == BIOME_DESERT:
             return False
-        rate = 0.10 if biome == BIOME_FOREST else 0.035   # forêt dense, glace clairsemée
+        if biome == BIOME_JUNGLE:
+            rate = 0.22   # jungle très dense
+        elif biome == BIOME_FOREST:
+            rate = 0.10
+        else:
+            rate = 0.035   # glace clairsemée
         return _hash1(col * 31 + 7, self.seed ^ 0xBEEF) < rate
 
     def _tree_height(self, col):
+        if self.biome_at(col) == BIOME_JUNGLE:
+            return 4 + int(_hash1(col * 17 + 3, self.seed ^ 0xBEEF) * 3)   # 4 à 6
         return 2 + int(_hash1(col * 17 + 3, self.seed ^ 0xBEEF) * 2)   # 2 ou 3
 
     def _tree_tile(self, col, row):
@@ -235,8 +246,12 @@ class World:
                 return cabin
             return self._tree_tile(col, row)
 
-        # ── Lacs de surface (forêt et glace uniquement) ─────────────────
-        is_lake = biome != BIOME_DESERT and _smooth1(col, 0.06, self.seed ^ 0xAC0A) > 0.82
+        # ── Lacs de surface (forêt, glace, jungle ; jungle plus fréquent) ─
+        if biome == BIOME_DESERT:
+            is_lake = False
+        else:
+            lake_thresh = 0.65 if biome == BIOME_JUNGLE else 0.82
+            is_lake = _smooth1(col, 0.06, self.seed ^ 0xAC0A) > lake_thresh
 
         # ── Surface ──────────────────────────────────────────────────────
         if row == s:

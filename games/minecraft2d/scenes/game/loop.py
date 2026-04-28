@@ -136,7 +136,6 @@ def run(screen, joysticks, world_id, seed):
         "saved_flags": [None, None],
         "gorgon_spawned": False,
         "gorgon_dead": False,
-        "gorgon_respawn_cd": 0.0,  # compteur avant respawn (s)
         "portal_cd": 0.0,
     }
     _book_states = [{"open": False, "text": []}, {"open": False, "text": []}]
@@ -147,8 +146,8 @@ def run(screen, joysticks, world_id, seed):
             return
         from config import BOSS_ARENA_COL, BOSS_ARENA_W, BOSS_ARENA_H, TILE_OBSIDIAN, TILE_STONE
         ac = BOSS_ARENA_COL
-        ar_top = 50   # rangée du plafond (profond = pas de terrain naturel visible)
-        # Construire un rectangle creux d'obsidienne
+        ar_top = 50   # rangée du plafond
+        # Cadre obsidienne + intérieur AIR
         for dc in range(BOSS_ARENA_W):
             for dr in range(BOSS_ARENA_H):
                 c = ac + dc
@@ -159,30 +158,60 @@ def run(screen, joysticks, world_id, seed):
                 else:
                     world.set(c, r, TILE_AIR)
                     _queue(c, r, TILE_AIR)
-        # Sol en pierre au milieu (plateformes)
+        # Sol en pierre tout en bas
         floor_row = ar_top + BOSS_ARENA_H - 2
         for dc in range(1, BOSS_ARENA_W - 1):
             world.set(ac + dc, floor_row, TILE_STONE)
             _queue(ac + dc, floor_row, TILE_STONE)
-        # Quelques piliers décoratifs
-        for pillar_dc in (8, 16, 24, 32):
-            if pillar_dc < BOSS_ARENA_W - 1:
-                for pr in range(floor_row - 5, floor_row):
-                    world.set(ac + pillar_dc, pr, TILE_OBSIDIAN)
-                    _queue(ac + pillar_dc, pr, TILE_OBSIDIAN)
-        # Plateforme surélevée au centre
-        mid = ac + BOSS_ARENA_W // 2
-        plat_row = floor_row - 8
-        for dc in range(-4, 5):
-            world.set(mid + dc, plat_row, TILE_STONE)
-            _queue(mid + dc, plat_row, TILE_STONE)
-        # Portail de retour (en haut à gauche de l'arène)
+        # ── Bassin d'eau central (où la Gorgone est ancrée) ──────────────
+        # Largeur 24 tuiles, profondeur 4, parois en pierre pour contenir l'eau
+        pool_w     = 24
+        pool_left  = ac + (BOSS_ARENA_W - pool_w) // 2
+        pool_depth = 4
+        # Parois latérales en pierre (rows floor_row-1 à floor_row-pool_depth)
+        for dy in range(1, pool_depth + 1):
+            world.set(pool_left - 1, floor_row - dy, TILE_STONE)
+            _queue(pool_left - 1, floor_row - dy, TILE_STONE)
+            world.set(pool_left + pool_w, floor_row - dy, TILE_STONE)
+            _queue(pool_left + pool_w, floor_row - dy, TILE_STONE)
+        # Eau à l'intérieur (au-dessus du sol stone, entre les parois)
+        for dc in range(pool_w):
+            for dy in range(1, pool_depth + 1):
+                c = pool_left + dc
+                r = floor_row - dy
+                world.set(c, r, TILE_WATER)
+                _queue(c, r, TILE_WATER)
+        # ── 3 grands arbres-plateformes (tronc bois + couronnes feuilles) ─
+        # Permettent au joueur de grimper jusqu'à la tête de la Gorgone (~20 tuiles)
+        tree_cols = [ac + 5, ac + BOSS_ARENA_W - 6, ac + BOSS_ARENA_W // 2 - 12]
+        water_top_row = floor_row - pool_depth   # rangée juste au-dessus de l'eau
+        for tc in tree_cols:
+            # Tronc : depuis water_top_row - 1 jusqu'à 22 rangées au-dessus du sol
+            for dy in range(1, 23):
+                r = floor_row - dy
+                # Évite d'écraser l'eau si l'arbre est dans le bassin
+                if pool_left <= tc <= pool_left + pool_w - 1 and dy <= pool_depth:
+                    continue
+                world.set(tc, r, TILE_WOOD)
+                _queue(tc, r, TILE_WOOD)
+            # Branches/plateformes en feuillage à différentes hauteurs
+            for branch_dy in (6, 11, 16, 21):
+                br = floor_row - branch_dy
+                for dx in range(-3, 4):
+                    if dx == 0:
+                        continue   # ne pas écraser le tronc
+                    c = tc + dx
+                    if not (ac < c < ac + BOSS_ARENA_W - 1):
+                        continue
+                    world.set(c, br, TILE_GRASS)
+                    _queue(c, br, TILE_GRASS)
+        # Portail de retour (en haut à gauche, sur le 1er arbre)
         ret_col = ac + 3
-        ret_row = floor_row - 1
+        ret_row = ar_top + 3
         for dc in range(3):
             world.set(ret_col + dc, ret_row, TILE_PORTAL)
             _queue(ret_col + dc, ret_row, TILE_PORTAL)
-        # Encadrer le portail de retour
+        # Encadrer le portail
         world.set(ret_col - 1, ret_row, TILE_OBSIDIAN)
         _queue(ret_col - 1, ret_row, TILE_OBSIDIAN)
         world.set(ret_col + 3, ret_row, TILE_OBSIDIAN)
@@ -200,10 +229,10 @@ def run(screen, joysticks, world_id, seed):
         # Sauvegarder position du joueur concerné
         _boss_arena["saved_pos"][player_idx] = (p.x, p.y)
         _boss_arena["saved_flags"][player_idx] = flag_positions[player_idx]
-        # Téléporter dans l'arène
+        # Téléporter dans l'arène (côté gauche, entre le mur et le 1er arbre)
         ac = BOSS_ARENA_COL
         ar_floor = 50 + BOSS_ARENA_H - 3   # ar_top=50, même valeur que _build_boss_arena
-        p.x = float(ac + 5 + player_idx * 3)
+        p.x = float(ac + 2 + player_idx)
         p.y = float(ar_floor - 2)
         p.vx = p.vy = 0.0
         eject_from_blocks(p, world)
@@ -212,9 +241,10 @@ def run(screen, joysticks, world_id, seed):
         chunks._cache.clear()
         chunks._pending.clear()
         _boss_arena["portal_cd"] = 2.0
-        # Spawn Gorgone si pas déjà fait et pas déjà morte
-        if not _boss_arena["gorgon_spawned"] and not _boss_arena["gorgon_dead"]:
-            from mobs.base import Mob, MOB_GORGON, _mw
+        # Spawn Gorgone si pas présente dans le monde (morte ou despawnée)
+        from mobs.base import Mob, MOB_GORGON, _mw
+        gorgon_alive = any(m.mob_type == MOB_GORGON for m in mob_mgr._mobs)
+        if not gorgon_alive:
             _body_h = 20
             gc = ac + BOSS_ARENA_W // 2
             gfloor = ar_floor
@@ -223,6 +253,7 @@ def run(screen, joysticks, world_id, seed):
             gm._anchor_row = float(gfloor)
             mob_mgr._mobs.append(gm)
             _boss_arena["gorgon_spawned"] = True
+            _boss_arena["gorgon_dead"] = False
         loot_notifs.append(["Vous entrez dans le repaire de la Gorgone...", 4.0, (180, 100, 255)])
 
     def _teleport_back(player_idx):
@@ -239,37 +270,23 @@ def run(screen, joysticks, world_id, seed):
         chunks._cache.clear()
         chunks._pending.clear()
         _boss_arena["portal_cd"] = 2.0
+        # Vider les crachats si plus aucun joueur dans l'arène
+        if not _boss_arena["active"]:
+            from mobs.deep import clear_gorgon_spits
+            clear_gorgon_spits()
         loot_notifs.append(["Retour au monde normal.", 3.0, (100, 200, 255)])
 
     def _check_gorgon_dead():
-        """Vérifie si la Gorgone est morte ; lance le respawn 30s plus tard."""
+        """Marque la Gorgone comme morte ; respawn au prochain TP dans le repaire."""
         from mobs.base import MOB_GORGON
-        # Compte à rebours de respawn (tourne même sans joueur dans l'arène)
-        if _boss_arena["gorgon_dead"] and _boss_arena["gorgon_spawned"]:
-            _boss_arena["gorgon_respawn_cd"] -= dt
-            if _boss_arena["gorgon_respawn_cd"] <= 0:
-                # Respawn
-                from mobs.base import Mob, _mw
-                from config import BOSS_ARENA_COL, BOSS_ARENA_W, BOSS_ARENA_H
-                ac = BOSS_ARENA_COL
-                ar_floor = 50 + BOSS_ARENA_H - 3
-                _body_h = 20
-                gc = ac + BOSS_ARENA_W // 2
-                gm = Mob(float(gc), float(ar_floor - _body_h), MOB_GORGON, world.seed)
-                gm._anchor_x   = gc + _mw(MOB_GORGON) / 2
-                gm._anchor_row = float(ar_floor)
-                mob_mgr._mobs.append(gm)
-                _boss_arena["gorgon_dead"] = False
-                if _boss_arena["active"]:
-                    loot_notifs.append(["La Gorgone est de retour !", 4.0, (180, 100, 255)])
+        if _boss_arena["gorgon_dead"] or not _boss_arena["gorgon_spawned"]:
             return
-        if not _boss_arena["active"] or not _boss_arena["gorgon_spawned"]:
+        if not _boss_arena["active"]:
             return
         alive = any(m.mob_type == MOB_GORGON for m in mob_mgr._mobs)
         if not alive:
             _boss_arena["gorgon_dead"] = True
-            _boss_arena["gorgon_respawn_cd"] = 30.0
-            loot_notifs.append(["La Gorgone est vaincue ! (respawn dans 30s)", 5.0, (255, 220, 50)])
+            loot_notifs.append(["La Gorgone est vaincue !", 5.0, (255, 220, 50)])
 
     _BOOK_LINE_H = 12
     _BOOK_PAD    = 10
@@ -355,6 +372,8 @@ def run(screen, joysticks, world_id, seed):
         for fi, fp in enumerate(flag_positions):
             if fp: draw_flag_in_world(surf, fp[0], fp[1], players[fi].color, cam)
         mob_mgr.draw(surf, cam)
+        from mobs.deep import draw_gorgon_spits
+        draw_gorgon_spits(surf, cam.x, cam.y)
         fam_mgr.draw(surf, cam)
         proj_mgr.draw(surf, cam)
         for pl in players: draw_player(surf, pl, cam, font_sm)
@@ -615,6 +634,17 @@ def run(screen, joysticks, world_id, seed):
         if _mob_cd[0] <= 0:
             mob_mgr.spawn_around(list({int(p.x) for p in players}), _is_nite); _mob_cd[0] = 6.0
         mob_mgr.update(dt, players, world)
+        # Drainer les blocs cassés par la Gorgone (chunk cache + persistance)
+        from mobs.base import MOB_GORGON as _MGRG
+        for _gm in mob_mgr._mobs:
+            if _gm.mob_type == _MGRG and getattr(_gm, "_break_pending", None):
+                for _bc, _br in _gm._break_pending:
+                    chunks.update_tile(_bc, _br, TILE_AIR)
+                    _queue(_bc, _br, TILE_AIR)
+                _gm._break_pending.clear()
+        # Crachats verts de la Gorgone (physique + dégâts joueur + casse blocs)
+        from mobs.deep import update_gorgon_spits
+        update_gorgon_spits(dt, players, world, chunks, _queue)
         mob_mgr.tick_day_night(_is_nite, world, players)
         # Drops de mobs tués par le poison → joueur le plus proche
         if mob_mgr._poison_drops:

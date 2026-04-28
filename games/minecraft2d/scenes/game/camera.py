@@ -23,8 +23,67 @@ from config import (
     TILE_PUMPKIN_1, TILE_PUMPKIN_2, TILE_PUMPKIN_3,
     TILE_HOE, TILE_BREAD,
     TILE_BUCKET_EMPTY, TILE_BUCKET_WATER,
-    BIOME_SKY_COLORS,
+    TILE_DIRT, TILE_STONE, TILE_GRASS,
+    BIOME_SKY_COLORS, BIOME_JUNGLE,
 )
+
+# ── Surcharges visuelles biome Jungle ─────────────────────────────────────────
+# Tuiles dont l'apparence est modifiée en jungle (humide, sombre, mousse)
+_JUNGLE_TILE_OVERRIDES = (TILE_GRASS, TILE_DIRT, TILE_STONE)
+_JUNGLE_GRASS_DARK    = ( 38, 102,  18)   # vert très sombre
+_JUNGLE_GRASS_HILITE  = ( 95, 165,  35)   # touffes vert plus clair
+_JUNGLE_FERN_COLOR    = (155, 200,  60)   # fougère claire
+_JUNGLE_DIRT_BASE     = ( 78,  60,  32)   # terre humide
+_JUNGLE_DIRT_SPOT     = ( 50, 100,  30)   # taches de mousse
+_JUNGLE_STONE_BASE    = ( 96, 110,  92)   # pierre verdâtre
+_JUNGLE_STONE_MOSS    = ( 60, 120,  50)   # mousse
+_JUNGLE_STONE_DARK    = ( 70,  82,  68)   # ombre
+
+
+def _draw_jungle_tile(surf, x, y, tile, dc, dr):
+    """Rendu spécifique jungle : teintes sombres + détails (mousse, fougères)."""
+    ts = TILE_SIZE
+    if tile == TILE_GRASS:
+        # Base : vert sombre
+        surf.fill(_JUNGLE_GRASS_DARK, (x, y, ts, ts))
+        # Touffes/highlights pseudo-aléatoires basés sur dc/dr
+        h = (dc * 73 + dr * 37) & 0xFF
+        if h & 0x01:
+            surf.fill(_JUNGLE_GRASS_HILITE, (x + 2, y + 1, 3, 2))
+        if h & 0x02:
+            surf.fill(_JUNGLE_GRASS_HILITE, (x + 9, y + 2, 3, 2))
+        # Fougère décorative ~25% des tuiles d'herbe
+        if (h & 0x07) == 0:
+            # tige
+            pygame.draw.line(surf, _JUNGLE_FERN_COLOR, (x + 7, y + 14), (x + 7, y + 6), 1)
+            # feuilles latérales
+            pygame.draw.line(surf, _JUNGLE_FERN_COLOR, (x + 7, y + 12), (x + 4, y + 10), 1)
+            pygame.draw.line(surf, _JUNGLE_FERN_COLOR, (x + 7, y + 12), (x + 10, y + 10), 1)
+            pygame.draw.line(surf, _JUNGLE_FERN_COLOR, (x + 7, y + 9), (x + 4, y + 7), 1)
+            pygame.draw.line(surf, _JUNGLE_FERN_COLOR, (x + 7, y + 9), (x + 10, y + 7), 1)
+        pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+    elif tile == TILE_DIRT:
+        surf.fill(_JUNGLE_DIRT_BASE, (x, y, ts, ts))
+        # Taches de mousse pseudo-aléatoires
+        h = (dc * 53 + dr * 91) & 0xFF
+        if h & 0x01:
+            surf.fill(_JUNGLE_DIRT_SPOT, (x + 1, y + 4, 3, 2))
+        if h & 0x04:
+            surf.fill(_JUNGLE_DIRT_SPOT, (x + 8, y + 9, 4, 2))
+        if h & 0x10:
+            surf.fill(_JUNGLE_DIRT_SPOT, (x + 4, y + 12, 3, 2))
+        pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
+    elif tile == TILE_STONE:
+        surf.fill(_JUNGLE_STONE_BASE, (x, y, ts, ts))
+        # Veines de mousse + zones d'ombre
+        h = (dc * 41 + dr * 67) & 0xFF
+        if h & 0x01:
+            surf.fill(_JUNGLE_STONE_MOSS, (x + 2, y + 2, 4, 1))
+        if h & 0x02:
+            surf.fill(_JUNGLE_STONE_MOSS, (x + 9, y + 12, 4, 1))
+        if h & 0x08:
+            surf.fill(_JUNGLE_STONE_DARK, (x + 5, y + 7, 3, 3))
+        pygame.draw.rect(surf, (0, 0, 0), (x, y, ts, ts), 1)
 
 # ── Caméra ────────────────────────────────────────────────────────────────────
 
@@ -321,9 +380,14 @@ def _draw_bucket_tile(surf, x, y, full):
 
 # ── Dessin d'une seule tuile (partagé render + update_tile) ──────────────────
 
-def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0):
-    """Dessine la tuile `tile` à (x, y) sur `surf`. biome_color = couleur ciel du biome."""
+def _draw_single_tile(surf, x, y, tile, biome_color, dc=0, dr=0, biome=None):
+    """Dessine la tuile `tile` à (x, y) sur `surf`. biome_color = couleur ciel du biome.
+    biome (optionnel) = ID du biome pour overrides spécifiques (ex: jungle)."""
     ts = TILE_SIZE
+    # ── Surcharges visuelles biome jungle (terre humide, pierre mousse, herbe sombre) ─
+    if biome == BIOME_JUNGLE and tile in _JUNGLE_TILE_OVERRIDES:
+        _draw_jungle_tile(surf, x, y, tile, dc, dr)
+        return
     if tile == TILE_CHEST:
         _draw_chest_tile(surf, x, y)
     elif tile == TILE_LAVA:
@@ -662,7 +726,8 @@ class ChunkCache:
                 x = dc * ts
                 y = dr * ts
                 _draw_single_tile(surf, x, y, tile,
-                                  BIOME_SKY_COLORS[biomes[dc]], dc, dr)
+                                  BIOME_SKY_COLORS[biomes[dc]], dc, dr,
+                                  biome=biomes[dc])
         return surf.convert()
 
     def flush_ready(self):
@@ -706,9 +771,11 @@ class ChunkCache:
         surf = self._cache[key]
         x  = (col % CHUNK_COLS) * TILE_SIZE
         y  = (row % CHUNK_ROWS) * TILE_SIZE
-        biome_color = BIOME_SKY_COLORS[self._world.biome_at(col)]
+        biome_id    = self._world.biome_at(col)
+        biome_color = BIOME_SKY_COLORS[biome_id]
         _draw_single_tile(surf, x, y, tile, biome_color,
-                          col % CHUNK_COLS, row % CHUNK_ROWS)
+                          col % CHUNK_COLS, row % CHUNK_ROWS,
+                          biome=biome_id)
 
     def invalidate(self, col, row=None):
         if row is None:
