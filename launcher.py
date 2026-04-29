@@ -31,15 +31,23 @@ class Launcher:
         self.games = games
         self.base_dir = Path(base_dir)
         self.selected = 0
+        self.show_beta = False
         self.font_header = pygame.font.SysFont("Arial", 18, bold=True)
         self.font_tile = pygame.font.SysFont("Arial", 13, bold=True)
         self.font_placeholder = pygame.font.SysFont("Arial", 36, bold=True)
+        self.font_badge = pygame.font.SysFont("Arial", 10, bold=True)
         self.images = self._load_images()
         self.bg_images = self._load_bg_images()
+        self.visible_games = self._compute_visible()
         self._axis_moved = False
         # Carousel : position actuelle du scroll (pixels), interpolée vers la cible
         self._scroll_x = 0.0  # démarre centré sur le 1er jeu
         self._ip = self._get_ip()
+
+    def _compute_visible(self):
+        if self.show_beta:
+            return list(self.games)
+        return [g for g in self.games if not g.get("beta", False)]
 
     @staticmethod
     def _get_ip() -> str:
@@ -59,7 +67,7 @@ class Launcher:
         self._scroll_x += (target - self._scroll_x) * min(1.0, 14.0 * dt)
 
     def _load_images(self):
-        images = []
+        images = {}
         for game in self.games:
             img = None
             img_path = game.get("image")
@@ -69,13 +77,13 @@ class Launcher:
                     img = self._cover_crop(raw, IMG_W, IMG_H)
                 except Exception:
                     pass
-            images.append(img)
+            images[game["title"]] = img
         return images
 
     def _load_bg_images(self):
         """Charge une version plein-écran de chaque cover pour le fond."""
         sw, sh = self.screen.get_size()
-        bgs = []
+        bgs = {}
         for game in self.games:
             bg = None
             img_path = game.get("image")
@@ -85,7 +93,7 @@ class Launcher:
                     bg = self._cover_crop(raw, sw, sh)
                 except Exception:
                     pass
-            bgs.append(bg)
+            bgs[game["title"]] = bg
         return bgs
 
     @staticmethod
@@ -108,53 +116,72 @@ class Launcher:
         return bool(path and os.path.exists(os.path.join(path, entry + ".py")))
 
     def handle_event(self, event):
-        """Retourne l'index du jeu sélectionné si confirmé, sinon None."""
+        """Retourne le dict du jeu sélectionné si confirmé, -1 si quit, sinon None."""
+        n = len(self.visible_games)
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_F4:
+                self.show_beta = not self.show_beta
+                self.visible_games = self._compute_visible()
+                self.selected = 0
+                return None
+            if n == 0:
+                return None
             if event.key == pygame.K_LEFT:
-                self.selected = (self.selected - 1) % len(self.games)
+                self.selected = (self.selected - 1) % n
             elif event.key == pygame.K_RIGHT:
-                self.selected = (self.selected + 1) % len(self.games)
+                self.selected = (self.selected + 1) % n
             elif event.key in (pygame.K_RETURN, pygame.K_n):
-                if self.is_available(self.games[self.selected]):
-                    return self.selected
+                if self.is_available(self.visible_games[self.selected]):
+                    return self.visible_games[self.selected]
             elif event.key == pygame.K_ESCAPE:
                 return -1  # quitter le launcher
 
+        if n == 0:
+            return None
+
         if event.type == pygame.JOYHATMOTION:
             x, y = event.value
-            # Gauche ou haut → jeu précédent ; droite ou bas → jeu suivant
             if x == -1 or y == 1:
-                self.selected = (self.selected - 1) % len(self.games)
+                self.selected = (self.selected - 1) % n
             elif x == 1 or y == -1:
-                self.selected = (self.selected + 1) % len(self.games)
+                self.selected = (self.selected + 1) % n
 
         if event.type == pygame.JOYAXISMOTION:
             if event.axis == 0:
                 if event.value < -0.7 and not self._axis_moved:
-                    self.selected = (self.selected - 1) % len(self.games)
+                    self.selected = (self.selected - 1) % n
                     self._axis_moved = True
                 elif event.value > 0.7 and not self._axis_moved:
-                    self.selected = (self.selected + 1) % len(self.games)
+                    self.selected = (self.selected + 1) % n
                     self._axis_moved = True
                 elif abs(event.value) < 0.3:
                     self._axis_moved = False
 
         if event.type == pygame.JOYBUTTONDOWN:
             if event.button in (0, 1):  # A ou B → lancer le jeu
-                if self.is_available(self.games[self.selected]):
-                    return self.selected
+                if self.is_available(self.visible_games[self.selected]):
+                    return self.visible_games[self.selected]
             elif event.button in (10, 8, 4):      # LEFT / UP / R1 → jeu précédent
-                self.selected = (self.selected - 1) % len(self.games)
+                self.selected = (self.selected - 1) % n
             elif event.button in (11, 9, 5, 6):   # RIGHT / DOWN / R / L1 → jeu suivant
-                self.selected = (self.selected + 1) % len(self.games)
+                self.selected = (self.selected + 1) % n
 
         return None
 
     def render(self):
         w, h = self.screen.get_size()
 
+        if not self.visible_games:
+            self.screen.fill(BG_COLOR)
+            msg = self.font_header.render("Aucun jeu disponible", True, HEADER_COLOR)
+            self.screen.blit(msg, ((w - msg.get_width()) // 2, (h - msg.get_height()) // 2))
+            return
+
+        # Garde-fou : sélection clampée si la liste a rétréci
+        self.selected = max(0, min(self.selected, len(self.visible_games) - 1))
+
         # ── Fond : cover du jeu sélectionné ───────────────────────────────────
-        bg = self.bg_images[self.selected]
+        bg = self.bg_images.get(self.visible_games[self.selected]["title"])
         if bg:
             self.screen.blit(bg, (0, 0))
             overlay = pygame.Surface((w, h), pygame.SRCALPHA)
@@ -164,7 +191,7 @@ class Launcher:
             self.screen.fill(BG_COLOR)
 
         # ── En-tête : nom du jeu sélectionné ──────────────────────────────────
-        game = self.games[self.selected]
+        game = self.visible_games[self.selected]
         header_text = game["title"] if self.is_available(game) else f"{game['title']}  (bientôt)"
         header_surf = self.font_header.render(header_text, True, HEADER_COLOR)
         pygame.draw.line(self.screen, (70, 70, 70), (0, HEADER_H), (w, HEADER_H), 1)
@@ -180,7 +207,7 @@ class Launcher:
         clip_rect = pygame.Rect(0, HEADER_H, w, h - HEADER_H)
         self.screen.set_clip(clip_rect)
 
-        for i, g in enumerate(self.games):
+        for i, g in enumerate(self.visible_games):
             x = center_x + i * step - int(self._scroll_x)
 
             # Ne pas dessiner les tuiles trop loin hors-écran
@@ -210,8 +237,9 @@ class Launcher:
             # Image ou placeholder
             img_x = x + (TILE_W - IMG_W) // 2
             img_y = tile_y + 8
-            if self.images[i]:
-                self.screen.blit(self.images[i], (img_x, img_y))
+            img = self.images.get(g["title"])
+            if img:
+                self.screen.blit(img, (img_x, img_y))
             else:
                 ph_rect = pygame.Rect(img_x, img_y, IMG_W, IMG_H)
                 pygame.draw.rect(self.screen, PLACEHOLDER_COLOR, ph_rect, border_radius=8)
@@ -225,6 +253,18 @@ class Launcher:
             title_x = x + (TILE_W - title_surf.get_width()) // 2
             title_y = tile_y + TILE_H - 26 + (26 - title_surf.get_height()) // 2
             self.screen.blit(title_surf, (title_x, title_y))
+
+            # Badge BETA
+            if g.get("beta"):
+                badge_w, badge_h = 40, 14
+                badge_rect = pygame.Rect(x + TILE_W - badge_w - 4, tile_y + 4, badge_w, badge_h)
+                pygame.draw.rect(self.screen, (245, 200, 60), badge_rect, border_radius=3)
+                badge_surf = self.font_badge.render("BETA", True, (20, 20, 20))
+                self.screen.blit(
+                    badge_surf,
+                    (badge_rect.x + (badge_w - badge_surf.get_width()) // 2,
+                     badge_rect.y + (badge_h - badge_surf.get_height()) // 2),
+                )
 
         self.screen.set_clip(None)
 
@@ -246,12 +286,12 @@ class Launcher:
         if self.selected > 0:
             a = arrow_font.render("◄", True, (180, 180, 180))
             self.screen.blit(a, (6, arrow_y))
-        if self.selected < len(self.games) - 1:
+        if self.selected < len(self.visible_games) - 1:
             a = arrow_font.render("►", True, (180, 180, 180))
             self.screen.blit(a, (w - a.get_width() - 6, arrow_y))
 
         # ── Indicateurs de position (points) ──────────────────────────────────
-        n = len(self.games)
+        n = len(self.visible_games)
         if n > 1:
             dot_r   = 3
             dot_gap = 10

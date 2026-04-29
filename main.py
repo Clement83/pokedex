@@ -50,6 +50,22 @@ GAMES = [
         "path": str(BASE_DIR / "games" / "minecraft2d"),
         "entry": "main",
     },
+    {
+        "title": "DOOM",
+        "description": "DOOM (BETA – clavier dev uniquement)",
+        "image": str(BASE_DIR / "games" / "doom" / "cover.png"),
+        "path": str(BASE_DIR / "games" / "doom"),
+        "entry": "main",
+        "beta": True,
+    },
+    {
+        "title": "Motodash",
+        "description": "Trials 2D – chrono + médailles (BETA)",
+        "image": str(BASE_DIR / "games" / "motodash" / "cover.png"),
+        "path": str(BASE_DIR / "games" / "motodash"),
+        "entry": "main",
+        "beta": True,
+    },
 ]
 
 
@@ -159,9 +175,8 @@ def main():
                 if result == -1:
                     running = False
                 else:
-                    game = GAMES[result]
                     _music.stop()
-                    launch_game(game)
+                    launch_game(result)
                     # Le startx relance automatiquement le launcher
                     sys.exit(0)
 
