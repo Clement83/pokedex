@@ -33,7 +33,7 @@ def _splash(screen):
     font = pygame.font.SysFont("Arial", 36, bold=True)
     sub = pygame.font.SysFont("Arial", 14)
     title = font.render("MOTODASH", True, (250, 220, 90))
-    s = sub.render("BETA — Trials 2D", True, (200, 200, 200))
+    s = sub.render("Trials 2D", True, (200, 200, 200))
     for _ in range(60):
         screen.fill((15, 18, 24))
         w, h = screen.get_size()

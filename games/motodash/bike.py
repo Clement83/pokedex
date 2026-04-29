@@ -45,8 +45,10 @@ class Bike:
             ax += cos_a * config.THROTTLE_FORCE * self.throttle
             ay += sin_a * config.THROTTLE_FORCE * self.throttle
 
-        ax -= self.vx * config.AIR_DRAG
-        ay -= self.vy * config.AIR_DRAG
+        # Drag uniquement au sol — en l'air la moto conserve sa vitesse de décollage
+        if self.on_ground:
+            ax -= self.vx * config.AIR_DRAG
+            ay -= self.vy * config.AIR_DRAG
 
         self.vx += ax * dt
         self.vy += ay * dt
@@ -69,9 +71,12 @@ class Bike:
 
         self._resolve_collisions(dt, terrain)
 
-        norm = self._normalized_angle()
-        if abs(math.degrees(norm)) > config.CRASH_ANGLE_DEG:
-            self.crashed = True
+        # Crash uniquement si la moto retombe au sol avec une orientation incorrecte
+        # (en l'air, tu peux flipper librement pour faire des saltos).
+        if self.on_ground:
+            norm = self._normalized_angle()
+            if abs(math.degrees(norm)) > config.CRASH_ANGLE_DEG:
+                self.crashed = True
 
     def _normalized_angle(self):
         return (self.angle + math.pi) % (2 * math.pi) - math.pi
@@ -79,6 +84,8 @@ class Bike:
     def _resolve_collisions(self, dt, terrain):
         rear, front = self.wheel_positions()
         on_ground_any = False
+        # Friction dt-aware : GROUND_FRICTION s'exprime "par frame à 60 FPS"
+        friction = config.GROUND_FRICTION ** (60.0 * dt)
         for wheel_pos, sign in ((rear, -1.0), (front, +1.0)):
             wx, wy = wheel_pos
             ground_y = terrain.height_at(wx)
@@ -88,10 +95,16 @@ class Bike:
             if penetration > 0:
                 on_ground_any = True
                 self.y -= penetration * 0.5
-                if self.vy > 0:
-                    self.vy = -self.vy * 0.1
-                self.vx *= config.GROUND_FRICTION
                 slope = terrain.slope_at(wx)
+                # Contrainte unilatérale : on ne tue la composante perpendiculaire
+                # que si la vélocité rentre dans le sol. Sinon la moto décolle
+                # naturellement en haut des rampes.
+                into = self.vy - slope * self.vx
+                if into > 0:
+                    inv = 1.0 / (1.0 + slope * slope)
+                    self.vx += into * inv * slope
+                    self.vy -= into * inv
+                self.vx *= friction
                 target_angle = math.atan(slope)
                 err = self._angle_diff(target_angle, self.angle)
                 self.angular_vel += err * 8.0 * dt * sign * 0.5

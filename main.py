@@ -60,11 +60,10 @@ GAMES = [
     },
     {
         "title": "Motodash",
-        "description": "Trials 2D – chrono + médailles (BETA)",
+        "description": "Trials 2D – chrono + médailles",
         "image": str(BASE_DIR / "games" / "motodash" / "cover.png"),
         "path": str(BASE_DIR / "games" / "motodash"),
         "entry": "main",
-        "beta": True,
     },
 ]
 
