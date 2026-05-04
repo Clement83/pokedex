@@ -22,9 +22,9 @@ class ResultScene:
             elif event.key == pygame.K_ESCAPE:
                 self.choice = "menu"
         elif event.type == pygame.JOYBUTTONDOWN:
-            if event.button == config.BTN_THROTTLE:
+            if event.button == config.BTN_A:
                 self.choice = "retry"
-            elif event.button == config.BTN_BRAKE:
+            elif event.button == config.BTN_B:
                 self.choice = "menu"
 
     def update(self, dt):

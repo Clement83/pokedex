@@ -127,11 +127,21 @@ CRASH_ANGLE_DEG = 110.0
 
 AXIS_DEAD = 0.4
 
-BTN_THROTTLE = 1
-BTN_BRAKE    = 0
-BTN_RESET    = 2
+# ── Contrôles manette Odroid GO Advance ───────────────────────────────────────
+# En jeu : seule la croix directionnelle est utilisée
+#   D-pad ↑ = accélérer, ↓ = freiner, ← → = pencher
+# En menu : croix pour naviguer, A confirme, B annule
+BTN_B        = 0   # B (bas)    – annuler (menu)
+BTN_A        = 1   # A (droite) – confirmer (menu)
+BTN_X        = 2   # X (haut)
+BTN_Y        = 3   # Y (gauche)
+
+# D-pad (boutons quand le firmware ne sort ni hat ni axes)
+BTN_UP       = 8
+BTN_DOWN     = 9
 BTN_LEFT     = 10
 BTN_RIGHT    = 11
+
 BTN_SELECT   = 12
 BTN_START    = 17
 

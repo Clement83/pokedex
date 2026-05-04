@@ -52,9 +52,9 @@ class SelectScene:
             elif event.key == pygame.K_ESCAPE:
                 self.choice = "quit"
         elif event.type == pygame.JOYBUTTONDOWN:
-            if event.button == config.BTN_THROTTLE:
+            if event.button == config.BTN_A:
                 self._try_select()
-            elif event.button == config.BTN_BRAKE:
+            elif event.button == config.BTN_B:
                 self.choice = "quit"
             elif event.button == config.BTN_LEFT:
                 self._move(-1)

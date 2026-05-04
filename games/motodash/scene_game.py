@@ -125,38 +125,56 @@ class GameScene:
             elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
                 self.input_lean = 0
         elif event.type == pygame.JOYBUTTONDOWN:
-            if event.button == config.BTN_THROTTLE:
+            if event.button == config.BTN_UP:
                 self.input_throttle = True
-            elif event.button == config.BTN_BRAKE:
+            elif event.button == config.BTN_DOWN:
                 self.input_brake = True
-            elif event.button == config.BTN_RESET:
-                self.want_reset = True
             elif event.button == config.BTN_LEFT:
                 self.input_lean = -1
             elif event.button == config.BTN_RIGHT:
                 self.input_lean = 1
         elif event.type == pygame.JOYBUTTONUP:
-            if event.button == config.BTN_THROTTLE:
+            if event.button == config.BTN_UP:
                 self.input_throttle = False
-            elif event.button == config.BTN_BRAKE:
+            elif event.button == config.BTN_DOWN:
                 self.input_brake = False
             elif event.button in (config.BTN_LEFT, config.BTN_RIGHT):
                 self.input_lean = 0
         elif event.type == pygame.JOYHATMOTION:
-            x, _ = event.value
+            x, y = event.value
             if x < 0:
                 self.input_lean = -1
             elif x > 0:
                 self.input_lean = 1
             else:
                 self.input_lean = 0
-        elif event.type == pygame.JOYAXISMOTION and event.axis == 0:
-            if event.value < -config.AXIS_DEAD:
-                self.input_lean = -1
-            elif event.value > config.AXIS_DEAD:
-                self.input_lean = 1
-            elif abs(event.value) < config.AXIS_DEAD * 0.5:
-                self.input_lean = 0
+            if y > 0:
+                self.input_throttle = True
+                self.input_brake = False
+            elif y < 0:
+                self.input_brake = True
+                self.input_throttle = False
+            else:
+                self.input_throttle = False
+                self.input_brake = False
+        elif event.type == pygame.JOYAXISMOTION:
+            if event.axis == 0:
+                if event.value < -config.AXIS_DEAD:
+                    self.input_lean = -1
+                elif event.value > config.AXIS_DEAD:
+                    self.input_lean = 1
+                elif abs(event.value) < config.AXIS_DEAD * 0.5:
+                    self.input_lean = 0
+            elif event.axis == 1:
+                if event.value < -config.AXIS_DEAD:
+                    self.input_throttle = True
+                    self.input_brake = False
+                elif event.value > config.AXIS_DEAD:
+                    self.input_brake = True
+                    self.input_throttle = False
+                elif abs(event.value) < config.AXIS_DEAD * 0.5:
+                    self.input_throttle = False
+                    self.input_brake = False
 
     def update(self, dt):
         if self.want_quit:
@@ -591,7 +609,7 @@ class GameScene:
 
         # Hint discret en bas
         hint = self.font_small.render(
-            "↑ accel · ↓ frein · ←→ pencher · R reset · Échap menu",
+            "D-pad ↑ accel · ↓ frein · ←→ pencher",
             True, (235, 235, 235),
         )
         hint_bg = pygame.Surface((hint.get_width() + 12, hint.get_height() + 4), pygame.SRCALPHA)
