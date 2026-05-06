@@ -65,6 +65,13 @@ GAMES = [
         "path": str(BASE_DIR / "games" / "motodash"),
         "entry": "main",
     },
+    {
+        "title": "Jungle Run",
+        "description": "Runner survie 2 joueurs – split-screen, 1 bouton (J1=D-pad, J2=ABXY)",
+        "image": str(BASE_DIR / "games" / "junglerun" / "cover.png"),
+        "path": str(BASE_DIR / "games" / "junglerun"),
+        "entry": "main",
+    },
 ]
 
 
