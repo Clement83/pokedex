@@ -3,6 +3,7 @@ import pygame
 
 import config
 import scores as scores_io
+from quit_combo import QuitCombo
 
 
 def _ensure_pygame():
@@ -50,15 +51,19 @@ def _run_game(screen, level_id, scores_state):
     while True:
         scene = GameScene(screen, level_id)
         clock = pygame.time.Clock()
+        quit_combo = QuitCombo()
         result = None
         while result is None:
             dt = clock.tick(config.FPS) / 1000.0
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return "quit"
+                quit_combo.handle_event(event)
                 scene.handle_event(event)
             result = scene.update(dt)
             scene.render()
+            if quit_combo.update_and_draw(screen):
+                return "menu"
             pygame.display.flip()
 
         if result.get("quit") or not result.get("finished"):
@@ -75,15 +80,19 @@ def _run_game(screen, level_id, scores_state):
         rscene = ResultScene(
             screen, level, result["time"], result["medal"], is_new_best,
         )
+        quit_combo_result = QuitCombo()
         rresult = None
         while rresult is None:
             dt = clock.tick(config.FPS) / 1000.0
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return "quit"
+                quit_combo_result.handle_event(event)
                 rscene.handle_event(event)
             rresult = rscene.update(dt)
             rscene.render()
+            if quit_combo_result.update_and_draw(screen):
+                return "menu"
             pygame.display.flip()
         if rresult["choice"] == "retry":
             continue
@@ -100,15 +109,19 @@ def main():
         from scene_select import SelectScene
         select = SelectScene(screen, scores_state)
         clock = pygame.time.Clock()
+        quit_combo = QuitCombo()
         result = None
         while result is None:
             dt = clock.tick(config.FPS) / 1000.0
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return
+                quit_combo.handle_event(event)
                 select.handle_event(event)
             result = select.update(dt)
             select.render()
+            if quit_combo.update_and_draw(screen):
+                return
             pygame.display.flip()
 
         if result["choice"] == "quit":

@@ -60,19 +60,24 @@ class SelectScene:
                 self._move(-1)
             elif event.button == config.BTN_RIGHT:
                 self._move(1)
+            elif event.button == config.BTN_UP:
+                self._move(-1)
+            elif event.button == config.BTN_DOWN:
+                self._move(1)
         elif event.type == pygame.JOYHATMOTION:
             x, y = event.value
-            if x < 0 or y > 0:
+            # Navigation horizontale uniquement (gauche/droite)
+            if x < 0:
                 self._move(-1)
-            elif x > 0 or y < 0:
+            elif x > 0:
                 self._move(1)
         elif event.type == pygame.JOYAXISMOTION:
             if event.axis == 0:
-                if event.value < -0.7 and not self._axis_x:
+                if event.value < -config.AXIS_DEAD and not self._axis_x:
                     self._move(-1); self._axis_x = True
-                elif event.value > 0.7 and not self._axis_x:
+                elif event.value > config.AXIS_DEAD and not self._axis_x:
                     self._move(1); self._axis_x = True
-                elif abs(event.value) < 0.3:
+                elif abs(event.value) < config.AXIS_DEAD * 0.5:
                     self._axis_x = False
 
     def update(self, dt):
