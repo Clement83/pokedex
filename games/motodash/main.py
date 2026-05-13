@@ -1,9 +1,22 @@
 import sys
+import os
+
+# Ajouter le dossier du jeu et la racine du projet au sys.path
+sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import pygame
 
 import config
 import scores as scores_io
 from quit_combo import QuitCombo
+
+# Import du logger pour debug Odroid
+try:
+    from logger import log
+except ImportError:
+    def log(msg, level="info"):
+        print(f"[{level.upper()}] {msg}")
 
 
 def _ensure_pygame():
@@ -15,11 +28,22 @@ def _ensure_pygame():
         pygame.font.init()
     if not pygame.joystick.get_init():
         pygame.joystick.init()
-    for i in range(pygame.joystick.get_count()):
+    
+    # Initialiser tous les joysticks disponibles
+    joy_count = pygame.joystick.get_count()
+    log(f"[Motodash] {joy_count} joystick(s) détecté(s)")
+    for i in range(joy_count):
         try:
-            pygame.joystick.Joystick(i).init()
-        except Exception:
-            pass
+            joy = pygame.joystick.Joystick(i)
+            joy.init()
+            log(f"[Motodash] Joystick {i} : {joy.get_name()}, {joy.get_numbuttons()} boutons, {joy.get_numaxes()} axes, {joy.get_numhats()} hats")
+        except Exception as e:
+            log(f"[Motodash] Erreur init joystick {i} : {e}", "error")
+    
+    # Vider le buffer d'événements (critique sur Odroid)
+    pygame.event.pump()
+    pygame.event.clear()
+    log("[Motodash] pygame initialisé, événements vidés")
 
 
 def _make_screen():
@@ -92,10 +116,12 @@ def _run_game(screen, level_id, scores_state):
             rresult = rscene.update(dt)
             rscene.render()
             if quit_combo_result.update_and_draw(screen):
-                return "menu"
-            pygame.display.flip()
-        if rresult["choice"] == "retry":
-            continue
+    log("[Motodash] Démarrage du jeu")
+    _ensure_pygame()
+    screen = _make_screen()
+    _splash(screen)
+    scores_state = scores_io.load()
+    log("[Motodash] Scores chargés, entrée dans la boucle de sélection"
         return "menu"
 
 

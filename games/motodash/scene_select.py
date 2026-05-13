@@ -1,4 +1,14 @@
 import pygame
+import sys
+import os
+
+# Import du logger pour debug
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+try:
+    from logger import log
+except ImportError:
+    def log(msg, level="info"):
+        pass
 
 import config
 import levels
@@ -23,12 +33,15 @@ class SelectScene:
         self._axis_x = False
         self.choice = None
         self._scroll_x = 0.0
+        log(f"[Motodash Select] Initialisé avec {len(levels.LEVELS)} niveaux")
 
     def _move(self, dx):
         n = len(levels.LEVELS)
         if n == 0:
             return
+        old_sel = self.selected
         self.selected = (self.selected + dx) % n
+        log(f"[Motodash Select] Navigation : {old_sel} -> {self.selected}")
 
     def _is_unlocked(self, index):
         if index <= 0:
@@ -37,12 +50,17 @@ class SelectScene:
         best = self.scores_state.get("best_times", {}).get(prev["id"])
         return bool(best and best.get("medal"))
 
-    def _try_select(self):
+    def _trylevel_id = levels.LEVELS[self.selected]["id"]
+            log(f"[Motodash Select] Niveau sélectionné : {level_id}")
+            self.choice = level_id
+        else:
+            log(f"[Motodash Select] Niveau {self.selected} verrouillé")
         if self._is_unlocked(self.selected):
             self.choice = levels.LEVELS[self.selected]["id"]
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
+            log(f"[Motodash Select] Touche clavier : {event.key}")
             if event.key == pygame.K_LEFT:
                 self._move(-1)
             elif event.key == pygame.K_RIGHT:
@@ -52,6 +70,7 @@ class SelectScene:
             elif event.key == pygame.K_ESCAPE:
                 self.choice = "quit"
         elif event.type == pygame.JOYBUTTONDOWN:
+            log(f"[Motodash Select] Bouton joystick : {event.button}")
             if event.button == config.BTN_A:
                 self._try_select()
             elif event.button == config.BTN_B:
@@ -66,6 +85,7 @@ class SelectScene:
                 self._move(1)
         elif event.type == pygame.JOYHATMOTION:
             x, y = event.value
+            log(f"[Motodash Select] Hat motion : x={x}, y={y}")
             # Navigation horizontale uniquement (gauche/droite)
             if x < 0:
                 self._move(-1)
@@ -73,6 +93,7 @@ class SelectScene:
                 self._move(1)
         elif event.type == pygame.JOYAXISMOTION:
             if event.axis == 0:
+                log(f"[Motodash Select] Axe 0 : {event.value:.2f}, dead={config.AXIS_DEAD}")
                 if event.value < -config.AXIS_DEAD and not self._axis_x:
                     self._move(-1); self._axis_x = True
                 elif event.value > config.AXIS_DEAD and not self._axis_x:
