@@ -50,13 +50,13 @@ class SelectScene:
         best = self.scores_state.get("best_times", {}).get(prev["id"])
         return bool(best and best.get("medal"))
 
-    def _trylevel_id = levels.LEVELS[self.selected]["id"]
+    def _try_select(self):
+        if self._is_unlocked(self.selected):
+            level_id = levels.LEVELS[self.selected]["id"]
             log(f"[Motodash Select] Niveau sélectionné : {level_id}")
             self.choice = level_id
         else:
             log(f"[Motodash Select] Niveau {self.selected} verrouillé")
-        if self._is_unlocked(self.selected):
-            self.choice = levels.LEVELS[self.selected]["id"]
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
