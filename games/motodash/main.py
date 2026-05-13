@@ -116,20 +116,20 @@ def _run_game(screen, level_id, scores_state):
             rresult = rscene.update(dt)
             rscene.render()
             if quit_combo_result.update_and_draw(screen):
+                return "menu"
+            pygame.display.flip()
+        if rresult["choice"] == "retry":
+            continue
+        return "menu"
+
+
+def main():
     log("[Motodash] Démarrage du jeu")
     _ensure_pygame()
     screen = _make_screen()
     _splash(screen)
     scores_state = scores_io.load()
-    log("[Motodash] Scores chargés, entrée dans la boucle de sélection"
-        return "menu"
-
-
-def main():
-    _ensure_pygame()
-    screen = _make_screen()
-    _splash(screen)
-    scores_state = scores_io.load()
+    log("[Motodash] Scores chargés, entrée dans la boucle de sélection")
 
     while True:
         from scene_select import SelectScene
