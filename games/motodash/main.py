@@ -55,17 +55,33 @@ def _make_screen():
 
 
 def _splash(screen):
+    """Splash screen court avec gestion des événements (compatible Odroid)."""
     font = pygame.font.SysFont("Arial", 36, bold=True)
     sub = pygame.font.SysFont("Arial", 14)
     title = font.render("MOTODASH", True, (250, 220, 90))
     s = sub.render("Trials 2D", True, (200, 200, 200))
-    for _ in range(60):
+    
+    clock = pygame.time.Clock()
+    frames = 0
+    max_frames = 60  # 1 seconde à 60 FPS
+    
+    while frames < max_frames:
+        clock.tick(60)
+        frames += 1
+        
+        # Gérer les événements pour ne pas bloquer sur Odroid
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return
+            # N'importe quelle touche/bouton skip le splash
+            if event.type in (pygame.KEYDOWN, pygame.JOYBUTTONDOWN):
+                return
+        
         screen.fill((15, 18, 24))
         w, h = screen.get_size()
         screen.blit(title, ((w - title.get_width()) // 2, h // 2 - 30))
         screen.blit(s, ((w - s.get_width()) // 2, h // 2 + 10))
         pygame.display.flip()
-        pygame.time.delay(16)
 
 
 def _run_game(screen, level_id, scores_state):
@@ -130,13 +146,23 @@ def main():
     _splash(screen)
     scores_state = scores_io.load()
     log("[Motodash] Scores chargés, entrée dans la boucle de sélection")
+    
+    # Importer les scènes une seule fois (hors boucle)
+    from scene_select import SelectScene
 
     while True:
-        from scene_select import SelectScene
+        log("[Motodash] Création de la scène de sélection")
         select = SelectScene(screen, scores_state)
         clock = pygame.time.Clock()
         quit_combo = QuitCombo()
         result = None
+        
+        # Afficher immédiatement la première frame pour feedback visuel
+        select.render()
+        pygame.display.flip()
+        log("[Motodash] Première frame affichée")
+        
+        log("[Motodash] Entrée dans la boucle d'événements de sélection")
         while result is None:
             dt = clock.tick(config.FPS) / 1000.0
             for event in pygame.event.get():
