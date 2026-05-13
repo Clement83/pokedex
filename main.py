@@ -71,6 +71,7 @@ GAMES = [
         "image": str(BASE_DIR / "games" / "junglerun" / "cover.png"),
         "path": str(BASE_DIR / "games" / "junglerun"),
         "entry": "main",
+        "beta": True,
     },
 ]
 
